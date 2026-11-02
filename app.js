@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "20";
+const APP_VERSION = "21";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -623,7 +623,10 @@ function buildGrid(e,active){
   destroyGrid();
   $("#frame").innerHTML=`<div class="vgrid" id="vgrid">${e.v.map(([vid,ch],k)=>`<div class="vcard" data-k="${k}"><div id="ytG${k}"></div><button class="vlab" data-k="${k}" type="button">${k===active?"🔊":"🔇"} ${esc(ch)}</button></div>`).join("")}</div>`;
   grid={key,ids:e.v.map(x=>x[0]),players:[],ready:[],active};
-  $("#vgrid").querySelectorAll(".vlab").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; save(); setGridActive(+b.dataset.k,false); drawVideoChips(); });
+  $("#vgrid").querySelectorAll(".vlab").forEach(b=>b.onclick=()=>{ const k=+b.dataset.k; unlockAudio();
+    if(grid && grid.active===k){ setVolV(st.ui.volV>0?0:(st.ui.lastVolV||60)); }
+    else { st.cur.vid=k; save(); if(st.ui.volV<=0) st.ui.volV=st.ui.lastVolV||60; setGridActive(k,false); drawVideoChips(); drawMusic(); }
+    setGridActive(grid.active,false); });
   if(apiOk()) startGridPlayers();
   setGridActive(active,false);
 }
@@ -641,7 +644,7 @@ function makeGridPlayer(g,k){
 }
 function setGridActive(k,scroll){
   if(!grid) return; grid.active=k;
-  document.querySelectorAll("#vgrid .vcard").forEach(c=>{ const on=+c.dataset.k===k; c.classList.toggle("on",on); const l=c.querySelector(".vlab"); if(l) l.textContent=(on?"🔊 ":"🔇 ")+l.textContent.replace(/^\S+\s/,""); });
+  document.querySelectorAll("#vgrid .vcard").forEach(c=>{ const on=+c.dataset.k===k; c.classList.toggle("on",on); const l=c.querySelector(".vlab"); if(l) l.textContent=(on&&st.ui.volV>0?"🔊 ":"🔇 ")+l.textContent.replace(/^\S+\s/,""); });
   if(scroll){ const c=document.querySelector(`#vgrid .vcard[data-k="${k}"]`); if(c) c.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"}); }
   applyVolV();
 }
@@ -729,6 +732,8 @@ function drawMusic(msg){
   $("#mPlay").textContent = (ymPlaying||ymWant) ? "❚❚" : "▶"; $("#mPlay").classList.toggle("on",ymPlaying);
   $("#mPh").hidden = !!ym;
   $("#volV").value=st.ui.volV; $("#oV").textContent=st.ui.volV;
+  $("#muteV").textContent=st.ui.volV>0?"🔊":"🔇"; $("#muteV").classList.toggle("on",st.ui.volV>0);
+  $("#muteM").textContent=m.vol>0?"🎵":"🔕"; $("#muteM").classList.toggle("on",m.vol>0 && ymPlaying);
   $("#volM").value=m.vol; $("#oM").textContent=m.vol;
   $("#mLoop").checked=!!m.loop;
   $("#mMore").textContent = $("#mPanel").hidden ? "⌄" : "⌃";
@@ -739,8 +744,12 @@ $("#mPlay").onclick=toggleMusic;
 $("#mMore").onclick=$("#mInfo").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); };
 $("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
-$("#volV").oninput=e=>{ st.ui.volV=+e.target.value; $("#oV").textContent=st.ui.volV; applyVolV(); save(); };
-$("#volM").oninput=e=>{ const v=+e.target.value; st.ui.music.vol=v; $("#oM").textContent=v; if(ymReady) ym.setVolume(v); save(); };
+function setVolV(v){ st.ui.volV=v; if(v>0) st.ui.lastVolV=v; save(); applyVolV(); if(grid) setGridActive(grid.active,false); drawMusic(); }
+function setVolM(v){ st.ui.music.vol=v; if(v>0) st.ui.lastVolM=v; if(ymReady) ym.setVolume(v); save(); drawMusic(); }
+$("#volV").oninput=e=>setVolV(+e.target.value);
+$("#volM").oninput=e=>setVolM(+e.target.value);
+$("#muteV").onclick=()=>{ unlockAudio(); setVolV(st.ui.volV>0?0:(st.ui.lastVolV||60)); };
+$("#muteM").onclick=()=>{ setVolM(st.ui.music.vol>0?0:(st.ui.lastVolM||35)); };
 window.onYouTubeIframeAPIReady=()=>{ if(grid) startGridPlayers(); else if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); drawMusic(); };
 function loadYTApi(){ const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true; document.head.appendChild(sc); }
 loadYTApi();

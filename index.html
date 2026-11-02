@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <div id="app">
@@ -40,8 +40,8 @@
         <button class="mini" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
       </div>
       <div class="m-vols">
-        <label title="Volume video esercizio">🎬<input type="range" id="volV" min="0" max="100" step="5" aria-label="Volume video esercizio"><output id="oV">0</output></label>
-        <label title="Volume musica">🎵<input type="range" id="volM" min="0" max="100" step="5" aria-label="Volume musica"><output id="oM">35</output></label>
+        <div class="vol"><button type="button" class="vbtn" id="muteV" aria-label="Audio video esercizio acceso/spento">🔇</button><input type="range" id="volV" min="0" max="100" step="5" aria-label="Volume video esercizio"><output id="oV">0</output></div>
+        <div class="vol"><button type="button" class="vbtn" id="muteM" aria-label="Musica acceso/spento">🎵</button><input type="range" id="volM" min="0" max="100" step="5" aria-label="Volume musica"><output id="oM">35</output></div>
       </div>
       <div class="m-more" id="mPanel" hidden>
         <form class="m-form" id="mForm" autocomplete="off"><input class="inp" id="mIn" placeholder="Incolla un link YouTube (brano o playlist)" inputmode="url"><button class="btn acc" type="submit">Carica</button></form>
@@ -78,7 +78,7 @@
   </div>
 </div>
 
-<script src="data.js?v=20"></script>
-<script src="app.js?v=20"></script>
+<script src="data.js?v=21"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
