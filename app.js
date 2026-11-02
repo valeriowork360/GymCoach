@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "22";
+const APP_VERSION = "23";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -47,6 +47,7 @@ const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 st.custom ||= {};
 Object.entries(st.custom).forEach(([id,e])=>{ if(!EX[id]) EX[id]=e; });
 /* scheda della sessione corrente, con eventuali esercizi sostituiti */
+function mergeNotes(n){ if(!n) return; st.exNotes={...(st.exNotes||{}),...n}; }
 function mergeCustom(c){ Object.entries(c||{}).forEach(([id,e])=>{ if(!st.custom[id]) st.custom[id]=e; if(!EX[id]) EX[id]=e; }); }
 function curList(){
   const subs=(st.cur&&st.cur.subs)||{};
@@ -74,10 +75,12 @@ const valOf  = s => s.u==="lb" ? s.v : s.kg;
 const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
 const fromKg = (k,u) => u==="lb" ? k/LB : k;
 const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
-const setW   = s => s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
+const setW   = s => s.raw ? s.raw : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
 const modeOf = id => (EX[id]&&EX[id].kind!=="time") ? (EX[id].lm || LOAD_MODE[EX[id].eq||"machine"] || "totale") : "";
 function incFor(id,u){ const eq=EX[id].eq||"machine"; return (u==="lb"?st.settings.incLb[eq]:st.settings.inc[eq])||(u==="lb"?5:2.5); }
-function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setW(s)} × ${s.reps} (RIR ${s.rir})`; }
+function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setW(s)} × ${s.rr||(s.reps??"?")} (RIR ${s.rt||(s.rir??"?")})`; }
+/* riga di dettaglio con tipo di serie, macchina e note (per archivio e storico) */
+function setLine(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setTxt(s)}${s.tipo?` · ${s.tipo}`:s.extra?" · extra":""}${s.m?` · ${s.m}`:""}${s.note?` · ${s.note}`:""}`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
 function cleanSet({kg,reps,rir,extra,sec,u,v}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
@@ -137,6 +140,7 @@ function nextTime(it,sets){
 /* carico consigliato per oggi: {v,u} nell'unità usata l'ultima volta */
 function suggested(exId){
   const s=st.sugg[exId]; if(s && s.kg!=null) return s.u==="lb"?{v:s.v,u:"lb"}:{v:s.kg,u:"kg"};
+  if(s && s.kg==null && s.txt) return null;   // c'è solo una nota, senza un numero
   const p=lastPerf(exId); if(p){ const ws=p.sets.filter(x=>!x.extra&&x.kg!=null); if(ws.length){ const l=ws[ws.length-1]; return {v:valOf(l),u:unitOf(l)}; } }
   return null;
 }
@@ -211,9 +215,12 @@ function introExercise(){
   if(e.note) t+=`<br><span class="down">⚠ ${esc(e.note)}</span>`;
   if(p) t+=`<br>Ultima volta (${dateTxt(p.date)}): ${esc(perfTxt(p.sets))}`;
   t+=`<br><span class="muted">Carico ${modeOf(id)}</span>`;
+  const xn=(st.exNotes||{})[id];
+  if(xn && xn.ref) t+=`<br>📌 <span class="muted">Dal tuo storico (${esc(xn.agg||"")}):</span> ${esc(xn.ref)}`;
   if(sk!=null) t+=`<br>👉 <b>Oggi: ${sk}</b> <span class="muted">${modeOf(id)}</span>`;
+  else if(p||xn) t+=`<br>👉 Scegli il carico in base all'ultima volta${xn&&xn.ref?" e alla nota qui sopra":""}.`;
   else t+=`<br>👉 Prima volta: scegli un carico con cui arrivi a ~${Math.round((lo+hi)/2)} rip lasciandone 2–3 in canna.`;
-  t+=`<br><span class="muted">${esc(e.cue)}</span>`;
+  t+=`<br><span class="muted">${esc(xn&&xn.cue?xn.cue:e.cue)}</span>`;
   const done=workSets(st.cur.exIdx).length;
   if(done) t+=`<br><span class="muted">Già fatte ${done}/${n} serie.</span>`;
   else t+=`<br><span class="muted">A fine serie scrivimi, per esempio: <i>${g?wTxt(g.v,g.u):"20 kg"} ${hi-1} rip RIR 2</i> (anche in libbre: <i>50 lb</i>)</span>`;
@@ -430,7 +437,7 @@ DATI DELL'UTENTE
 Sessione in corso: ${st.cur.session}, iniziata alle ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}${days!=null?`; giorni dall'ultima sessione: ${days}`:""}.
 Scheda di oggi (▶ = esercizio corrente):
 ${today}
-Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Tecnica: ${e.cue}${e.note?` Nota: ${e.note}`:""}
+Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Tecnica: ${e.cue}${(st.exNotes||{})[id]?` Note personali dallo storico: ${(st.exNotes[id].ref||"")} Cue personali: ${(st.exNotes[id].cue||"")}`:""}${e.note?` Nota: ${e.note}`:""}
 Carico di questo esercizio: ${modeOf(id)}. Alternative mirate (stesso muscolo e stesso stimolo) se chiede di cambiarlo: ${(typeof ALT!=="undefined"&&ALT[origId(st.cur.exIdx)]||[]).map(([a,w])=>`${EX[a]?EX[a].n:a} (${w})`).join("; ")||"scegli tu con lo stesso pattern e muscolo bersaglio"}.
 Serie fatte oggi su questo esercizio: ${perfTxt(setsOf(st.cur.exIdx))||"nessuna"}.
 Storico di questo esercizio (più recente prima): ${exHistoryTxt(id)}.
@@ -871,15 +878,15 @@ $("#btnList").onclick=openList;
 
 function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),cyclePos:st.cyclePos,sugg:st.sugg,custom:st.custom,history:st.history},null,1); }
 function exportText(){
-  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>(s.sec!=null?`${s.sec}s`:`${setW(s).replace(" ","")}×${s.reps} RIR${s.rir}`)+(s.extra?" (extra)":"")).join(", ")}`).join("\n")).join("\n\n");
+  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(setLine).join(", ")}`).join("\n")).join("\n\n");
 }
 function openArchive(){
   const hs=[...st.history].reverse();
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
-    return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${dur} min</span></summary>
-      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}<br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${setW(s)} × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
-      <div class="row"><button class="btn" data-chat="${h.id}">💬 Vedi chat</button><button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
+    return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}</span></summary>
+      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}</div>`).join("")}
+      <div class="row">${h.chat&&h.chat.length?`<button class="btn" data-chat="${h.id}">💬 Vedi chat</button>`:""}<button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
     <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">${st.settings.ghToken?`Backup automatico su GitHub attivo (${esc(st.settings.ghRepo)}): serie, master per esercizio e chat di ogni sessione. ${esc(syncStatus())}`:"I dati sono salvati solo su questo telefono: attiva il backup automatico in ⚙ oppure esporta ogni tanto un file."}</p>
@@ -898,7 +905,7 @@ function openArchive(){
       j.history.forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
       st.history.sort((a,b)=>a.start-b.start);
       if(j.sugg) st.sugg={...j.sugg,...st.sugg};
-      mergeCustom(j.custom);
+      mergeCustom(j.custom); mergeNotes(j.exNotes);
       if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
       save(); syncNow(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
     }catch(err){ $("#exMsg").textContent="File non valido."; }
@@ -1079,7 +1086,7 @@ function findOrCreateEx(name,timed,like){
   const id="cx_"+low.normalize("NFD").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,30);
   const eqGuess=/manubr/i.test(name)?"db":/bilancier|smith|multipower|\bez\b/i.test(name)?"bb":/cav|carrucol|corda|pulley|face pull/i.test(name)?"cable":/dischi|hack|pendulum|t-bar|leg press|pressa/i.test(name)?"plate":/piegament|nordic|sissy|trazioni|iperestensioni|dip\b/i.test(name)?"machine":"machine";
   const twoStacks=/croci.*cav|cavi incrociat|crossover|cross-cable|cavi.*(croci|incroc)/i.test(name);
-  const e={n:name.charAt(0).toUpperCase()+name.slice(1),s:like&&EX[like]?`Alternativa a ${EX[like].n}`:"Esercizio personalizzato",eq:eqGuess,...(twoStacks?{lm:"per lato (un pacco per lato)"}:{}),cue:"Esecuzione controllata, range di movimento completo.",v:[],...(timed?{kind:"time",sec:item()[2]}:{})};
+  const e={n:name.charAt(0).toUpperCase()+name.slice(1),s:like&&EX[like]?`Alternativa a ${EX[like].n}`:"Esercizio personalizzato",eq:eqGuess,...(like?{like}:{}),...(twoStacks?{lm:"per lato (un pacco per lato)"}:{}),cue:"Esecuzione controllata, range di movimento completo.",v:[],...(timed?{kind:"time",sec:item()[2]}:{})};
   st.custom[id]=e; EX[id]=e; save(); return id;
 }
 function swapTo(id){
@@ -1126,6 +1133,89 @@ function deleteSession(id){
   ghDelete(chatPath(h)).then(()=>syncNow(true));
 }
 
+/* ---------------- dashboard dei progressi ---------------- */
+const SERIES_COL=["#3987e5","#d95926","#199e70"], OTHER_COL="#6b727c";
+const e1 = s => (s.kg && s.reps) ? s.kg*(1+(s.reps+(s.rir||0))/30) : null;   // stessa formula del tuo Excel (RIR mancante = 0)
+const mondayOf = ts => { const d=new Date(ts); d.setHours(0,0,0,0); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return d.getTime(); };
+function statsData(){
+  const hs=allSessions().filter(h=>!isExtraSess(h.session));
+  const work=[]; // una riga per serie allenante
+  hs.forEach(h=>h.ex.forEach(e=>e.sets.forEach(s=>{ if(!s.extra && s.sec==null) work.push({h,ex:e.ex,s}); })));
+  return {hs,work};
+}
+function openStats(sel){
+  const {hs,work}=statsData();
+  if(!hs.length){ openSheet("Progressi","<p class='muted'>Ancora nessun dato: registra una sessione o importa lo storico da 🗂 Archivio.</p>"); return; }
+  const first=hs[0].start, last=hs[hs.length-1].start;
+  const now=Date.now(), w4=hs.filter(h=>h.start>now-28*864e5).length;
+  // volume settimanale per muscolo (ultime 6 settimane con dati)
+  const weeks=[...new Set(work.map(w=>mondayOf(w.h.start)))].sort((a,b)=>a-b).slice(-6);
+  const vol={}; work.forEach(w=>{ const g=MUSCLE[w.ex]||(EX[w.ex]&&EX[w.ex].like&&MUSCLE[EX[w.ex].like])||"Altro"; const k=mondayOf(w.h.start); if(!weeks.includes(k)) return; (vol[g] ||= {})[k]=((vol[g]||{})[k]||0)+1; });
+  const maxV=Math.max(1,...Object.values(vol).flatMap(o=>Object.values(o)));
+  const groups=[...MUSCLE_ORDER.filter(g=>vol[g]), ...Object.keys(vol).filter(g=>!MUSCLE_ORDER.includes(g))];
+  const wk=t=>new Date(t).toLocaleDateString("it-IT",{day:"2-digit",month:"2-digit"});
+  const heat=`<table class="heat"><thead><tr><th></th>${weeks.map(k=>`<th>${wk(k)}</th>`).join("")}</tr></thead><tbody>${groups.map(g=>`<tr><th>${g}</th>${weeks.map(k=>{const v=(vol[g]||{})[k]||0; return `<td title="${g}, settimana del ${wk(k)}: ${v} serie allenanti" style="background:${v?`rgba(57,135,229,${(0.18+0.72*v/maxV).toFixed(2)})`:"transparent"}">${v||"·"}</td>`;}).join("")}</tr>`).join("")}</tbody></table>`;
+  // esercizi con dati
+  const exIds=[...new Set(work.map(w=>w.ex))].sort((a,b)=>MUSCLE_ORDER.indexOf(MUSCLE[a]||"Z")-MUSCLE_ORDER.indexOf(MUSCLE[b]||"Z")||EX[a].n.localeCompare(EX[b].n));
+  const cur = sel && exIds.includes(sel) ? sel : (st.cur && exIds.includes(item()[0]) ? item()[0] : exIds[0]);
+  openSheet("Progressi",`
+    <div class="tiles">
+      <div class="tile"><b>${hs.length}</b><span>sessioni</span></div>
+      <div class="tile"><b>${work.length}</b><span>serie allenanti</span></div>
+      <div class="tile"><b>${w4}</b><span>sessioni ultime 4 sett.</span></div>
+    </div>
+    <p class="muted" style="margin:6px 2px 0">Dal ${new Date(first).toLocaleDateString("it-IT")} al ${new Date(last).toLocaleDateString("it-IT")}</p>
+    <div class="card"><h3>Andamento per esercizio</h3>
+      <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+EX[id].n)}</option>`).join("")}</select>
+      <div id="stChart"></div>
+    </div>
+    <div class="card"><h3>Serie allenanti a settimana per muscolo</h3><div class="heatwrap">${heat}</div>
+      <p class="muted" style="margin:8px 0 0">Conta le serie allenanti (non riscaldamento, prova o extra) di ogni settimana, da lunedì. Più scuro = più serie.</p></div>`);
+  $("#stEx").onchange=e=>drawExStats(e.target.value);
+  drawExStats(cur);
+}
+function drawExStats(id){
+  const {hs}=statsData();
+  // miglior serie per seduta, separata per macchina/variante
+  const pts=[]; hs.forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(!e) return;
+    const by={}; e.sets.filter(s=>!s.extra&&s.sec==null).forEach(s=>{ const v=e1(s); const m=s.m||"—"; if(v!=null && (!by[m]||v>by[m].v)) by[m]={v,s}; });
+    Object.entries(by).forEach(([m,b])=>pts.push({t:h.start,m,v:b.v,s:b.s,h})); });
+  const box=$("#stChart");
+  const rows=[]; hs.slice().reverse().forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(e) rows.push(`<tr><td>${dateTxt(h.start)}</td><td>${esc(h.session)}</td><td>${e.sets.filter(s=>!s.extra).map(s=>esc(setTxt(s))+(s.m?` <span class="xs">· ${esc(s.m)}</span>`:"")).join("<br>")||"<span class='xs'>solo riscaldamento/prove</span>"}</td></tr>`); });
+  const tableHtml=`<details class="tbl"><summary>Tabella delle sedute (${rows.length})</summary><table class="stt"><thead><tr><th>Data</th><th>Seduta</th><th>Serie allenanti</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
+  const note=(st.exNotes||{})[id];
+  if(!pts.length){ box.innerHTML=`<p class="muted">Nessuna serie con carico in kg e ripetizioni da mettere nel grafico (per esempio carichi in fori o unità sconosciuta).</p>${note&&note.ref?`<p class="note">📌 ${esc(note.ref)}</p>`:""}${tableHtml}`; return; }
+  // macchine: le 3 usate più di recente hanno un colore, le altre grigie
+  const lastUse={}; pts.forEach(p=>lastUse[p.m]=Math.max(lastUse[p.m]||0,p.t));
+  const machines=Object.keys(lastUse).sort((a,b)=>lastUse[b]-lastUse[a]);
+  const colOf=m=>{ const i=machines.indexOf(m); return i<3?SERIES_COL[i]:OTHER_COL; };
+  const W=340,H=190,L=34,R=10,T=12,B=26;
+  const t0=Math.min(...pts.map(p=>p.t)), t1=Math.max(...pts.map(p=>p.t)), span=Math.max(t1-t0,864e5);
+  let vmin=Math.min(...pts.map(p=>p.v)), vmax=Math.max(...pts.map(p=>p.v)); const pad=Math.max(2,(vmax-vmin)*0.12); vmin=Math.max(0,vmin-pad); vmax+=pad;
+  const x=t=>L+(W-L-R)*((t-t0)/span), y=v=>T+(H-T-B)*(1-(v-vmin)/(vmax-vmin));
+  const ticks=[0,1,2,3].map(i=>vmin+(vmax-vmin)*i/3);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Forza stimata (e1RM) nel tempo per ${esc(EX[id].n)}">`;
+  ticks.forEach(v=>{ svg+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${L-6}" y="${y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`; });
+  const xt=[t0,t0+span/2,t1]; xt.forEach((t,i)=>svg+=`<text x="${x(t)}" y="${H-8}" class="ax" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateTxt(t)}</text>`);
+  machines.slice().reverse().forEach(m=>{ const ps=pts.filter(p=>p.m===m).sort((a,b)=>a.t-b.t), c=colOf(m);
+    if(ps.length>1) svg+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${ps.map(p=>`${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ")}"/>`;
+    ps.forEach(p=>{ const k=pts.indexOf(p); svg+=`<circle cx="${x(p.t)}" cy="${y(p.v)}" r="4.5" fill="${c}" stroke="#17191c" stroke-width="2"/><circle cx="${x(p.t)}" cy="${y(p.v)}" r="13" fill="transparent" class="hit" data-p="${k}"/>`; }); });
+  svg+=`</svg>`;
+  const legend=`<div class="legend">${machines.slice(0,3).map(m=>`<span><i style="background:${colOf(m)}"></i>${esc(m==="—"?"Attrezzo unico":m)}</span>`).join("")}${machines.length>3?`<span><i style="background:${OTHER_COL}"></i>Altre ${machines.length-3} macchine</span>`:""}</div>`;
+  const best={}; pts.forEach(p=>{ if(!best[p.m]||p.v>best[p.m].v) best[p.m]=p; });
+  const lastP=pts.slice().sort((a,b)=>b.t-a.t)[0];
+  box.innerHTML=`<p class="muted" style="margin:8px 0 2px">Forza stimata (e1RM, kg) della serie migliore di ogni seduta. Confronta solo punti dello stesso colore: macchine diverse non sono confrontabili.</p>${legend}<div class="chartwrap">${svg}<div class="tip" id="stTip" hidden></div></div>
+    <div class="kv"><span>Ultima seduta</span><b>${dateTxt(lastP.t)} · ${esc(setTxt(lastP.s))}</b></div>
+    ${machines.slice(0,3).map(m=>`<div class="kv"><span>Record ${esc(m==="—"?"":m)}</span><b>${Math.round(best[m].v)} kg e1RM · ${esc(setTxt(best[m].s))} · ${dateTxt(best[m].t)}</b></div>`).join("")}
+    ${note&&note.ref?`<p class="note">📌 ${esc(note.ref)}</p>`:""}${tableHtml}`;
+  box.querySelectorAll(".hit").forEach(c=>c.onclick=ev=>{ const p=pts[+c.dataset.p], tip=$("#stTip");
+    tip.innerHTML=`<b>${dateTxt(p.t)} · ${esc(p.h.session)}</b><br>${esc(setTxt(p.s))}<br>${esc(p.m==="—"?"":p.m)}<br>e1RM ${p.v.toFixed(1)} kg`;
+    tip.hidden=false; const r=box.querySelector(".chartwrap").getBoundingClientRect(), cr=c.getBoundingClientRect();
+    tip.style.left=Math.min(r.width-170,Math.max(0,cr.left-r.left-80))+"px"; tip.style.top=Math.max(0,cr.top-r.top-78)+"px"; });
+  box.querySelector(".chartwrap").addEventListener("click",ev=>{ if(!ev.target.classList.contains("hit")) $("#stTip").hidden=true; });
+}
+$("#btnStats").onclick=()=>openStats();
+
 /* ---------------- master file e backup su GitHub ---------------- */
 function allSessions(){
   const out=[...st.history];
@@ -1141,21 +1231,21 @@ function buildMaster(){
   for(const id of Object.keys(EX)){
     const storico=[];
     for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
-      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,...(s.u==="lb"?{lb:s.v}:{}),rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,...(s.u==="lb"?{lb:s.v}:{}),rip:s.reps,rir:s.rir,...(s.raw?{carico:s.raw}:{}),...(s.rt?{rir_testo:s.rt}:{}),...(s.rr?{rip_testo:s.rr}:{}),...(s.m?{macchina:s.m}:{}),...(s.note?{nota:s.note}:{}),...(s.tipo?{tipo:s.tipo}:{}),...(s.extra?{extra:true}:{})})}); }
     const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return isTimeIt(x)?{sessione:k,giri:x[1],durata:holdTxt(x),pausa_s:x[4]}:{sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
-    let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg){ const e=e1rm(s.kg,s.rip,s.rir); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data}; } }));
-    esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":`${EQ_LABEL[EX[id].eq]||"macchina"} · carico ${modeOf(id)}`,nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,prossimo_carico_testo:suggTxt(id),miglior_serie_stimata:best,storico};
+    let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg && s.rip && !s.extra){ const e=e1rm(s.kg,s.rip,s.rir||0); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data,...(s.carico?{carico:s.carico}:{}),...(s.macchina?{macchina:s.macchina}:{})}; } }));
+    esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":`${EQ_LABEL[EX[id].eq]||"macchina"} · carico ${modeOf(id)}`,nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,prossimo_carico_testo:suggTxt(id),miglior_serie_stimata:best,...((st.exNotes||{})[id]?{note_storico:st.exNotes[id]}:{}),storico};
   }
   const sessioni=sessions.map(({chat,chatSynced,...h})=>({...h,chat_file:chatPath(h)}));
-  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi_personalizzati:st.custom,esercizi,sessioni};
+  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi_personalizzati:st.custom,note_esercizi:st.exNotes||{},esercizi,sessioni};
 }
 function masterMd(m){
   let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}  \nLe conversazioni di ogni sessione sono nella cartella [chat](chat/).\n`;
   for(const [id,e] of Object.entries(m.esercizi)){
     if(!e.storico.length) continue;
     const sch=e.nelle_schede;
-    t+=`\n## ${e.nome}\n\n${e.attrezzo?`Attrezzo: ${e.attrezzo}  \n`:""}Schede: ${!sch.length?"esercizio personalizzato":sch.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${sch[0]&&sch[0].giri?"":` · Prossimo carico: ${e.prossimo_carico_testo||"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
-    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""}${r.al_posto_di?` · al posto di ${r.al_posto_di}`:""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${s.lb!=null?`${kgTxt(s.lb)} lb (${kgTxt(Math.round(s.kg*10)/10)} kg)`:`${kgTxt(s.kg)} kg`} × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
+    t+=`\n## ${e.nome}\n\n${e.attrezzo?`Attrezzo: ${e.attrezzo}  \n`:""}${e.note_storico&&e.note_storico.ref?`Nota dallo storico: ${e.note_storico.ref}  \n`:""}Schede: ${!sch.length?"esercizio personalizzato":sch.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${sch[0]&&sch[0].giri?"":` · Prossimo carico: ${e.prossimo_carico_testo||"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
+    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""}${r.al_posto_di?` · al posto di ${r.al_posto_di}`:""} | ${r.serie.filter(s=>!s.tipo||s.tipo==="extra").map(s=>(s.sec!=null?`${s.sec} s ✓`:`${s.carico||(s.lb!=null?`${kgTxt(s.lb)} lb (${kgTxt(Math.round(s.kg*10)/10)} kg)`:`${kgTxt(s.kg)} kg`)} × ${s.rip_testo||s.rip} · RIR ${s.rir_testo||(s.rir??"?")}${s.macchina?` · ${s.macchina}`:""}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
   }
   return t;
 }
@@ -1207,7 +1297,7 @@ async function restoreFromGitHub(){
     (j.sessioni||[]).filter(h=>!h.inCorso).forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
     st.history.sort((a,b)=>a.start-b.start);
     if(j.sugg) st.sugg={...j.sugg,...st.sugg};
-    mergeCustom(j.esercizi_personalizzati);
+    mergeCustom(j.esercizi_personalizzati); mergeNotes(j.note_esercizi);
     if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
     save(); return `✓ Ripristinate ${added} sessioni da GitHub.`;
   }catch(e){ return "Ripristino non riuscito: nessuna connessione o file non valido."; }

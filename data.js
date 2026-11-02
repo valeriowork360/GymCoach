@@ -22,6 +22,8 @@ const EX = {
   calf:{n:"Standing calf raise",s:"",eq:"machine",cue:"Allungamento completo in basso con breve pausa, poi sali sull'avampiede fino in cima.",v:[["4-BeqqIFiPM","João Pedro"],["ey9a2M71-vU","DeltaBolic"],["1_B7pkicFk8","Davis Diley"]]},
   bb_bench:{n:"Panca piana bilanciere",s:"Schienale 0°",eq:"bb",cue:"Arco moderato, scapole retratte, bilanciere a metà-basso petto, piedi ben piantati.",note:"Da confermare: in UPPER il bilanciere non è ancora confermato al posto dei manubri.",v:[["EdDqD4aKwxM","Davis Diley"],["i-gLOirnPaU","Davis Diley · 5 step"],["5NStATS0zrw","DeltaBolic"],["llJtcqNVXcw","Fit With elmira"]]},
   rev_pec:{n:"Reverse pec deck",s:"Deltoidi posteriori",eq:"machine",cue:"Petto al supporto, braccia quasi tese, apri di lato senza alzare le spalle.",v:[["H5UxZFl0lgk","DeltaBolic"],["EpL_7UvO-yM","V Athlete · ITA"],["sIQNCJ6Xwsk","DeltaBolic"]]},
+  hack_sq:{n:"Hack squat inclinata",s:"Macchina a dischi",eq:"plate",cue:"Profondità costante e bacino stabile; calibra la tolleranza lombare prima di aumentare.",v:[["rzsfm43_9c0","DeltaBolic"],["cFGgMO-ENiQ","DeltaBolic · varianti"],["IjEK8a-aKIg","Fit With elmira"]]},
+  lunge_db:{n:"Affondi con manubri",s:"",eq:"db",cue:"Busto stabile, passo indietro controllato, ginocchio anteriore in linea con il piede.",v:[["mJilHWIBWO8","DeltaBolic"],["_Zc5kyQ5S_A","DeltaBolic · statico"],["EFcgvIDRqbY","Fit With elmira"]]},
   leg_ext:{n:"Leg extension",s:"",eq:"machine",cue:"Ginocchio allineato al perno, stendi completamente e scendi controllato.",v:[["uM86QE59Tgc","DeltaBolic"],["IxRYNJS1cL8","Sam Johnston"],["OXl3MD2Kf7I","Noha Rabasco · ITA"]]}
 };
 
@@ -55,14 +57,16 @@ const ALT = {
   sa_pd:[["Pullover al cavo con corda","stesso movimento con più ampiezza"],["Pullover alla macchina","dorsali a braccia tese, stabile"],["Pullover con manubrio su panca","forte allungamento"]],
   db_curl:[["Curl su panca inclinata con manubri","bicipite in allungamento"],["Curl al cavo basso","tensione costante"],["Curl con bilanciere EZ","più carico"],["Curl alla macchina (preacher)","isolamento stabile"]],
   hammer:[["Hammer curl al cavo con corda","stessa presa neutra, tensione costante"],["Curl presa inversa con bilanciere EZ","brachiale e brachioradiale"],["Hammer curl incrociato (cross-body)","stessa presa, più brachiale"]],
-  smith_sq:[["Hack squat alla macchina","squat guidato, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["leg_press","stesso focus quadricipiti"],["Squat con bilanciere","stesso pattern libero"]],
+  smith_sq:[["hack_sq","squat guidato, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["leg_press","stesso focus quadricipiti"],["Squat con bilanciere","stesso pattern libero"]],
   db_rdl:[["Romanian deadlift con bilanciere","stesso hip hinge, più carico"],["Romanian deadlift al Smith","hip hinge guidato"],["Iperestensioni a 45° (focus femorali e glutei)","stessa catena posteriore in allungamento"]],
-  leg_press:[["Hack squat alla macchina","spinta guidata, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["smith_sq","stesso focus quadricipiti"],["Leg press orizzontale","stesso movimento da seduto"]],
+  leg_press:[["hack_sq","spinta guidata, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["smith_sq","stesso focus quadricipiti"],["Leg press orizzontale","stesso movimento da seduto"]],
   leg_curl:[["Leg curl seduto","il leg curl da seduto allunga di più i femorali (Maeo 2021)"],["Leg curl sdraiato","stesso isolamento dei femorali"],["Nordic curl assistito","eccentrica intensa sui femorali"]],
   calf:[["Calf raise alla leg press","polpacci a gamba tesa"],["Calf raise in piedi al Smith","stesso esercizio con bilanciere guidato"],["Calf raise monopodalico con manubrio","stesso stimolo, unilaterale"]],
   bb_bench:[["db_flat","stessa spinta con più ampiezza"],["Panca piana al Smith","traiettoria guidata"],["Chest press orizzontale macchina","spinta stabile"]],
   rev_pec:[["Croci inverse ai cavi incrociati","deltoide posteriore con tensione costante"],["Alzate posteriori con manubri su panca inclinata","deltoide posteriore con petto in appoggio"],["Face pull alla corda","deltoide posteriore e cuffia dei rotatori"]],
-  leg_ext:[["Leg extension monogamba","stesso isolamento, una gamba alla volta"],["Sissy squat assistito","quadricipiti in allungamento"],["Hack squat alla macchina","quadricipiti con carico alto"]]
+  leg_ext:[["Leg extension monogamba","stesso isolamento, una gamba alla volta"],["Sissy squat assistito","quadricipiti in allungamento"],["hack_sq","quadricipiti con carico alto"]],
+  hack_sq:[["leg_press","stesso focus quadricipiti"],["smith_sq","squat guidato"],["Pendulum squat","quadricipiti in profondità"]],
+  lunge_db:[["Bulgarian split squat con manubri","stesso lavoro unilaterale, più allungamento"],["Affondi al Smith","traiettoria guidata"],["Step-up con manubri","unilaterale per quadricipiti e glutei"]]
 };
 
 /* ---------- Recupero attivo: mobilità e stretching (a tempo, senza carichi) ----------
@@ -97,3 +101,10 @@ Object.assign(SESSIONS,{
   "STRETCHING":[["st_pec",2,30,null,10],["st_lat",2,30,null,10],["st_rdelt",2,30,null,10],["st_tri",2,30,null,10],["st_trap",2,30,null,10],["st_tspine",2,45,null,10],["st_hipflex",2,45,null,10],["st_quad",2,30,null,10],["st_ham",2,30,null,10],["st_glute",2,30,null,10],["st_add",2,45,null,10],["st_calf",2,30,null,10]]
 });
 const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
+
+/* gruppo muscolare principale (per la dashboard del volume) */
+const MUSCLE = {db_flat:"Petto",db_incl:"Petto",cable_fly:"Petto",bb_bench:"Petto",db_ohp:"Spalle",lat_raise:"Spalle",rev_pec:"Spalle",
+  rope_pd:"Tricipiti",oh_ext:"Tricipiti",lat_pd:"Schiena",cs_row:"Schiena",sa_pd:"Schiena",db_curl:"Bicipiti",hammer:"Bicipiti",
+  smith_sq:"Quadricipiti",leg_press:"Quadricipiti",hack_sq:"Quadricipiti",leg_ext:"Quadricipiti",lunge_db:"Quadricipiti",
+  db_rdl:"Femorali",leg_curl:"Femorali",calf:"Polpacci"};
+const MUSCLE_ORDER = ["Petto","Schiena","Spalle","Tricipiti","Bicipiti","Quadricipiti","Femorali","Polpacci"];
