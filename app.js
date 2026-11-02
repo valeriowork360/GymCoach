@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "38";
+const APP_VERSION = "39";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -271,7 +271,7 @@ function quickWeights(id,focusV,focusU){
   const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
   const arr=[]; for(let k=-3;k<=3;k++){ const v=R(c+k*step); if(v>0) arr.push(v); }
   while(arr.length<7) arr.push(R(arr[arr.length-1]+step));
-  return `<div class="qw">${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)} ${u}</button>`).join("")}</div>`;
+  return `<div class="qw"><span class="qu">${u}</span>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
 }
 $("#chat").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-qw]"); if(!b||!st.cur) return;
