@@ -318,3 +318,9 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .player.collapsed .vresize{display:none}
 body.resizing iframe{pointer-events:none}
 .m-tile{max-width:42%}
+
+/* v37: messaggi del coach senza riquadro, a tutta larghezza sullo sfondo della chat */
+.msg.bot,.msg.intro{background:transparent;border:0;border-radius:0;max-width:100%;width:100%;padding:4px 2px}
+.msg.intro{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.msg.bot .note{background:var(--panel);border-radius:10px;padding:8px 10px}
+.msg.typing{padding:4px 2px}
