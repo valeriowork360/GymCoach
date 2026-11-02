@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "28";
+const APP_VERSION = "29";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -629,17 +629,21 @@ function drawVideo(){
   const vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
   const multi = st.ui.vidLayout!=="single" && e.v.length>1;
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
+  $("#player").classList.toggle("small",!st.ui.videoHidden && st.ui.vsize!=="l");
   $("#frame").classList.toggle("multi",multi);
   if(st.ui.videoHidden){ destroyGrid(); destroyExerciseVideo(); }
   else if(multi){ destroyExerciseVideo(); buildGrid(e,vi); }
   else { destroyGrid(); showExerciseVideo(id); }
-  $("#vchips").innerHTML = e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">${multi?"":"▶ "}${esc(ch)}</button>`).join("")
+  const sizeLbl = st.ui.videoHidden ? "▣ Mostra video" : st.ui.vsize==="l" ? "▭ Video piccolo" : "☐ Solo chat";
+  $("#vchips").innerHTML = `<button class="vchip ghost size" id="vSize">${sizeLbl}</button>` + e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">${multi?"":"▶ "}${esc(ch)}</button>`).join("")
     + (e.v.length>1?`<button class="vchip ghost" id="vLayout">${multi?"▢ Uno alla volta":"▦ Affiancati"}</button>`:"")
-    + `<button class="vchip ghost" id="vToggle">${st.ui.videoHidden?"Mostra video":"Nascondi video"}</button>`
+    + (st.ui.videoHidden||st.ui.vsize==="l"?"":`<button class="vchip ghost" id="vBig">▢ Video grande</button>`)
     + `<a class="vchip ghost" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--mut)">Apri in YouTube ↗</a>`;
   $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); if(multi&&grid){ setGridActive(+b.dataset.k,true); drawVideoChips(); } else drawVideo(); });
   const lay=$("#vLayout"); if(lay) lay.onclick=()=>{ st.ui.vidLayout = multi?"single":"multi"; save(); drawVideo(); };
-  $("#vToggle").onclick=()=>{ st.ui.videoHidden=!st.ui.videoHidden; save(); drawVideo(); };
+  // dimensione: piccolo (predefinito) → solo chat → piccolo; "grande" a parte
+  $("#vSize").onclick=()=>{ if(st.ui.videoHidden){ st.ui.videoHidden=false; st.ui.vsize="s"; } else if(st.ui.vsize==="l") st.ui.vsize="s"; else st.ui.videoHidden=true; save(); drawVideo(); };
+  const vb=$("#vBig"); if(vb) vb.onclick=()=>{ st.ui.vsize="l"; save(); drawVideo(); };
 }
 function drawVideoChips(){ const vi=st.cur.vid||0; $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.classList.toggle("on",+b.dataset.k===vi)); }
 

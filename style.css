@@ -205,3 +205,14 @@ details.tbl summary{cursor:pointer;color:var(--mut);font-size:13px;padding:4px 0
 .stt th,.stt td{text-align:left;vertical-align:top;padding:6px 4px;border-top:1px solid var(--line)}
 .stt th{color:var(--mut);font-weight:500}
 .xs{color:#6b727c;font-size:12px}
+
+/* più spazio alla chat: video piccolo di default, barre più compatte */
+.player.small .frame{height:17dvh;min-height:104px}
+.player.small .frame.multi{height:19dvh;min-height:120px}
+body.kbd .player.small .frame,body.kbd .player.small .frame.multi{height:12dvh;min-height:80px}
+.vchips{padding:5px 10px}
+.vchip.size{color:var(--acc);border-color:var(--acc)}
+.music{padding:4px 10px 4px}
+.m-vols{margin-top:4px}
+.m-vols .vol input[type=range]{height:28px}
+.exbar{padding:6px 12px}
