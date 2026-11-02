@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "17";
+const APP_VERSION = "18";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -71,7 +71,7 @@ const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
 const fromKg = (k,u) => u==="lb" ? k/LB : k;
 const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
 const setW   = s => s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
-const modeOf = id => (EX[id]&&EX[id].kind!=="time") ? (LOAD_MODE[EX[id].eq||"machine"]||"totale") : "";
+const modeOf = id => (EX[id]&&EX[id].kind!=="time") ? (EX[id].lm || LOAD_MODE[EX[id].eq||"machine"] || "totale") : "";
 function incFor(id,u){ const eq=EX[id].eq||"machine"; return (u==="lb"?st.settings.incLb[eq]:st.settings.inc[eq])||(u==="lb"?5:2.5); }
 function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setW(s)} × ${s.reps} (RIR ${s.rir})`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
@@ -418,7 +418,7 @@ function aiContext(){
   const days=st.history.length?Math.round((Date.now()-st.history[st.history.length-1].end)/86400000):null;
   return `Sei il coach personale dell'utente (personal trainer esperto, aggiornato sulla ricerca scientifica su ipertrofia e forza), dentro la sua app di registro allenamenti. Rispondi SEMPRE in italiano.
 STILE: diretto e concreto, come un coach in palestra. Rispondi alla domanda nella prima frase, poi dai indicazioni operative con numeri precisi (kg, ripetizioni, RIR, secondi, gradi) basate sui SUOI dati qui sotto. Niente frasi generiche o da manuale, niente elenchi di avvertenze. Se un dato manca, fai una sola domanda mirata. Lunghezza: 40–140 parole, salvo richiesta di approfondire.
-PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower (ciclo PUSH→PULL→LEGS→REST→UPPER→REST→LOWER, senza giorni fissi), 2 serie allenanti per esercizio, RIR target 2–3, double progression (prima ripetizioni nel range, poi carico quando entrambe le serie arrivano al limite alto a RIR 2–3). Le serie extra non contano. Non convertire unità, fori o kg/lato tra macchine diverse. CONVENZIONE CARICHI: manubri = peso di un manubrio; bilanciere, Smith e macchine a dischi = peso PER LATO (dischi su un lato, bilanciere escluso); macchine a pacco pesi e cavi = peso TOTALE indicato sul pacco. Rispetta sempre questa convenzione nei numeri che dai.
+PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower (ciclo PUSH→PULL→LEGS→REST→UPPER→REST→LOWER, senza giorni fissi), 2 serie allenanti per esercizio, RIR target 2–3, double progression (prima ripetizioni nel range, poi carico quando entrambe le serie arrivano al limite alto a RIR 2–3). Le serie extra non contano. Non convertire unità, fori o kg/lato tra macchine diverse. CONVENZIONE CARICHI: manubri = peso di un manubrio; bilanciere, Smith e macchine a dischi = peso PER LATO (dischi su un lato, bilanciere escluso); macchine a pacco pesi e cavi = peso TOTALE indicato sul pacco; esercizi con due cavi (croci ai cavi, croci inverse ai cavi incrociati) = peso di UN pacco, cioè per lato. Rispetta sempre questa convenzione nei numeri che dai.
 L'utente si allena in palestre diverse: a volte i pesi sono in kg, a volte in libbre (1 lb = 0,4536 kg). Rispondi nella stessa unità che sta usando per quell'esercizio e, se utile, indica l'equivalente. Incrementi minimi in kg: manubri ${kgTxt(st.settings.inc.db)}, bilanciere ${kgTxt(st.settings.inc.bb)}, cavi ${kgTxt(st.settings.inc.cable)}, macchine ${kgTxt(st.settings.inc.machine)}; in libbre: manubri ${kgTxt(st.settings.incLb.db)}, bilanciere ${kgTxt(st.settings.incLb.bb)}, cavi ${kgTxt(st.settings.incLb.cable)}, macchine ${kgTxt(st.settings.incLb.machine)}.
 ${COACH_KNOWLEDGE}
 
@@ -988,7 +988,8 @@ function findOrCreateEx(name,timed,like){
   if(hit) return hit[0];
   const id="cx_"+low.normalize("NFD").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,30);
   const eqGuess=/manubr/i.test(name)?"db":/bilancier|smith|multipower|\bez\b/i.test(name)?"bb":/cav|carrucol|corda|pulley|face pull/i.test(name)?"cable":/dischi|hack|pendulum|t-bar|leg press|pressa/i.test(name)?"plate":/piegament|nordic|sissy|trazioni|iperestensioni|dip\b/i.test(name)?"machine":"machine";
-  const e={n:name.charAt(0).toUpperCase()+name.slice(1),s:like&&EX[like]?`Alternativa a ${EX[like].n}`:"Esercizio personalizzato",eq:eqGuess,cue:"Esecuzione controllata, range di movimento completo.",v:[],...(timed?{kind:"time",sec:item()[2]}:{})};
+  const twoStacks=/croci.*cav|cavi incrociat|crossover|cross-cable|cavi.*(croci|incroc)/i.test(name);
+  const e={n:name.charAt(0).toUpperCase()+name.slice(1),s:like&&EX[like]?`Alternativa a ${EX[like].n}`:"Esercizio personalizzato",eq:eqGuess,...(twoStacks?{lm:"per lato (un pacco per lato)"}:{}),cue:"Esecuzione controllata, range di movimento completo.",v:[],...(timed?{kind:"time",sec:item()[2]}:{})};
   st.custom[id]=e; EX[id]=e; save(); return id;
 }
 function swapTo(id){
