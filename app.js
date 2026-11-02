@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "24";
+const APP_VERSION = "25";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -848,8 +848,9 @@ function finishSession(){
   const ex=list.map((x,k)=>({ex:x[0],...(x[0]!==origId(k)?{al_posto_di:origId(k)}:{}),sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
   if(!ex.length){
-    openSheet("Fine sessione",`<p>Non hai registrato nessuna serie. Vuoi chiudere la sessione senza salvarla?</p><div class="row"><button class="btn danger" id="discard">Chiudi senza salvare</button><button class="btn" id="keep">Continua</button></div>`);
-    $("#discard").onclick=()=>{ discardSession(); closeSheet(); render(); }; $("#keep").onclick=closeSheet; return;
+    openSheet("Fine sessione",`<p>Non hai registrato nessuna serie, quindi non c'è niente da salvare.</p><p class="muted">Scarta la sessione: non finisce nell'archivio e cancello anche la sua chat dal backup su GitHub.</p><div class="row"><button class="btn danger" id="discard">🗑 Scarta sessione</button><button class="btn" id="keep">Continua</button></div>`);
+    $("#discard").onclick=e=>{ const b=e.target; if(b.dataset.armed){ discardSession(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo per scartare"; } };
+    $("#keep").onclick=closeSheet; return;
   }
   openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
     <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
