@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "25";
+const APP_VERSION = "26";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -415,12 +415,12 @@ const COACH_KNOWLEDGE = `LINEE GUIDA BASATE SULLE EVIDENZE (usale per motivare i
 - Dolore: distinguere fatica muscolare da dolore articolare/acuto. Con dolore articolare: ridurre carico/range, cambiare variante, fermarsi se peggiora; se persiste consigliare un professionista. Mai diagnosi.
 - Sostituzioni: proponi un esercizio con stesso pattern e muscolo bersaglio, preferibilmente stabile (macchina/cavo) e con buon carico in allungamento.`;
 
-function exHistoryTxt(id,max=6){
+function exHistoryTxt(id,max=4){
   const rows=[];
   for(let i=st.history.length-1;i>=0 && rows.length<max;i--){ const h=st.history[i], e=h.ex.find(x=>x.ex===id&&x.sets.length); if(e) rows.push(`${dateTxt(h.start)} ${h.session}: ${perfTxt(e.sets)}`); }
   return rows.length?rows.join(" | "):"nessuno";
 }
-function recentSessionsTxt(max=6){
+function recentSessionsTxt(max=3){
   return st.history.slice(-max).map(h=>`${dateTxt(h.start)} ${h.session} (${Math.round((h.end-h.start)/60000)} min): `+h.ex.map(e=>`${EX[e.ex]?EX[e.ex].n:e.ex} ${perfTxt(e.sets)}`).join("; ")).join("\n")||"nessuna";
 }
 function allExLastTxt(){
@@ -438,6 +438,11 @@ PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower 
 L'utente si allena in palestre diverse: a volte i pesi sono in kg, a volte in libbre (1 lb = 0,4536 kg). Rispondi nella stessa unità che sta usando per quell'esercizio e, se utile, indica l'equivalente. Incrementi minimi in kg: manubri ${kgTxt(st.settings.inc.db)}, bilanciere ${kgTxt(st.settings.inc.bb)}, cavi ${kgTxt(st.settings.inc.cable)}, macchine ${kgTxt(st.settings.inc.machine)}; in libbre: manubri ${kgTxt(st.settings.incLb.db)}, bilanciere ${kgTxt(st.settings.incLb.bb)}, cavi ${kgTxt(st.settings.incLb.cable)}, macchine ${kgTxt(st.settings.incLb.machine)}.
 ${COACH_KNOWLEDGE}
 
+FORMATO DELLA RISPOSTA:
+- Se il messaggio comunica una serie appena fatta, rispondi SOLO con questa riga: #SERIE kg=<numero o ?> unita=<kg|lb|?> rip=<numero o ?> rir=<numero o ?>
+- Se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata), rispondi SOLO con: #CAMBIA <nome dell'esercizio>
+- In tutti gli altri casi rispondi direttamente in testo semplice (puoi usare **grassetto** e andare a capo), senza JSON e senza preamboli.
+
 DATI DELL'UTENTE
 Sessione in corso: ${st.cur.session}, iniziata alle ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}${days!=null?`; giorni dall'ultima sessione: ${days}`:""}.
 Scheda di oggi (▶ = esercizio corrente):
@@ -450,30 +455,28 @@ Carico consigliato oggi dall'app: ${suggTxt(id)??"non definito"}. Unità che sta
 Ultime sessioni:
 ${recentSessionsTxt()}
 Ultima prestazione registrata per ogni esercizio (usala per rispondere a domande su carichi e ripetizioni passate; se un dato non c'è, dillo chiaramente invece di inventarlo):
-${allExLastTxt()}
-
-FORMATO DELLA RISPOSTA:
-- Se il messaggio comunica una serie appena fatta, rispondi SOLO con questa riga: #SERIE kg=<numero o ?> unita=<kg|lb|?> rip=<numero o ?> rir=<numero o ?>
-- Se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata), rispondi SOLO con: #CAMBIA <nome dell'esercizio>
-- In tutti gli altri casi rispondi direttamente in testo semplice (puoi usare **grassetto** e andare a capo), senza JSON e senza preamboli.`;
+${allExLastTxt()}`;
 }
 async function callGemini(sys,prompt,onDelta,img){
   const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
   const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
-  let err="", retried=false, noThink=false;
+  let err="", retried=false;
+  // livelli di ragionamento da provare se il modello rifiuta quello scelto
+  const lv0=["minimal","low","medium"].includes(st.settings.think)?st.settings.think:"low";
+  let levels=lv0==="minimal"?["minimal","low",null]:[lv0,null];
   for(const model of models){
-    const think = !noThink && /^gemini-(3|flash-latest)/.test(model);
+    const lvl=levels[0], think=lvl!=null && /^gemini-(3|flash-latest|2\.5)/.test(model);
     let got="";
     try{
       const ctl=new AbortController(); let to=setTimeout(()=>ctl.abort(),45000);
-      const gc = think ? {thinkingConfig:{thinkingLevel: st.settings.think==="medium"?"medium":"low"}} : {};
+      const gc = !think ? {} : /^gemini-2\.5/.test(model) ? {thinkingConfig:{thinkingBudget:{minimal:0,low:512,medium:2048}[lvl]}} : {thinkingConfig:{thinkingLevel:lvl}};
       const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,{
         method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
         body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[...(img?[{inlineData:{mimeType:img.mime,data:img.data}}]:[]),{text:prompt}]}],generationConfig:gc})});
       if(r.status===404){ clearTimeout(to); err="modello Gemini non trovato"; continue; }
       if(r.status===429){ clearTimeout(to); return {err:"limite gratuito di Gemini raggiunto per ora"}; }
       if(r.status===400||r.status===401||r.status===403){ clearTimeout(to); const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||"";
-        if(think && r.status===400 && /think/i.test(m)){ noThink=true; models.splice(models.indexOf(model)+1,0,model); continue; }
+        if(think && r.status===400 && /think/i.test(m)){ levels=levels.slice(1); models.splice(models.indexOf(model)+1,0,model); continue; }
         return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
       if(r.status>=500){ clearTimeout(to); err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
       if(!r.ok){ clearTimeout(to); err="Gemini: errore "+r.status; continue; }
@@ -532,7 +535,7 @@ async function askAI(text,img){
     bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
     return;
   }
-  const recent=st.cur.chat.slice(-15,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
+  const recent=st.cur.chat.slice(-9,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
   const photoNote = img ? `\nL'utente ha allegato una FOTO (di solito un macchinario o un attrezzo di una palestra nuova). Identifica l'attrezzo; dì chiaramente se va bene per l'esercizio corrente oppure a quale alternativa mirata corrisponde (se è meglio cambiare esercizio, rispondi con #CAMBIA <nome>); spiega in breve come regolarlo (sedile, appoggi, perno, impugnatura) e come si legge il carico secondo la convenzione dell'app (per lato o totale, kg o lb in base a ciò che si vede su pacco o dischi). Se la foto non è chiara chiedi un'altra inquadratura.` : "";
   const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}${photoNote}`;
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
@@ -929,7 +932,7 @@ function openSettings(){
     <select class="inp" id="sProv"><option value="gemini" ${s.provider!=="openrouter"?"selected":""}>Gemini (Google) — consigliato</option><option value="openrouter" ${s.provider==="openrouter"?"selected":""}>Kimi o altri modelli (OpenRouter)</option></select>
     <p class="muted">Se il primo non risponde, l'app prova da sola l'altro (se hai inserito anche quella chiave).</p>
     <label class="f" for="sThink">Risposte del coach Gemini</label>
-    <select class="inp" id="sThink"><option value="low" ${s.think!=="medium"?"selected":""}>Veloci (consigliato in palestra)</option><option value="medium" ${s.think==="medium"?"selected":""}>Più ragionate (più lente)</option></select>
+    <select class="inp" id="sThink"><option value="minimal" ${s.think==="minimal"?"selected":""}>Lampo (ragionamento minimo, le più rapide)</option><option value="low" ${!["minimal","medium"].includes(s.think)?"selected":""}>Veloci (consigliato in palestra)</option><option value="medium" ${s.think==="medium"?"selected":""}>Più ragionate (più lente)</option></select>
     <label class="f" for="sKey">Chiave API Gemini (gratuita)</label>
     <input class="inp" id="sKey" type="password" value="${esc(s.apiKey)}" placeholder="Incolla qui la chiave" autocomplete="off">
     <p class="muted">Creala gratis su <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Resta salvata solo su questo telefono. Senza chiave l'app funziona lo stesso: registra le serie e dà i consigli sul carico.</p>
