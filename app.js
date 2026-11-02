@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "31";
+const APP_VERSION = "32";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1398,10 +1398,10 @@ render();
    #workout scorre; la parte bassa (chat + barra) ha altezza = schermo − parte di video ancora visibile,
    e uno spaziatore invisibile mantiene costante la lunghezza della pagina. */
 (function(){
-  const W=$("#workout"), top=$("#wtop"), dock=$("#dock"), sp=$("#wspacer"), chat=$("#chat");
+  const W=$("#wscroll"), top=$("#wtop"), dock=$("#dock"), sp=$("#wspacer"), chat=$("#chat");
   let raf=0;
   function fit(){
-    raf=0; if(W.hidden) return;
+    raf=0; if($("#workout").hidden||!W.clientHeight) return;
     const H=top.offsetHeight, ch=W.clientHeight, vis=Math.max(0,Math.min(H,H-W.scrollTop));
     const atBottom = chat.scrollHeight-chat.scrollTop-chat.clientHeight < 40;
     dock.style.height=(ch-vis)+"px"; sp.style.height=vis+"px";

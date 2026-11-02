@@ -17,7 +17,9 @@ button{font:inherit;color:inherit}
 .icon-btn{appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:10px;width:40px;height:40px;font-size:17px;cursor:pointer;flex:none;display:grid;place-items:center}
 
 /* workout */
-#workout{flex:1;display:block;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y proximity}
+#workout{flex:1;display:flex;flex-direction:column;min-height:0}
+.wscroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y proximity}
+#workout>.chips,#workout>.composer{flex:none}
 .player{flex:none;background:#000}
 .frame{height:28dvh;min-height:160px;position:relative;background:#000}
 .frame>div{position:absolute;inset:0;width:100%;height:100%}
