@@ -272,3 +272,23 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:8px 6px 0 0}
 .seg button{appearance:none;border:0;background:var(--panel2);color:var(--mut);padding:6px 10px;font:600 12.5px Inter,sans-serif;cursor:pointer}
 .seg button.on{background:var(--acc);color:var(--acc-ink)}
+
+/* v34: messaggi del coach più strutturati */
+.msg .ih{font:800 19px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;color:var(--ok);letter-spacing:.01em}
+.msg .iw{font:800 21px/1.15 "Barlow Condensed",sans-serif;color:#ff8a3d;margin-top:8px;text-transform:uppercase}
+.msg .iw2{font:700 13px/1.2 "Barlow Condensed",sans-serif;color:#ff8a3d;text-transform:uppercase;letter-spacing:.02em}
+.msg .is,.msg .mh1,.msg .mh2,.msg .mh3{font:800 15px/1.2 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.03em;margin:10px 0 4px;color:#fff}
+.msg .mh1{font-size:18px;color:var(--ok)} .msg .mh2{font-size:16px;color:var(--ok)}
+.msg .is.ok{color:var(--ok)} .msg .is.warn{color:#ff8a3d}
+.msg .okb{color:var(--ok)}
+.msg .mt{border-collapse:collapse;width:100%;margin:4px 0 2px;font-size:13.5px}
+.msg .mt th{text-align:left;font-weight:700;color:#fff;padding:5px 6px 5px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.msg .mt td{padding:6px 6px 6px 0;border-bottom:1px solid #2a2e24;vertical-align:top}
+.msg .mt.it td:first-child,.msg .mt.it th:first-child{width:3.2em}
+.msg .mt tr.done td{color:var(--ok)}
+.msg .mt td.wv{color:#ff9f5a}
+.msg ul,.msg ol{margin:2px 0 2px;padding-left:20px}
+.msg li{margin:2px 0}
+.msg .sp{height:6px}
+.msg .note{margin-top:8px;font-size:13.5px}
+.msg.intro{max-width:96%}

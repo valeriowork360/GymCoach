@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "33";
+const APP_VERSION = "34";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -35,7 +35,25 @@ function save(){ try{ localStorage.setItem(LS, JSON.stringify(st)); }catch(e){ s
 
 /* ---------------- utilità ---------------- */
 const esc = t => String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const md = t => esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[\s(])\*(\S[^*]*?)\*/g,"$1<i>$2</i>").replace(/\n/g,"<br>");
+/* markdown essenziale per le risposte del coach: titoli, elenchi, tabelle, grassetto */
+const mdInl = x => esc(x).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[\s(])\*(\S[^*]*?)\*/g,"$1<i>$2</i>");
+function md(t){
+  const L=String(t||"").replace(/\r/g,"").split("\n"), out=[]; let i=0;
+  const isRow=x=>/^\s*\|.*\|\s*$/.test(x), isSep=x=>/^\s*\|[\s:|-]+\|\s*$/.test(x);
+  const cells=r=>r.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(c=>c.trim());
+  while(i<L.length){
+    const l=L[i]; let m;
+    if(isRow(l)){ const rows=[]; while(i<L.length&&isRow(L[i])) rows.push(L[i++]);
+      const head=rows.length>1&&isSep(rows[1]);
+      out.push(`<table class="mt">${rows.filter(r=>!isSep(r)).map((r,k)=>`<tr>${cells(r).map(c=>head&&k===0?`<th>${mdInl(c)}</th>`:`<td>${mdInl(c)}</td>`).join("")}</tr>`).join("")}</table>`); continue; }
+    if((m=l.match(/^\s*(#{1,4})\s+(.*)$/))){ out.push(`<div class="mh${Math.min(3,m[1].length)}">${mdInl(m[2])}</div>`); i++; continue; }
+    if(/^\s*[-*•]\s+/.test(l)){ let h=""; while(i<L.length&&/^\s*[-*•]\s+/.test(L[i])) h+=`<li>${mdInl(L[i++].replace(/^\s*[-*•]\s+/,""))}</li>`; out.push(`<ul>${h}</ul>`); continue; }
+    if(/^\s*\d+[.)]\s+/.test(l)){ let h=""; while(i<L.length&&/^\s*\d+[.)]\s+/.test(L[i])) h+=`<li>${mdInl(L[i++].replace(/^\s*\d+[.)]\s+/,""))}</li>`; out.push(`<ol>${h}</ol>`); continue; }
+    if(!l.trim()){ out.push(`<div class="sp"></div>`); i++; continue; }
+    out.push(mdInl(l)+(i+1<L.length&&L[i+1].trim()&&!isRow(L[i+1])&&!/^\s*(#|[-*•]\s|\d+[.)]\s)/.test(L[i+1])?"<br>":"")); i++;
+  }
+  return out.join("");
+}
 const fmtT = s => { s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
 const restTxt = s => s%60===0 ? (s/60)+" min" : fmtT(s);
 const kgTxt = k => k==null ? "?" : (Math.round(k*100)/100).toString().replace(".",",");
@@ -220,15 +238,16 @@ function quickWeights(id,focusV,focusU){
   const inc=(u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"] || (u==="lb"?5:2.5);
   const R=v=>Math.round(v*100)/100, inU=x=>R(u==="lb"?(x.u==="lb"?x.v:x.kg/LB):(x.u==="lb"?x.v*LB:x.kg));
   const vals=new Set();
-  if(p) p.sets.filter(x=>x.kg!=null&&!x.extra).forEach(x=>vals.add(u===unitOf(x)?valOf(x):Math.round(inU(x)/inc)*inc));
+  if(p) p.sets.filter(x=>x.kg!=null&&!x.extra&&unitOf(x)===u).forEach(x=>vals.add(valOf(x)));   // solo pesi nella stessa unità
   cur.forEach(x=>vals.add(inU(x)));
   const star = focusV!=null ? focusV : g ? (g.u===u?g.v:R(Math.round(fromKg(toKg(g.v,g.u),u)/inc)*inc)) : null;
   const starR = star!=null ? Math.round(star*100)/100 : null; if(starR!=null) vals.add(starR);
   if(!vals.size) return "";
   let arr=[...vals].map(R).sort((a,b)=>a-b);
-  const onGrid=v=>Math.abs(v/inc-Math.round(v/inc))<1e-6;
+  const step=v=>u==="kg"&&inc<2.5&&Math.abs(v/2.5-Math.round(v/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
+  const onGrid=v=>{ const q=step(v); return Math.abs(v/q-Math.round(v/q))<1e-6; };
   const lo0=arr[0], hi0=arr[arr.length-1];
-  const below=onGrid(lo0)?R(lo0-inc):R(Math.ceil(lo0/inc-1e-9)*inc-inc), above=onGrid(hi0)?R(hi0+inc):R(Math.floor(hi0/inc+1e-9)*inc+inc);
+  const below=onGrid(lo0)?R(lo0-step(lo0)):R(Math.ceil(lo0/inc-1e-9)*inc-inc), above=onGrid(hi0)?R(hi0+step(hi0)):R(Math.floor(hi0/inc+1e-9)*inc+inc);
   // carichi di un pacco pesi fuori griglia (es. 121 lb): passo pieno invece di arrotondare
   arr=[e.eq==="machine"&&!onGrid(lo0)?R(lo0-inc):below,...arr,e.eq==="machine"&&!onGrid(hi0)?R(hi0+inc):above].filter(v=>v>0);
   arr=[...new Set(arr)];
@@ -245,23 +264,48 @@ $("#chat").addEventListener("click",ev=>{
 function introExercise(){
   if(isTimeIt(item())) return introTimed();
   const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=curList();
-  const p=lastPerf(id), sk=suggTxt(id), g=suggested(id);
-  let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} serie × ${lo}–${hi} rip · RIR ${RIR_MIN}–${RIR_MAX} · recupero ${restTxt(rest)}`;
-  if(e.note) t+=`<br><span class="down">⚠ ${esc(e.note)}</span>`;
-  if(p) t+=`<br>Ultima volta (${dateTxt(p.date)}): ${esc(perfTxt(p.sets))}`;
-  t+=`<br><span class="muted">Carico ${modeOf(id)}</span>`;
-  const xn=(st.exNotes||{})[id];
-  if(xn && xn.ref) t+=`<br>📌 <span class="muted">Dal tuo storico (${esc(xn.agg||"")}):</span> ${esc(xn.ref)}`;
-  if(sk!=null) t+=`<br>👉 <b>Oggi: ${sk}</b> <span class="muted">${modeOf(id)}</span>`;
-  else if(p||xn) t+=`<br>👉 Scegli il carico in base all'ultima volta${xn&&xn.ref?" e alla nota qui sopra":""}.`;
-  else t+=`<br>👉 Prima volta: scegli un carico con cui arrivi a ~${Math.round((lo+hi)/2)} rip lasciandone 2–3 in canna.`;
-  t+=`<br><span class="muted">${esc(xn&&xn.cue?xn.cue:e.cue)}</span>`;
-  const done=workSets(st.cur.exIdx).length;
-  if(done) t+=`<br><span class="muted">Già fatte ${done}/${n} serie.</span>`;
+  const p=lastPerf(id), g=suggested(id), mode=modeOf(id), xn=(st.exNotes||{})[id];
+  const conv=(v,u)=>u==="lb"?`${kgTxt(v)} lb <span class="muted">(${r1(v*LB)} kg)</span>`:`${kgTxt(v)} kg <span class="muted">(${r1(v/LB)} lb)</span>`;
+  let t=`<div class="ih">${st.cur.exIdx+1}/${list.length} — ${esc(e.n)}</div>`;
+  if(e.s) t+=`<div class="muted">${esc(e.s)}</div>`;
+  if(lo>8||hi>12) t+=`<div class="iw">⚠ TARGET: ${lo}–${hi} RIPETIZIONI</div><div class="iw2">Range più alto dello standard 8–12</div>`;
+  if(e.note) t+=`<div class="down" style="margin-top:4px">⚠ ${esc(e.note)}</div>`;
+  // oggi
+  t+=`<div class="is ok">Oggi — proposta</div>`;
+  t+= g ? `<div class="ok"><b class="okb">Carico consigliato: ${conv(g.v,g.u)} ${mode}.</b></div>`
+        : `<div>${p||xn?"Scegli il carico in base all'ultima volta"+(xn&&xn.ref?" e alla nota qui sotto":"")+".":`Prima volta: un carico con cui arrivi a ~${Math.round((lo+hi)/2)} rip lasciandone 2–3 in canna.`} <span class="muted">Carico ${mode}.</span></div>`;
+  const done=workSets(st.cur.exIdx);
+  t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th><th>Rec.</th></tr>${Array.from({length:n},(_,k)=>{ const d=done[k];
+    return d ? `<tr class="done"><td>${k+1} ✓</td><td>${esc(setW(d))}</td><td>${d.reps??"?"}</td><td>${d.rir??"?"}</td><td>${restTxt(rest)}</td></tr>`
+             : `<tr><td>${k+1}</td><td>${g?(k===0?wTxt(g.v,g.u):"da confermare"):"—"}</td><td>${lo}–${hi}</td><td>${RIR_MIN}–${RIR_MAX}</td><td>${restTxt(rest)}</td></tr>`; }).join("")}</table>`;
+  // storico
+  if(p){ const ws=p.sets.filter(x=>!x.extra);
+    t+=`<div class="is warn">Storico — ${dateTxt(p.date)}${p.session?` · ${esc(p.session)}`:""}</div>`;
+    t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ws.map((x,k)=>`<tr><td>${k+1}</td><td class="wv">${esc(setWB(x))}</td><td class="wv">${x.rr?esc(x.rr):x.reps??"?"}</td><td class="wv">${x.rt?esc(x.rt):x.rir??"?"}</td></tr>`).join("")}</table>`;
+    const ms=[...new Set(ws.map(x=>x.m).filter(Boolean))]; if(ms.length) t+=`<div class="muted">${esc(ms.join(" · "))}</div>`;
+  }
+  if(xn && xn.ref) t+=`<div class="note">📌 ${esc(xn.ref)} <span class="muted">(${esc(xn.agg||"")})</span></div>`;
+  // riscaldamento (solo proposto, non registrato)
+  if(g && !done.length && st.cur.exIdx===firstOfMuscle(st.cur.exIdx)){
+    const inc=(g.u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"]||(g.u==="lb"?5:2.5);
+    const w=Math.max(inc,Math.round(g.v*0.55/inc)*inc);
+    t+=`<div class="is">Riscaldamento</div><div>Una serie leggera: <b>${wTxt(w,g.u)} × 10</b> <span class="muted">(non va registrata)</span></div>`;
+  }
+  // tecnica
+  const cue=(xn&&xn.cue?xn.cue:e.cue)||"";
+  const parts=cue.split(/\s+·\s+|(?<=[.!])\s+(?=[A-ZÀ-Ú"«])/).map(x=>x.trim().replace(/\.$/,"")).filter(Boolean);
+  if(parts.length) t+=`<div class="is">Tecnica</div><ul>${parts.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+  // azione
   const qw=quickWeights(id);
-  t+= qw ? `<br><span class="muted">Tocca il carico usato (poi ripetizioni e RIR) oppure scrivilo/dettalo:</span>${qw}`
-         : `<br><span class="muted">A fine serie scrivimi, per esempio: <i>${g?wTxt(g.v,g.u):"20 kg"} ${hi-1} rip RIR 2</i></span>`;
+  if(done.length) t+=`<div style="margin-top:6px"><b>Già fatte ${done.length}/${n} serie.</b></div>`;
+  else t+=`<div style="margin-top:6px"><b>Prima serie: ${g?wTxt(g.v,g.u)+", ":""}${lo}–${hi} rip, RIR ${RIR_MIN}–${RIR_MAX}.</b> ${qw?"Tocca il carico usato oppure dimmi il risultato:":"Dimmi il risultato (es. <i>20 kg 11 rip RIR 2</i>)."}</div>`;
+  if(qw) t+=qw;
   bot(t,"intro");
+}
+/* primo esercizio della sessione per quel gruppo muscolare (per proporre il riscaldamento) */
+function firstOfMuscle(k){
+  const list=curList(), g=x=>MUSCLE[x]||(EX[x]&&EX[x].like&&MUSCLE[EX[x].like])||x;
+  const mg=g(list[k][0]); for(let i=0;i<k;i++) if(g(list[i][0])===mg) return i; return k;
 }
 
 function introTimed(){
@@ -483,7 +527,7 @@ ${COACH_KNOWLEDGE}
 FORMATO DELLA RISPOSTA:
 - Se il messaggio comunica una serie appena fatta, rispondi SOLO con questa riga: #SERIE kg=<numero o ?> unita=<kg|lb|?> rip=<numero o ?> rir=<numero o ?>
 - Se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata), rispondi SOLO con: #CAMBIA <nome dell'esercizio>
-- In tutti gli altri casi rispondi direttamente in testo semplice (puoi usare **grassetto** e andare a capo), senza JSON e senza preamboli.
+- In tutti gli altri casi rispondi direttamente, senza JSON e senza preamboli. Puoi usare markdown leggero quando aiuta la lettura in palestra: **grassetto** per i numeri chiave, titoletti brevi con "### " (es. "### Oggi — proposta", "### Storico — 30/10"), elenchi puntati con "- " e piccole tabelle markdown (es. | Serie | Carico | Reps | RIR |) per piani o confronti di serie. Per risposte brevi basta il testo.
 
 DATI DELL'UTENTE
 Sessione in corso: ${st.cur.session}, iniziata alle ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}${days!=null?`; giorni dall'ultima sessione: ${days}`:""}.
