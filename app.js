@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "35";
+const APP_VERSION = "36";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -735,6 +735,7 @@ function drawVideo(){
   const multi = st.ui.vidLayout!=="single" && e.v.length>1;
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
   $("#player").classList.toggle("small",!st.ui.videoHidden && st.ui.vsize!=="l");
+  applyVH();
   $("#frame").classList.toggle("multi",multi);
   $("#player").classList.toggle("multi",multi);
   if(st.ui.videoHidden){ destroyGrid(); destroyExerciseVideo(); }
@@ -748,8 +749,8 @@ function drawVideo(){
   $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); if(multi&&grid){ setGridActive(+b.dataset.k,true); drawVideoChips(); } else drawVideo(); });
   const lay=$("#vLayout"); if(lay) lay.onclick=()=>{ st.ui.vidLayout = multi?"single":"multi"; save(); drawVideo(); };
   // dimensione: piccolo (predefinito) → solo chat → piccolo; "grande" a parte
-  $("#vSize").onclick=()=>{ if(st.ui.videoHidden){ st.ui.videoHidden=false; st.ui.vsize="s"; } else if(st.ui.vsize==="l") st.ui.vsize="s"; else st.ui.videoHidden=true; save(); drawVideo(); };
-  const vb=$("#vBig"); if(vb) vb.onclick=()=>{ st.ui.vsize="l"; save(); drawVideo(); };
+  $("#vSize").onclick=()=>{ st.ui.vh=null; if(st.ui.videoHidden){ st.ui.videoHidden=false; st.ui.vsize="s"; } else if(st.ui.vsize==="l") st.ui.vsize="s"; else st.ui.videoHidden=true; save(); drawVideo(); };
+  const vb=$("#vBig"); if(vb) vb.onclick=()=>{ st.ui.vh=null; st.ui.vsize="l"; save(); drawVideo(); };
 }
 function drawVideoChips(){ const vi=st.cur.vid||0; $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.classList.toggle("on",+b.dataset.k===vi)); }
 
@@ -1193,6 +1194,18 @@ function drawQuick(){
 function setQuick(open){ st.ui.quick=!!open; save(); $("#qpanel").hidden=!open; $("#btnQuick").classList.toggle("on",!!open); if(open){ qsel={w:null,r:null,q:null}; drawQuick(); } }
 $("#btnQuick").onclick=()=>setQuick(!st.ui.quick);
 setQuick(!!st.ui.quick);
+/* banda trascinabile sotto i video: sceglie l'altezza dello spazio video */
+function applyVH(){ const sg=document.querySelector(".stage"); if(!sg) return; if(st.ui.vh && !st.ui.videoHidden) sg.style.setProperty("--fh",st.ui.vh+"px"); else sg.style.removeProperty("--fh"); }
+(function(){
+  const hd=$("#vresize"); let y0=0,h0=0,drag=false,raf=0,want=0;
+  const maxH=()=>Math.round(innerHeight*0.72), minH=80;
+  hd.addEventListener("pointerdown",e=>{ if(st.ui.videoHidden) return; drag=true; y0=e.clientY; h0=document.querySelector(".stage .frame").getBoundingClientRect().height; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
+  hd.addEventListener("pointermove",e=>{ if(!drag) return; want=Math.max(minH,Math.min(maxH(),Math.round(h0+e.clientY-y0)));
+    if(!raf) raf=requestAnimationFrame(()=>{ raf=0; st.ui.vh=want; applyVH(); }); });
+  const end=()=>{ if(!drag) return; drag=false; hd.classList.remove("on"); document.body.classList.remove("resizing"); if(want){ st.ui.vh=want; save(); } };
+  hd.addEventListener("pointerup",end); hd.addEventListener("pointercancel",end);
+  hd.addEventListener("dblclick",()=>{ st.ui.vh=null; save(); applyVH(); });
+})();
 let micStop=null;   // ferma la dettatura in corso (senza inviare) se si preme Invia a mano
 $("#composer").onsubmit=e=>{ e.preventDefault(); if(micStop) micStop(); const v=$("#msg").value; $("#msg").value=""; onSend(v); };
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;

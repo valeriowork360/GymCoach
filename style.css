@@ -209,9 +209,6 @@ details.tbl summary{cursor:pointer;color:var(--mut);font-size:13px;padding:4px 0
 .xs{color:#6b727c;font-size:12px}
 
 /* più spazio alla chat: video piccolo di default, barre più compatte */
-.player.small .frame{height:17dvh;min-height:104px}
-.player.small .frame.multi{height:19dvh;min-height:120px}
-body.kbd .player.small .frame,body.kbd .player.small .frame.multi{height:12dvh;min-height:80px}
 .vchips{padding:5px 10px}
 .vchip.size{color:var(--acc);border-color:var(--acc)}
 .music{padding:4px 10px 4px}
@@ -225,7 +222,7 @@ body.kbd .player.small .frame,body.kbd .player.small .frame.multi{height:12dvh;m
 .player.small .stage{--fh:max(17dvh,104px)}
 .player.small.multi .stage{--fh:max(19dvh,120px)}
 body.kbd .player.small .stage{--fh:max(12dvh,80px)}
-.player .stage .frame{flex:1;min-width:0;height:var(--fh);min-height:0}
+.player .stage .frame,.player .stage .frame.multi{flex:1;min-width:0;height:var(--fh);min-height:0}
 .m-tile{flex:none;position:relative;height:calc(var(--fh) - 12px);width:calc((var(--fh) - 12px)*9/16);margin:6px 0 6px 6px;border-radius:12px;overflow:hidden;border:2px solid #2a2d33;background:#111}
 .m-tile .m-screen{position:absolute;inset:0;width:auto;height:auto;border-radius:0;pointer-events:none}
 .m-tile .m-screen iframe,.m-tile .m-screen>div{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -313,3 +310,11 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .qfoot span{flex:1;font-size:13px}
 .qfoot .btn{padding:8px 14px}
 .qfoot .btn:disabled{opacity:.45}
+
+/* v36: banda per ridimensionare i video */
+.vresize{height:22px;display:grid;place-items:center;background:#000;cursor:ns-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+.vresize i{display:block;width:56px;height:5px;border-radius:3px;background:#5a6070}
+.vresize.on i,.vresize:active i{background:var(--acc);width:72px}
+.player.collapsed .vresize{display:none}
+body.resizing iframe{pointer-events:none}
+.m-tile{max-width:42%}
