@@ -12,7 +12,7 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{apiKey:"",model:"gemini-flash-latest",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
@@ -24,6 +24,7 @@ function loadState(){
   return defState();
 }
 let st = loadState();
+if(st.settings.model==="gemini-flash-latest") st.settings.model="gemini-3.8-flash";   // modello Flash più capace del livello gratuito
 function save(){ try{ localStorage.setItem(LS, JSON.stringify(st)); }catch(e){ sys("Attenzione: impossibile salvare sul dispositivo."); } }
 
 /* ---------------- utilità ---------------- */
@@ -316,21 +317,51 @@ function showHistoryEx(){
 }
 
 /* ---------------- AI (Gemini, opzionale) ---------------- */
+/* Linee guida del coach: sintesi delle evidenze su ipertrofia (aggiornata a fine 2026) */
+const COACH_KNOWLEDGE = `LINEE GUIDA BASATE SULLE EVIDENZE (usale per motivare i consigli; cita lo studio solo se pertinente e senza inventare riferimenti):
+- Vicinanza al cedimento: l'ipertrofia cresce avvicinandosi al cedimento ma con rendimenti decrescenti; 1–3 RIR dà quasi tutto lo stimolo con meno fatica (meta-analisi Refalo 2023; Robinson 2024). Per questo il target è RIR 2–3; occasionalmente RIR 1 sull'ultima serie di esercizi di isolamento/macchine è accettabile, mai sistematico sui multiarticolari.
+- La stima del RIR è imprecisa soprattutto nei meno esperti e con ripetizioni alte (si tende a sottostimare quante ne restano): se le ripetizioni salgono molto tra sedute a parità di RIR dichiarato, il RIR era probabilmente sottostimato.
+- Volume: rapporto dose-risposta con rendimenti decrescenti; molte persone crescono bene con ~6–12 serie dirette a settimana per muscolo vicino al cedimento (Schoenfeld 2017; Pelland 2024). Il programma attuale è più basso per scelta: non aumentare il volume senza verificare recupero e prestazioni.
+- Frequenza: a parità di volume conta poco; distribuire il volume su 2 sedute/settimana è comodo per qualità delle serie.
+- Recuperi: recuperi più lunghi (≥2 min, 3 min sui multiarticolari) favoriscono prestazioni e ipertrofia rispetto a 1 min (Schoenfeld 2016; Singer 2024). Se l'utente recupera più a lungo per mantenere le ripetizioni, va bene.
+- Allungamento: esercizi che caricano il muscolo in posizione allungata danno spesso più ipertrofia (es. estensioni tricipiti sopra la testa vs pushdown, Maeo 2023; parziali in allungamento, Pedrosa 2022; Wolf 2023). Valorizzare la fase bassa/allungata, eccentrica controllata (~2–3 s), senza rimbalzi.
+- Progressione: double progression nel range indicato; incrementi minimi possibili; se la performance cala per 2 sedute di fila o il recupero è scarso valuta sonno, alimentazione, stress e un deload (riduzione volume ~30–50% per una settimana).
+- Proteine ~1,6–2,2 g/kg/giorno, sonno 7–9 h: menzionali solo se pertinenti alla domanda.
+- Dolore: distinguere fatica muscolare da dolore articolare/acuto. Con dolore articolare: ridurre carico/range, cambiare variante, fermarsi se peggiora; se persiste consigliare un professionista. Mai diagnosi.
+- Sostituzioni: proponi un esercizio con stesso pattern e muscolo bersaglio, preferibilmente stabile (macchina/cavo) e con buon carico in allungamento.`;
+
+function exHistoryTxt(id,max=6){
+  const rows=[];
+  for(let i=st.history.length-1;i>=0 && rows.length<max;i--){ const h=st.history[i], e=h.ex.find(x=>x.ex===id&&x.sets.length); if(e) rows.push(`${dateTxt(h.start)} ${h.session}: ${perfTxt(e.sets)}`); }
+  return rows.length?rows.join(" | "):"nessuno";
+}
+function recentSessionsTxt(max=6){
+  return st.history.slice(-max).map(h=>`${dateTxt(h.start)} ${h.session} (${Math.round((h.end-h.start)/60000)} min): `+h.ex.map(e=>`${EX[e.ex]?EX[e.ex].n:e.ex} ${perfTxt(e.sets)}`).join("; ")).join("\n")||"nessuna";
+}
 function aiContext(){
   const it=item(), [id,n,lo,hi,rest]=it, e=EX[id];
-  const today=curList().map((x,k)=>{const s=workSets(k);return `- ${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
-  const p=lastPerf(id);
-  return `Sei il coach di palestra personale dell'utente, dentro un'app di registro allenamenti. Rispondi SEMPRE in italiano, in modo breve e pratico (massimo 90 parole), da personal trainer esperto e prudente.
-Obiettivo: ipertrofia e progressione tecnica/di forza. Programma PPL + Upper/Lower, 2 serie allenanti per esercizio, RIR target 2–3 (0–1 non è il target), double progression: prima aumentare le ripetizioni nel range, poi il carico quando entrambe le serie raggiungono il limite alto a RIR 2–3. Non convertire unità, fori o kg/lato tra macchine diverse. Se l'utente segnala dolore (non semplice fatica) consiglia di fermarsi o modificare l'esercizio e, se persiste, di sentire un professionista; non fare diagnosi.
-Sessione di oggi: ${st.cur.session}
+  const today=curList().map((x,k)=>{const s=workSets(k);return `- ${k===st.cur.exIdx?"▶ ":""}${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
+  const days=st.history.length?Math.round((Date.now()-st.history[st.history.length-1].end)/86400000):null;
+  return `Sei il coach personale dell'utente (personal trainer esperto, aggiornato sulla ricerca scientifica su ipertrofia e forza), dentro la sua app di registro allenamenti. Rispondi SEMPRE in italiano.
+STILE: diretto e concreto, come un coach in palestra. Rispondi alla domanda nella prima frase, poi dai indicazioni operative con numeri precisi (kg, ripetizioni, RIR, secondi, gradi) basate sui SUOI dati qui sotto. Niente frasi generiche o da manuale, niente elenchi di avvertenze. Se un dato manca, fai una sola domanda mirata. Lunghezza: 40–140 parole, salvo richiesta di approfondire.
+PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower (ciclo PUSH→PULL→LEGS→REST→UPPER→REST→LOWER, senza giorni fissi), 2 serie allenanti per esercizio, RIR target 2–3, double progression (prima ripetizioni nel range, poi carico quando entrambe le serie arrivano al limite alto a RIR 2–3). Le serie extra non contano. Non convertire unità, fori o kg/lato tra macchine diverse. Incrementi minimi: manubri ${kgTxt(st.settings.inc.db)} kg, bilanciere ${kgTxt(st.settings.inc.bb)} kg, cavi/macchine ${kgTxt(st.settings.inc.cable)} kg.
+${COACH_KNOWLEDGE}
+
+DATI DELL'UTENTE
+Sessione in corso: ${st.cur.session}, iniziata alle ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}${days!=null?`; giorni dall'ultima sessione: ${days}`:""}.
+Scheda di oggi (▶ = esercizio corrente):
 ${today}
-Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Indicazioni tecniche: ${e.cue}
+Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Tecnica: ${e.cue}${e.note?` Nota: ${e.note}`:""}
 Serie fatte oggi su questo esercizio: ${perfTxt(setsOf(st.cur.exIdx))||"nessuna"}.
-Ultima volta: ${p?dateTxt(p.date)+" "+perfTxt(p.sets):"nessun dato"}. Carico consigliato oggi: ${suggestedKg(id)??"non definito"}.
-Rispondi SOLO con JSON valido, in uno di questi due formati:
-{"azione":"serie","kg":numero o null,"rip":numero o null,"rir":numero o null}  → se il messaggio dell'utente sta comunicando una serie appena fatta (carico, ripetizioni, RIR);
-{"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente con un altro (es. macchina occupata);
-{"azione":"risposta","testo":"..."} → per qualsiasi altra cosa (domande, dubbi, commenti). Nel testo puoi usare **grassetto**.`;
+Storico di questo esercizio (più recente prima): ${exHistoryTxt(id)}.
+Carico consigliato oggi dall'app: ${suggestedKg(id)??"non definito"}.
+Ultime sessioni:
+${recentSessionsTxt()}
+
+FORMATO: rispondi SOLO con JSON valido, in uno di questi formati:
+{"azione":"serie","kg":numero o null,"rip":numero o null,"rir":numero o null} → se il messaggio comunica una serie appena fatta;
+{"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata);
+{"azione":"risposta","testo":"..."} → per tutto il resto. Nel testo puoi usare **grassetto** e a capo.`;
 }
 async function askAI(text){
   const key=st.settings.apiKey;
@@ -338,10 +369,10 @@ async function askAI(text){
     bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi la chiave gratuita di Gemini in ⚙ Impostazioni.`);
     return;
   }
-  const recent=st.cur.chat.slice(-9,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
+  const recent=st.cur.chat.slice(-15,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
   const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}`;
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
-  const models=[...new Set([st.settings.model||"gemini-flash-latest","gemini-flash-latest","gemini-3.5-flash-lite","gemini-2.5-flash"])];
+  const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
   let out=null, err="";
   for(const model of models){
     try{
@@ -679,7 +710,7 @@ function openSettings(){
       <div class="row" style="margin-top:10px"><button class="btn" id="sGhNow">☁ Backup ora</button><button class="btn" id="sGhRestore">⬇ Ripristina da GitHub</button></div>
       <p class="muted" id="sGhMsg">${syncStatus()}</p></div>
     <div class="card"><h3>Zona pericolosa</h3><button class="btn danger" id="sWipe">Cancella tutti i dati</button></div>`);
-  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-flash-latest";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-3.8-flash";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     st.cyclePos=+$("#sCycle").value; save(); };
   $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); if(st.settings.ghToken) syncNow(); };
@@ -687,7 +718,7 @@ function openSettings(){
   $("#sGhRestore").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Scarico master.json…"; $("#sGhMsg").textContent=await restoreFromGitHub(); };
   $("#sTest").onclick=async()=>{ collect(); $("#sTestMsg").textContent="Provo…";
     try{ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":s.apiKey},body:JSON.stringify({contents:[{role:"user",parts:[{text:"Rispondi solo: ok"}]}]})});
-      $("#sTestMsg").textContent = r.ok ? "✓ Funziona" : r.status===404 ? "Modello non trovato: prova gemini-flash-latest" : r.status===429 ? "Limite raggiunto, riprova tra poco" : "Chiave non valida ("+r.status+")";
+      $("#sTestMsg").textContent = r.ok ? "✓ Funziona" : r.status===404 ? "Modello non trovato: prova gemini-3.8-flash" : r.status===429 ? "Limite raggiunto, riprova tra poco" : "Chiave non valida ("+r.status+")";
     }catch(e){ $("#sTestMsg").textContent="Nessuna connessione"; } };
   $("#sWipe").onclick=e=>{ const b=e.target; if(b.dataset.armed){ localStorage.removeItem(LS); st=defState(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo: cancella archivio e impostazioni"; } };
 }
