@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
+<meta name="app-version" content="22">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -13,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <div id="app">
@@ -78,7 +79,28 @@
   </div>
 </div>
 
-<script src="data.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<div id="bootErr" hidden style="position:fixed;inset:0;z-index:99;background:#0e0f11;color:#f2f3f5;font:15px/1.5 system-ui,sans-serif;padding:24px;display:flex;flex-direction:column;justify-content:center;gap:14px">
+  <b style="font-size:20px">L'app non è partita correttamente</b>
+  <span>Di solito succede quando il telefono ha tenuto in memoria una versione vecchia. I tuoi dati non vengono toccati.</span>
+  <button id="bootFix" style="padding:14px;border-radius:12px;border:0;background:#d7ff3a;color:#121400;font-weight:700;font-size:16px">Ripara e ricarica</button>
+  <small id="bootMsg" style="color:#9aa1ab;word-break:break-word"></small>
+</div>
+<script>
+/* paracadute: se l'app non parte, mostra un pulsante che pulisce la cache e ricarica */
+(function(){
+  var shown=false;
+  function show(msg){ if(window.__appOk||shown) return; shown=true; var b=document.getElementById("bootErr"); b.hidden=false; if(msg) document.getElementById("bootMsg").textContent="Dettaglio: "+msg; }
+  window.addEventListener("error",function(e){ if(!window.__appOk && e && e.message) show(e.message+(e.filename?" ("+e.filename.split("/").pop()+":"+e.lineno+")":"")); });
+  setTimeout(function(){ show(""); },6000);
+  document.getElementById("bootFix").onclick=async function(){
+    this.textContent="Riparo…";
+    try{ var rs=await (navigator.serviceWorker&&navigator.serviceWorker.getRegistrations?navigator.serviceWorker.getRegistrations():[]); await Promise.all(rs.map(function(r){return r.unregister();})); }catch(e){}
+    try{ var ks=await caches.keys(); await Promise.all(ks.map(function(k){return caches.delete(k);})); }catch(e){}
+    location.replace(location.pathname+"?r="+Date.now());
+  };
+})();
+</script>
+<script src="data.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

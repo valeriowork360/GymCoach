@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "21";
+const APP_VERSION = "22";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -24,6 +24,10 @@ function loadState(){
   }catch(e){}
   return defState();
 }
+/* se pagina e script sono di versioni diverse (aggiornamento a metà), ricarico una volta */
+(function(){ try{ const hv=(document.querySelector('meta[name="app-version"]')||{}).content;
+  if(hv && hv!==APP_VERSION && !sessionStorage.getItem("gc_reload_"+APP_VERSION)){ sessionStorage.setItem("gc_reload_"+APP_VERSION,"1"); location.replace(location.pathname+"?r="+Date.now()); }
+}catch(e){} })();
 let st = loadState();
 if(!st.settings.perSideMigrated){ if(st.settings.inc.bb===2.5) st.settings.inc.bb=1.25; if(st.settings.incLb.bb===5) st.settings.incLb.bb=2.5; st.settings.perSideMigrated=true; }
 if(st.settings.model==="gemini-flash-latest") st.settings.model="gemini-3.8-flash";   // modello Flash più capace del livello gratuito
@@ -1212,3 +1216,4 @@ window.addEventListener("online",()=>{ if(st.sync.pending) syncNow(true); });
 if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
 
 render();
+window.__appOk=true;
