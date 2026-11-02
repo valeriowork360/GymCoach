@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "9";
+const APP_VERSION = "10";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -832,7 +832,7 @@ function openSettings(){
   $("#sGhRestore").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Scarico master.json…"; $("#sGhMsg").textContent=await restoreFromGitHub(); };
   $("#sTest").onclick=async()=>{ collect(); $("#sTestMsg").textContent="Provo…";
     const k=s.apiKey;
-    if(!/^AIza[\w-]{30,}$/.test(k)){ $("#sTestMsg").textContent=`La chiave non sembra completa (${k.length} caratteri): deve iniziare con "AIza" ed essere lunga circa 39 caratteri. Copiala di nuovo da AI Studio.`; return; }
+    if(k.length<20){ $("#sTestMsg").textContent=`La chiave sembra incompleta (${k.length} caratteri): copiala di nuovo da AI Studio con il pulsante di copia.`; return; }
     let msg="";
     for(const model of [...new Set([s.model,"gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash"])]){
       try{ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:JSON.stringify({contents:[{role:"user",parts:[{text:"Rispondi solo: ok"}]}]})});
