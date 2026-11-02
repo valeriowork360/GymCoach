@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "23";
+const APP_VERSION = "24";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -47,6 +47,7 @@ const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 st.custom ||= {};
 Object.entries(st.custom).forEach(([id,e])=>{ if(!EX[id]) EX[id]=e; });
 /* scheda della sessione corrente, con eventuali esercizi sostituiti */
+function mergeSugg(g){ Object.entries(g||{}).forEach(([id,x])=>{ const o=st.sugg[id]; if(!o || (x.date||0)>(o.date||0)) st.sugg[id]=x; }); }
 function mergeNotes(n){ if(!n) return; st.exNotes={...(st.exNotes||{}),...n}; }
 function mergeCustom(c){ Object.entries(c||{}).forEach(([id,e])=>{ if(!st.custom[id]) st.custom[id]=e; if(!EX[id]) EX[id]=e; }); }
 function curList(){
@@ -76,9 +77,13 @@ const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
 const fromKg = (k,u) => u==="lb" ? k/LB : k;
 const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
 const setW   = s => s.raw ? s.raw : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
+// peso con l'altra unità tra parentesi (l'originale resta per primo)
+const r1 = x => kgTxt(Math.round(x*10)/10);
+const setWB  = s => { const w=setW(s); if(s.kg==null) return w; const lb=/\blb\b/.test(w), kg=/\bkg\b/.test(w);
+  if(lb&&kg) return w; if(s.u==="lb"||lb) return `${w} (≈${r1(s.kg)} kg)`; return `${w} (≈${r1(s.kg/LB)} lb)`; };
 const modeOf = id => (EX[id]&&EX[id].kind!=="time") ? (EX[id].lm || LOAD_MODE[EX[id].eq||"machine"] || "totale") : "";
 function incFor(id,u){ const eq=EX[id].eq||"machine"; return (u==="lb"?st.settings.incLb[eq]:st.settings.inc[eq])||(u==="lb"?5:2.5); }
-function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setW(s)} × ${s.rr||(s.reps??"?")} (RIR ${s.rt||(s.rir??"?")})`; }
+function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setWB(s)} × ${s.rr||(s.reps??"?")} (RIR ${s.rt||(s.rir??"?")})`; }
 /* riga di dettaglio con tipo di serie, macchina e note (per archivio e storico) */
 function setLine(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setTxt(s)}${s.tipo?` · ${s.tipo}`:s.extra?" · extra":""}${s.m?` · ${s.m}`:""}${s.note?` · ${s.note}`:""}`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
@@ -145,7 +150,7 @@ function suggested(exId){
   return null;
 }
 function suggestedKg(exId){ const g=suggested(exId); return g?toKg(g.v,g.u):null; }
-function suggTxt(exId){ const g=suggested(exId); if(!g) return null; return g.u==="lb"?`${wTxt(g.v,"lb")} (≈${kgTxt(Math.round(toKg(g.v,"lb")*10)/10)} kg)`:wTxt(g.v,"kg"); }
+function suggTxt(exId){ const g=suggested(exId); if(!g) return null; return g.u==="lb"?`${wTxt(g.v,"lb")} (≈${r1(toKg(g.v,"lb"))} kg)`:`${wTxt(g.v,"kg")} (≈${r1(g.v/LB)} lb)`; }
 /* unità da usare per l'esercizio corrente se l'utente non la dice */
 function prefUnit(){
   const i=st.cur.exIdx, id=item()[0], ov=(st.cur.unitPref||{})[i]; if(ov) return ov;
@@ -770,8 +775,9 @@ function drawExbar(){
   const it=item(), e=exOf(it), [,n,lo,hi,rest]=it, ws=workSets(st.cur.exIdx);
   let dots=""; for(let s=0;s<n;s++){ const x=ws[s]; dots+=`<span class="dot ${x?"done":s===ws.length?"next":""}" title="Serie ${s+1}">${x?(x.sec!=null?"✓":x.reps):s+1}</span>`; }
   const g=isTimeIt(it)?null:suggested(it[0]), sk=g?wTxt(g.v,g.u):null;
-  const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${sk} ${modeOf(it[0])}`:` · kg ${modeOf(it[0])}`}`;
-  $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
+  const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${sk}${g.u==="lb"?` (≈${r1(g.v*LB)} kg)`:` (≈${r1(g.v/LB)} lb)`} ${modeOf(it[0])}`:` · kg ${modeOf(it[0])}`}`;
+  const big=!isTimeIt(it) && (lo>8||hi>12) ? `<span class="rng">Range ${lo}–${hi} rip.</span>` : "";
+  $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}${big}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
 function drawChips(){
@@ -904,10 +910,12 @@ function openArchive(){
       const ids=new Set(st.history.map(h=>h.id)); let added=0;
       j.history.forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
       st.history.sort((a,b)=>a.start-b.start);
-      if(j.sugg) st.sugg={...j.sugg,...st.sugg};
+      mergeSugg(j.sugg);
       mergeCustom(j.custom); mergeNotes(j.exNotes);
-      if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
-      save(); syncNow(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
+      const last=st.history[st.history.length-1];
+      if(added && last && last.imported && j.history.some(h=>h.id===last.id)) recomputeCycle();
+      else if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
+      save(); syncNow(); if(!st.cur) drawHome(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
     }catch(err){ $("#exMsg").textContent="File non valido."; }
   };
 }
@@ -1296,7 +1304,7 @@ async function restoreFromGitHub(){
     const ids=new Set(st.history.map(h=>h.id)); let added=0;
     (j.sessioni||[]).filter(h=>!h.inCorso).forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
     st.history.sort((a,b)=>a.start-b.start);
-    if(j.sugg) st.sugg={...j.sugg,...st.sugg};
+    mergeSugg(j.sugg);
     mergeCustom(j.esercizi_personalizzati); mergeNotes(j.note_esercizi);
     if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
     save(); return `✓ Ripristinate ${added} sessioni da GitHub.`;

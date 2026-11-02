@@ -42,6 +42,7 @@ body.kbd .frame.multi{height:22dvh;min-height:130px}
 
 .exbar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
 .exbar .nm{font:700 17px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;flex:1;min-width:0}
+.exbar .rng{display:table;margin:3px 0 1px;padding:2px 8px;border-radius:7px;background:var(--acc);color:#111;font:800 15px/1.2 "Barlow Condensed",sans-serif;letter-spacing:.3px}
 .exbar .rx{font-size:12px;color:var(--mut);font-family:Inter,sans-serif;text-transform:none;font-weight:500;display:block;margin-top:2px}
 .dots{display:flex;gap:5px;flex:none}
 .dot{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;color:var(--mut)}
