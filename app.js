@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -720,10 +720,12 @@ function finishSession(){
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
   if(!ex.length){
     openSheet("Fine sessione",`<p>Non hai registrato nessuna serie. Vuoi chiudere la sessione senza salvarla?</p><div class="row"><button class="btn danger" id="discard">Chiudi senza salvare</button><button class="btn" id="keep">Continua</button></div>`);
-    $("#discard").onclick=()=>{ st.cur=null; save(); closeSheet(); render(); }; $("#keep").onclick=closeSheet; return;
+    $("#discard").onclick=()=>{ discardSession(); closeSheet(); render(); }; $("#keep").onclick=closeSheet; return;
   }
-  openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>`);
+  openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
+    <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
   $("#keep").onclick=closeSheet;
+  $("#discardAll").onclick=e=>{ const b=e.target; if(b.dataset.armed){ discardSession(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo per scartare"; } };
   $("#confirmEnd").onclick=()=>{
     st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex,chat:chatPlain(st.cur.chat)});
     st.history.slice(0,-15).forEach(h=>{ if(h.chat && h.chatSynced) delete h.chat; });   // sul telefono restano le chat delle ultime 15 sessioni
@@ -768,7 +770,7 @@ function openArchive(){
     <div class="row"><button class="btn" id="exFile">⬇ Esporta file</button><button class="btn" id="exCopy">📋 Copia testo</button><label class="btn" style="display:inline-block">⬆ Importa file<input type="file" id="imFile" accept="application/json,.json" hidden></label></div><p class="muted" id="exMsg"></p></div>`);
   $("#sheetBody").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
   $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.armed){ st.history=st.history.filter(h=>h.id!==b.dataset.del); save(); syncNow(); openArchive(); }
+    if(b.dataset.armed){ deleteSession(b.dataset.del); openArchive(); }
     else { b.dataset.armed=1; b.textContent="Tocca di nuovo per eliminare"; }
   });
   $("#exFile").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([exportJSON()],{type:"application/json"})); a.download=`gym-coach-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
@@ -931,6 +933,38 @@ function swapTo(id){
   sys(`Cambio esercizio: ${EX[prev].n} → ${EX[id].n}`);
   if(moved) bot(`Le ${moved} serie già registrate restano in questo slot e verranno salvate come <b>${esc(EX[id].n)}</b>. Se non va bene, usa <b>Annulla</b>.`);
   drawVideo(); drawExbar(); introExercise(); drawChips();
+}
+
+/* ---------------- scartare / eliminare sessioni ---------------- */
+function slotOf(id){ for(const k of Object.keys(SESSIONS)){ const x=SESSIONS[k].find(y=>y[0]===id); if(x) return x; } return [id,2,8,12,120]; }
+function recomputeSugg(id){
+  const p=lastPerf(id); if(!p){ delete st.sugg[id]; return; }
+  const nt=EX[id] && EX[id].kind!=="time" ? nextTime(slotOf(id),p.sets) : null;
+  if(nt && nt.kg!=null) st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:p.date}; else delete st.sugg[id];
+}
+function recomputeCycle(){
+  for(let i=st.history.length-1;i>=0;i--){ const k=CYCLE.indexOf(st.history[i].session); if(k>=0){ st.cyclePos=k; return; } }
+  st.cyclePos=-1;
+}
+async function ghDelete(path){
+  if(!st.settings.ghToken) return;
+  try{ const g=await gh(path); if(!g.ok) return; const sha=(await g.json()).sha;
+    await gh(path,{method:"DELETE",body:JSON.stringify({message:"Elimina "+path,sha})}); }catch(e){}
+}
+function discardSession(){
+  if(!st.cur) return;
+  const h={id:st.cur.id,session:st.cur.session,start:st.cur.start};
+  const ps=st.cur.prevSugg||{}; Object.keys(ps).forEach(id=>{ if(ps[id]==null) delete st.sugg[id]; else st.sugg[id]=ps[id]; });
+  st.cur=null; stopTimer(); save();
+  try{ wake && wake.release(); }catch(e){}
+  ghDelete(chatPath(h)).then(()=>syncNow(true));
+}
+function deleteSession(id){
+  const h=st.history.find(x=>x.id===id); if(!h) return;
+  st.history=st.history.filter(x=>x.id!==id);
+  h.ex.forEach(e=>recomputeSugg(e.ex));
+  recomputeCycle(); save();
+  ghDelete(chatPath(h)).then(()=>syncNow(true));
 }
 
 /* ---------------- master file e backup su GitHub ---------------- */
