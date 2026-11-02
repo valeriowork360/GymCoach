@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Allenamento</title>
+<meta name="theme-color" content="#0e0f11">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <button class="icon-btn" id="btnList" aria-label="Elenco esercizi">☰</button>
+    <div class="top-mid">
+      <div class="top-sess" id="topSess">Allenamento</div>
+      <div class="top-sub" id="topSub"></div>
+    </div>
+    <button class="icon-btn" id="btnArchive" aria-label="Archivio">🗂</button>
+    <button class="icon-btn" id="btnSettings" aria-label="Impostazioni">⚙</button>
+  </header>
+
+  <section id="workout" hidden>
+    <div class="player" id="player">
+      <div class="frame" id="frame"></div>
+      <div class="vchips" id="vchips"></div>
+    </div>
+    <div class="timer" id="timer" hidden>
+      <span class="t-lab">Recupero</span>
+      <span class="t-val" id="tVal">0:00</span>
+      <div class="t-bar"><i id="tBar"></i></div>
+      <button class="mini" id="tPlus">+15s</button>
+      <button class="mini" id="tStop">Stop</button>
+    </div>
+    <div class="exbar" id="exbar"></div>
+    <div class="chat" id="chat" aria-live="polite"></div>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="composer" autocomplete="off">
+      <button type="button" class="icon-btn mic" id="btnMic" aria-label="Detta" hidden>🎤</button>
+      <input id="msg" placeholder="Es. 24 kg 9 rip RIR 2 — o fai una domanda" enterkeyhint="send">
+      <button class="send" id="btnSend" aria-label="Invia">➤</button>
+    </form>
+  </section>
+
+  <section id="home" class="home" hidden></section>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="icon-btn" id="sheetClose" aria-label="Chiudi">✕</button></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
