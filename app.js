@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "37";
+const APP_VERSION = "38";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -263,23 +263,15 @@ function quickWeights(id,focusV,focusU){
   const p=lastPerf(id), g=suggested(id), cur=setsOf(st.cur.exIdx).filter(x=>x.kg!=null&&!x.extra);
   const u=focusU || (cur.length?unitOf(cur[cur.length-1]):g?g.u:p&&p.sets.some(x=>x.kg!=null)?unitOf(p.sets.filter(x=>x.kg!=null).pop()):prefUnit());
   const inc=(u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"] || (u==="lb"?5:2.5);
-  const R=v=>Math.round(v*100)/100, inU=x=>R(u==="lb"?(x.u==="lb"?x.v:x.kg/LB):(x.u==="lb"?x.v*LB:x.kg));
-  const vals=new Set();
-  if(p) p.sets.filter(x=>x.kg!=null&&!x.extra&&unitOf(x)===u).forEach(x=>vals.add(valOf(x)));   // solo pesi nella stessa unità
-  cur.forEach(x=>vals.add(inU(x)));
-  const star = focusV!=null ? focusV : g ? (g.u===u?g.v:R(Math.round(fromKg(toKg(g.v,g.u),u)/inc)*inc)) : null;
-  const starR = star!=null ? Math.round(star*100)/100 : null; if(starR!=null) vals.add(starR);
-  if(!vals.size) return "";
-  let arr=[...vals].map(R).sort((a,b)=>a-b);
-  const step=v=>u==="kg"&&inc<2.5&&Math.abs(v/2.5-Math.round(v/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
-  const onGrid=v=>{ const q=step(v); return Math.abs(v/q-Math.round(v/q))<1e-6; };
-  const lo0=arr[0], hi0=arr[arr.length-1];
-  const below=onGrid(lo0)?R(lo0-step(lo0)):R(Math.ceil(lo0/inc-1e-9)*inc-inc), above=onGrid(hi0)?R(hi0+step(hi0)):R(Math.floor(hi0/inc+1e-9)*inc+inc);
-  // carichi di un pacco pesi fuori griglia (es. 121 lb): passo pieno invece di arrotondare
-  arr=[e.eq==="machine"&&!onGrid(lo0)?R(lo0-inc):below,...arr,e.eq==="machine"&&!onGrid(hi0)?R(hi0+inc):above].filter(v=>v>0);
-  arr=[...new Set(arr)];
-  if(arr.length>6){ const c=starR!=null?arr.indexOf(starR):Math.floor(arr.length/2); const a=Math.max(0,Math.min(arr.length-6,c-3)); arr=arr.slice(a,a+6); }
-  return `<div class="qw">${arr.map(v=>`<button type="button" class="${v===starR?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)} ${u}</button>`).join("")}</div>`;
+  const R=v=>Math.round(v*100)/100;
+  let c = focusV!=null ? focusV : g ? (g.u===u?g.v:R(Math.round(fromKg(toKg(g.v,g.u),u)/inc)*inc)) : cur.length ? valOf(cur[cur.length-1]) : null;
+  if(c==null){ const ls=p&&p.sets.filter(x=>x.kg!=null&&!x.extra&&unitOf(x)===u); if(ls&&ls.length) c=valOf(ls[ls.length-1]); }
+  if(c==null) return "";
+  c=R(c);
+  const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
+  const arr=[]; for(let k=-3;k<=3;k++){ const v=R(c+k*step); if(v>0) arr.push(v); }
+  while(arr.length<7) arr.push(R(arr[arr.length-1]+step));
+  return `<div class="qw">${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)} ${u}</button>`).join("")}</div>`;
 }
 $("#chat").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-qw]"); if(!b||!st.cur) return;
@@ -904,8 +896,7 @@ function drawExbar(){
   $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}${big}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
-function drawChips(){ drawChips0(); try{ drawQuick(); }catch(e){} }
-function drawChips0(){
+function drawChips(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
   if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
@@ -1160,40 +1151,6 @@ $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.rem
 function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden=!open; $("#btnKbd").classList.toggle("on",!!open); $("#btnKbd").textContent=open?"✕":"⌨"; }
 $("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
 setComposer(!!st.ui.composer);
-/* inserimento rapido: tre righe di tasti (carico, ripetizioni, RIR); al terzo tocco la serie è registrata */
-let qsel={w:null,r:null,q:null};
-function quickRange(id){
-  const e=EX[id], g=suggested(id), cur=setsOf(st.cur.exIdx).filter(x=>x.kg!=null&&!x.extra);
-  const u=prefUnit(), last=cur.length?cur[cur.length-1]:null;
-  let c = last&&unitOf(last)===u ? valOf(last) : g ? (g.u===u?g.v:fromKg(toKg(g.v,g.u),u)) : (u==="lb"?45:20);
-  const inc=incFor(id,u), step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;
-  c=Math.round(c*100)/100;
-  const arr=[]; for(let k=-6;k<=6;k++){ const v=Math.round((c+k*step)*100)/100; if(v>0) arr.push(v); }
-  return {u,c,arr};
-}
-function drawQuick(){
-  const P=$("#qpanel"); if(!st.cur||P.hidden) return;
-  const it=item();
-  if(isTimeIt(it)){ P.innerHTML=`<div class="qrow"><button class="qb on" data-qdone>✓ Giro fatto</button></div>`; P.querySelector("[data-qdone]").onclick=logTimed; return; }
-  const [id,,lo,hi]=it, {u,c,arr}=quickRange(id);
-  const reps=[]; for(let v=Math.max(1,lo-4);v<=hi+5;v++) reps.push(v);
-  const row=(lab,key,vals,fmt,hint)=>`<div class="qlab">${lab}</div><div class="qrow" data-row="${key}">${vals.map(v=>`<button type="button" class="qb ${qsel[key]===v?"on":""} ${hint!=null&&v===hint&&qsel[key]==null?"hint":""}" data-k="${key}" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
-  P.innerHTML = row(`Carico (${u}) <span class="muted">${modeOf(id)}</span>`,"w",arr,v=>kgTxt(v),c)
-    + row("Ripetizioni","r",reps,v=>v,null) + row("RIR","q",[0,1,2,3,4,5],v=>v,null)
-    + `<div class="qfoot"><span class="muted" id="qsum"></span><button type="button" class="btn acc" id="qgo">✓ Registra</button></div>`;
-  const sum=()=>{ const w=qsel.w??c; $("#qsum").textContent=`${kgTxt(w)} ${u} × ${qsel.r??"?"} · RIR ${qsel.q??"?"}`; $("#qgo").disabled=qsel.r==null||qsel.q==null; };
-  const go=()=>{ const w=qsel.w??c, r=qsel.r, q=qsel.q; qsel={w:null,r:null,q:null};
-    unlockAudio(); user(`${kgTxt(w)} ${u} ${r} rip RIR ${q}`); st.cur.pending=null; logSet({kg:w,unit:u,unitOk:true,reps:r,rir:q}); drawQuick(); };
-  P.querySelectorAll(".qb[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, v=+b.dataset.v; qsel[k]= qsel[k]===v?null:v;
-    if(qsel.w!=null&&qsel.r!=null&&qsel.q!=null) return go();
-    P.querySelectorAll(`.qb[data-k="${k}"]`).forEach(x=>x.classList.toggle("on",+x.dataset.v===qsel[k])); if(k==="w") P.querySelectorAll('.qb[data-k="w"]').forEach(x=>x.classList.remove("hint")); sum(); });
-  $("#qgo").onclick=go; sum();
-  const h=P.querySelector('.qrow[data-row="w"] .on, .qrow[data-row="w"] .hint'); if(h) h.parentNode.scrollLeft=h.offsetLeft-h.parentNode.clientWidth/2+h.offsetWidth/2;
-  const rr=P.querySelector('.qrow[data-row="r"]'), rb=rr&&[...rr.children].find(x=>+x.dataset.v===lo); if(rb) rr.scrollLeft=rb.offsetLeft-8;
-}
-function setQuick(open){ st.ui.quick=!!open; save(); $("#qpanel").hidden=!open; $("#btnQuick").classList.toggle("on",!!open); if(open){ qsel={w:null,r:null,q:null}; drawQuick(); } }
-$("#btnQuick").onclick=()=>setQuick(!st.ui.quick);
-setQuick(!!st.ui.quick);
 /* banda trascinabile sotto i video: sceglie l'altezza dello spazio video */
 function applyVH(){ const sg=document.querySelector(".stage"); if(!sg) return; if(st.ui.vh && !st.ui.videoHidden) sg.style.setProperty("--fh",st.ui.vh+"px"); else sg.style.removeProperty("--fh"); }
 (function(){

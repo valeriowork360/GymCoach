@@ -253,7 +253,7 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .chips{padding:4px 10px 2px}
 .chip{padding:6px 11px}
 /* tasti rapidi per il carico nel messaggio del coach */
-.qw{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.qw{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .qw button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;padding:7px 11px;font:600 14px Inter,sans-serif;cursor:pointer}
 .qw button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .player.collapsed .m-ph{display:none}
@@ -324,3 +324,5 @@ body.resizing iframe{pointer-events:none}
 .msg.intro{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .msg.bot .note{background:var(--panel);border-radius:10px;padding:8px 10px}
 .msg.typing{padding:4px 2px}
+
+.qw button{padding:9px 4px;white-space:nowrap}
