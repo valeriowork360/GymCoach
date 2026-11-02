@@ -2,6 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
+const APP_VERSION = "8";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -761,6 +762,7 @@ function openSettings(){
       <input class="inp" id="sGhTok" type="password" value="${esc(s.ghToken)}" placeholder="github_pat_…" autocomplete="off">
       <div class="row" style="margin-top:10px"><button class="btn" id="sGhNow">☁ Backup ora</button><button class="btn" id="sGhRestore">⬇ Ripristina da GitHub</button></div>
       <p class="muted" id="sGhMsg">${syncStatus()}</p></div>
+    <div class="card"><h3>Aggiornamenti</h3><p class="muted" style="margin:0 0 10px">Versione dell'app: <b>${APP_VERSION}</b>. Se non vedi le ultime novità, tocca qui: i tuoi dati e le chiavi restano salvati.</p><button class="btn" id="sUpdate">⟳ Aggiorna l'app</button></div>
     <div class="card"><h3>Zona pericolosa</h3><button class="btn danger" id="sWipe">Cancella tutti i dati</button></div>`);
   const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
@@ -781,6 +783,10 @@ function openSettings(){
     }
     $("#sTestMsg").textContent=msg;
   };
+  $("#sUpdate").onclick=async()=>{ collect(); $("#sUpdate").textContent="Aggiorno…";
+    try{ const rs=await navigator.serviceWorker?.getRegistrations?.()||[]; await Promise.all(rs.map(r=>r.unregister())); }catch(e){}
+    try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
+    location.replace(location.pathname+"?u="+Date.now()); };
   $("#sOrTest").onclick=async()=>{ collect(); $("#sOrMsg").textContent="Provo…"; const r=await callOpenRouter("Rispondi in JSON {\"ok\":true}","test"); $("#sOrMsg").textContent=r.out?`✓ Funziona (${r.by})`:r.err; };
   $("#sWipe").onclick=e=>{ const b=e.target; if(b.dataset.armed){ localStorage.removeItem(LS); st=defState(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo: cancella archivio e impostazioni"; } };
 }

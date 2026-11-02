@@ -1,10 +1,9 @@
-// Cache dell'app per l'uso offline in palestra. Rete prima, cache come riserva.
-const CACHE = "gymcoach-v7";
-const SHELL = ["./", "index.html", "style.css", "app.js", "data.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
-self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
+// Cache dell'app per l'uso offline in palestra. Sempre rete prima (senza cache HTTP), cache solo come riserva.
+const CACHE = "gymcoach-v8";
+self.addEventListener("install", e => { self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; }).catch(() => caches.match(e.request, {ignoreSearch: true})));
+  e.respondWith(fetch(e.request, {cache: "no-cache"}).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; }).catch(() => caches.match(e.request, {ignoreSearch: true})));
 });
