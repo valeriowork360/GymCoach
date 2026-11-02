@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "29";
+const APP_VERSION = "30";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -212,6 +212,36 @@ function drawMsg(m){
   return d;
 }
 
+/* tasti rapidi con i carichi vicini a quelli dell'ultima volta (e al consigliato) */
+function quickWeights(id,focusV,focusU){
+  const e=EX[id]; if(!e||e.kind==="time") return "";
+  const p=lastPerf(id), g=suggested(id), cur=setsOf(st.cur.exIdx).filter(x=>x.kg!=null&&!x.extra);
+  const u=focusU || (cur.length?unitOf(cur[cur.length-1]):g?g.u:p&&p.sets.some(x=>x.kg!=null)?unitOf(p.sets.filter(x=>x.kg!=null).pop()):prefUnit());
+  const inc=(u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"] || (u==="lb"?5:2.5);
+  const R=v=>Math.round(v*100)/100, inU=x=>R(u==="lb"?(x.u==="lb"?x.v:x.kg/LB):(x.u==="lb"?x.v*LB:x.kg));
+  const vals=new Set();
+  if(p) p.sets.filter(x=>x.kg!=null&&!x.extra).forEach(x=>vals.add(u===unitOf(x)?valOf(x):Math.round(inU(x)/inc)*inc));
+  cur.forEach(x=>vals.add(inU(x)));
+  const star = focusV!=null ? focusV : g ? (g.u===u?g.v:R(Math.round(fromKg(toKg(g.v,g.u),u)/inc)*inc)) : null;
+  const starR = star!=null ? Math.round(star*100)/100 : null; if(starR!=null) vals.add(starR);
+  if(!vals.size) return "";
+  let arr=[...vals].map(R).sort((a,b)=>a-b);
+  const onGrid=v=>Math.abs(v/inc-Math.round(v/inc))<1e-6;
+  const lo0=arr[0], hi0=arr[arr.length-1];
+  const below=onGrid(lo0)?R(lo0-inc):R(Math.ceil(lo0/inc-1e-9)*inc-inc), above=onGrid(hi0)?R(hi0+inc):R(Math.floor(hi0/inc+1e-9)*inc+inc);
+  // carichi di un pacco pesi fuori griglia (es. 121 lb): passo pieno invece di arrotondare
+  arr=[e.eq==="machine"&&!onGrid(lo0)?R(lo0-inc):below,...arr,e.eq==="machine"&&!onGrid(hi0)?R(hi0+inc):above].filter(v=>v>0);
+  arr=[...new Set(arr)];
+  if(arr.length>6){ const c=starR!=null?arr.indexOf(starR):Math.floor(arr.length/2); const a=Math.max(0,Math.min(arr.length-6,c-3)); arr=arr.slice(a,a+6); }
+  return `<div class="qw">${arr.map(v=>`<button type="button" class="${v===starR?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)} ${u}</button>`).join("")}</div>`;
+}
+$("#chat").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-qw]"); if(!b||!st.cur) return;
+  const [v,u,k,id]=b.dataset.qw.split("|");
+  if(+k!==st.cur.exIdx || item()[0]!==id){ sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio."); return; }
+  unlockAudio(); user(`${kgTxt(+v)} ${u}`); st.cur.pending=null;
+  logSet({kg:+v,unit:u,unitOk:true,reps:null,rir:null});
+});
 function introExercise(){
   if(isTimeIt(item())) return introTimed();
   const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=curList();
@@ -228,7 +258,9 @@ function introExercise(){
   t+=`<br><span class="muted">${esc(xn&&xn.cue?xn.cue:e.cue)}</span>`;
   const done=workSets(st.cur.exIdx).length;
   if(done) t+=`<br><span class="muted">Già fatte ${done}/${n} serie.</span>`;
-  else t+=`<br><span class="muted">A fine serie scrivimi, per esempio: <i>${g?wTxt(g.v,g.u):"20 kg"} ${hi-1} rip RIR 2</i> (anche in libbre: <i>50 lb</i>)</span>`;
+  const qw=quickWeights(id);
+  t+= qw ? `<br><span class="muted">Tocca il carico usato (poi ripetizioni e RIR) oppure scrivilo/dettalo:</span>${qw}`
+         : `<br><span class="muted">A fine serie scrivimi, per esempio: <i>${g?wTxt(g.v,g.u):"20 kg"} ${hi-1} rip RIR 2</i></span>`;
   bot(t,"intro");
 }
 
@@ -321,6 +353,7 @@ function logSet(p){
     if(c.v==="ok") txt+=` Serie ${num+1}: <b>resta a ${wTxt(val,u)}</b>.`;
     else if(c.w!=null) txt+=` Serie ${num+1}: <b>${c.v==="heavy"?"scendi":"sali"} a ${wTxt(c.w,u)}</b>.`;
     txt+=`<br>Recupero ${restTxt(rest)}.`;
+    txt+=quickWeights(id, c.v==="ok"||c.w==null?val:c.w, u);
   }
   bot(txt);
   if(lastOfEx){
@@ -621,7 +654,7 @@ function drawVideo(){
   if(!e.v.length){
     destroyGrid(); destroyExerciseVideo(); yvWant=null;
     const q=encodeURIComponent(e.n+" tecnica esecuzione");
-    $("#frame").classList.remove("multi");
+    $("#frame").classList.remove("multi"); $("#player").classList.remove("multi");
     $("#frame").innerHTML=`<div style="display:grid;place-items:center;text-align:center;color:var(--mut);padding:16px">Nessun video salvato per questo esercizio.<br><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Cerca “${esc(e.n)}” su YouTube ↗</a></div>`;
     $("#player").classList.remove("collapsed");
     $("#vchips").innerHTML=`<span class="muted" style="padding:4px 2px">Esercizio personalizzato</span>`; return;
@@ -631,6 +664,7 @@ function drawVideo(){
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
   $("#player").classList.toggle("small",!st.ui.videoHidden && st.ui.vsize!=="l");
   $("#frame").classList.toggle("multi",multi);
+  $("#player").classList.toggle("multi",multi);
   if(st.ui.videoHidden){ destroyGrid(); destroyExerciseVideo(); }
   else if(multi){ destroyExerciseVideo(); buildGrid(e,vi); }
   else { destroyGrid(); showExerciseVideo(id); }
@@ -761,7 +795,8 @@ function drawMusic(msg){
   const m=st.ui.music;
   $("#mTitle").textContent = m.title || (m.src ? (m.src.list?"Playlist caricata":"Brano caricato") : "Musica");
   $("#mSub").textContent = msg || (m.src ? (ymPlaying?"In riproduzione":ymWant?"Avvio…":"In pausa")+(m.src.list?" · playlist":"")+(m.loop?" · ripeti":"") : "Tocca per incollare un link YouTube");
-  $("#mPlay").textContent = (ymPlaying||ymWant) ? "❚❚" : "▶"; $("#mPlay").classList.toggle("on",ymPlaying);
+  $("#mPlay").textContent = !m.src ? "＋" : (ymPlaying||ymWant) ? "❚❚" : "▶"; $("#mPlay").classList.toggle("on",ymPlaying);
+  if(msg && st.cur) sys("🎵 "+msg);
   $("#mPh").hidden = !!ym;
   $("#volV").value=st.ui.volV; $("#oV").textContent=st.ui.volV;
   $("#muteV").textContent=st.ui.volV>0?"🔊":"🔇"; $("#muteV").classList.toggle("on",st.ui.volV>0);
@@ -773,7 +808,7 @@ function drawMusic(msg){
   $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadMusic(m.recent[+b.dataset.r].raw,true); $("#mPanel").hidden=true; drawMusic(); });
 }
 $("#mPlay").onclick=toggleMusic;
-$("#mMore").onclick=$("#mInfo").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); };
+$("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); };
 $("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
 function setVolV(v){ st.ui.volV=v; if(v>0) st.ui.lastVolV=v; save(); applyVolV(); if(grid) setGridActive(grid.active,false); drawMusic(); }

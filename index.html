@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="29">
+<meta name="app-version" content="30">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
 <div id="app">
@@ -31,21 +31,20 @@
 
   <section id="workout" hidden>
     <div class="player" id="player">
-      <div class="frame" id="frame"></div>
+      <div class="stage">
+        <div class="m-tile" id="mTile"><div class="m-screen"><div id="ytM"></div></div><span class="m-ph" id="mPh">🎵</span><button class="m-tap" id="mPlay" type="button" aria-label="Riproduci o metti in pausa la musica">▶</button></div>
+        <div class="frame" id="frame"></div>
+      </div>
       <div class="vchips" id="vchips"></div>
     </div>
     <div class="music" id="music">
-      <div class="m-row">
-        <div class="m-screen"><div id="ytM"></div><span class="m-ph" id="mPh">🎵</span></div>
-        <button class="m-info" id="mInfo" type="button"><b id="mTitle">Musica</b><span id="mSub">Aggiungi un link YouTube</span></button>
-        <button class="mini m-play" id="mPlay" type="button" aria-label="Riproduci o metti in pausa la musica">▶</button>
-        <button class="mini" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
-      </div>
       <div class="m-vols">
         <div class="vol"><button type="button" class="vbtn" id="muteV" aria-label="Audio video esercizio acceso/spento">🔇</button><input type="range" id="volV" min="0" max="100" step="5" aria-label="Volume video esercizio"><output id="oV">0</output></div>
         <div class="vol"><button type="button" class="vbtn" id="muteM" aria-label="Musica acceso/spento">🎵</button><input type="range" id="volM" min="0" max="100" step="5" aria-label="Volume musica"><output id="oM">35</output></div>
+        <button class="vbtn" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
       </div>
       <div class="m-more" id="mPanel" hidden>
+        <div class="m-info"><b id="mTitle">Musica</b> <span id="mSub">Aggiungi un link YouTube</span></div>
         <form class="m-form" id="mForm" autocomplete="off"><input class="inp" id="mIn" placeholder="Incolla un link YouTube (brano o playlist)" inputmode="url"><button class="btn acc" type="submit">Carica</button></form>
         <div class="m-recent" id="mRecent"></div>
         <label class="m-loop"><input type="checkbox" id="mLoop"> Ripeti brano / playlist</label>
@@ -101,7 +100,7 @@
   };
 })();
 </script>
-<script src="data.js?v=29"></script>
-<script src="app.js?v=29"></script>
+<script src="data.js?v=30"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

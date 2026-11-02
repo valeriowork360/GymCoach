@@ -216,3 +216,46 @@ body.kbd .player.small .frame,body.kbd .player.small .frame.multi{height:12dvh;m
 .m-vols{margin-top:4px}
 .m-vols .vol input[type=range]{height:28px}
 .exbar{padding:6px 12px}
+
+/* v30: riquadro musica fisso accanto ai video, altezze guidate da --fh */
+.stage{display:flex;background:#000;--fh:max(28dvh,160px)}
+.player.multi .stage{--fh:max(34dvh,200px)}
+.player.small .stage{--fh:max(17dvh,104px)}
+.player.small.multi .stage{--fh:max(19dvh,120px)}
+body.kbd .player.small .stage{--fh:max(12dvh,80px)}
+.player .stage .frame{flex:1;min-width:0;height:var(--fh);min-height:0}
+.m-tile{flex:none;position:relative;height:calc(var(--fh) - 12px);width:calc((var(--fh) - 12px)*9/16);margin:6px 0 6px 6px;border-radius:12px;overflow:hidden;border:2px solid #2a2d33;background:#111}
+.m-tile .m-screen{position:absolute;inset:0;width:auto;height:auto;border-radius:0;pointer-events:none}
+.m-tile .m-screen iframe,.m-tile .m-screen>div{position:absolute;inset:0;width:100%;height:100%;border:0}
+.m-tap{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:2;appearance:none;border:0;border-radius:999px;width:34px;height:28px;background:rgba(0,0,0,.72);color:#fff;font-size:13px;cursor:pointer}
+.m-tap.on{background:var(--acc);color:var(--acc-ink)}
+.player.collapsed{display:flex;align-items:center}
+.player.collapsed .stage{--fh:52px;background:transparent}
+.player.collapsed .frame{display:none}
+.player.collapsed .m-tile{width:84px;margin:4px 0 4px 10px}
+.player.collapsed .vchips{flex:1;min-width:0;border-bottom:0}
+.player.collapsed{border-bottom:1px solid var(--line)}
+/* volumi più bassi, menu musica sulla stessa riga */
+.music{padding:2px 10px}
+.m-vols{display:flex;align-items:center;gap:8px;margin-top:0}
+.m-vols .vol{flex:1}
+.m-vols .vbtn{width:32px;height:28px;font-size:14px;border-radius:8px}
+.m-vols .vol input[type=range]{height:24px}
+.m-vols .vol output{width:22px;font-size:11px}
+.m-more .m-info{font-size:12.5px;color:var(--mut);margin:6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-more .m-info b{color:var(--text)}
+/* range sulla riga del nome */
+.exbar .rng{display:inline-block;margin:0 0 0 8px;vertical-align:2px;font-size:13px;padding:1px 7px}
+/* barra di scrittura più bassa */
+.composer{padding:5px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+.composer .icon-btn{height:38px;width:38px;font-size:15px}
+.composer input{padding:7px 10px}
+.send{width:40px;height:38px;font-size:16px}
+.chips{padding:4px 10px 2px}
+.chip{padding:6px 11px}
+/* tasti rapidi per il carico nel messaggio del coach */
+.qw{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.qw button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;padding:7px 11px;font:600 14px Inter,sans-serif;cursor:pointer}
+.qw button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.player.collapsed .m-ph{display:none}
+.player.collapsed .m-tap{bottom:auto;top:50%;transform:translate(-50%,-50%)}
