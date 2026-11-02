@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "27";
+const APP_VERSION = "28";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1040,19 +1040,43 @@ $("#photoIn").onchange=async e=>{
 /* ---------------- composer e dettatura ---------------- */
 $("#msg").addEventListener("focus",()=>document.body.classList.add("kbd"));
 $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.remove("kbd"),150));
-$("#composer").onsubmit=e=>{ e.preventDefault(); const v=$("#msg").value; $("#msg").value=""; onSend(v); };
+let micStop=null;   // ferma la dettatura in corso (senza inviare) se si preme Invia a mano
+$("#composer").onsubmit=e=>{ e.preventDefault(); if(micStop) micStop(); const v=$("#msg").value; $("#msg").value=""; onSend(v); };
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(SR){
-  const mic=$("#btnMic"); mic.hidden=false; let rec=null;
+  /* Dettatura: resta in ascolto anche nelle pause finché non tocchi di nuovo 🎤 (allora invia).
+     Se il browser chiude da solo il riconoscimento dopo un silenzio, lo riapro e continuo il testo. */
+  const mic=$("#btnMic"), box=$("#msg"); mic.hidden=false;
+  let rec=null, active=false, kept="", finals=[], interim="", started=0, ph="";
+  const join=()=>[kept,...finals,interim].map(x=>x.trim()).filter(Boolean).join(" ");
+  const show=()=>{ box.value=join(); };
+  const finish=send=>{ active=false; micStop=null; mic.classList.remove("on"); box.placeholder=ph;
+    const v=send?join():""; kept=""; finals=[]; interim="";
+    if(rec){ try{ rec.onend=null; rec.stop(); }catch(e){} rec=null; }
+    if(send){ box.value=""; if(v) onSend(v); } };
+  const listen=()=>{
+    rec=new SR(); rec.lang="it-IT"; rec.interimResults=true; rec.continuous=true; rec.maxAlternatives=1;
+    rec.onresult=ev=>{ interim="";
+      for(let k=ev.resultIndex;k<ev.results.length;k++){ const r=ev.results[k], t=r[0].transcript.trim(); if(!t) continue;
+        if(r.isFinal){ const last=finals[finals.length-1];
+          // su Android ogni risultato può ripetere il precedente: sostituisco invece di accodare
+          if(last && t.toLowerCase().startsWith(last.toLowerCase())) finals[finals.length-1]=t; else if(t!==last) finals.push(t); }
+        else interim=t; }
+      show(); };
+    rec.onerror=ev=>{ if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){ finish(false); sys("Il microfono non è autorizzato per questa pagina."); } };
+    rec.onend=()=>{ if(!active) return;
+      kept=join(); finals=[]; interim="";
+      if(Date.now()-started>180000) return finish(true);   // tetto di sicurezza: 3 minuti
+      try{ listen(); }catch(e){ finish(true); } };
+    rec.start();
+  };
   mic.onclick=()=>{
     unlockAudio();
-    if(rec){ rec.stop(); return; }
-    rec=new SR(); rec.lang="it-IT"; rec.interimResults=true; rec.maxAlternatives=1;
-    mic.classList.add("on"); let final="";
-    rec.onresult=ev=>{ let txt=""; for(const r of ev.results){ txt+=r[0].transcript; if(r.isFinal) final=txt; } $("#msg").value=txt; };
-    rec.onend=()=>{ mic.classList.remove("on"); rec=null; const v=(final||$("#msg").value).trim(); if(v){ $("#msg").value=""; onSend(v); } };
-    rec.onerror=()=>{ mic.classList.remove("on"); rec=null; };
-    rec.start();
+    if(active) return finish(true);
+    active=true; started=Date.now(); kept=box.value.trim(); finals=[]; interim="";
+    ph=box.placeholder; box.placeholder="Ti ascolto… tocca 🎤 quando hai finito";
+    mic.classList.add("on"); micStop=()=>finish(false);
+    try{ listen(); }catch(e){ finish(false); }
   };
 }
 
