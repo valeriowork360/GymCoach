@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "14";
+const APP_VERSION = "15";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -479,6 +479,11 @@ async function callOpenRouter(sys,prompt){
   }catch(e){ return navigator.onLine===false?{err:"nessuna connessione",offline:true}:{err:`errore di rete con OpenRouter (${e.message||e.name})`}; }
 }
 function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey); }
+let wentHidden=false;
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden") wentHidden=true;
+  else if(st.cur && st.cur.aiRetry){ const t=st.cur.aiRetry; st.cur.aiRetry=null; save(); sys("Riprovo la domanda rimasta in sospeso…"); askAI(t); }
+});
 async function askAI(text){
   if(!aiReady()){
     bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
@@ -487,6 +492,7 @@ async function askAI(text){
   const recent=st.cur.chat.slice(-15,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
   const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}`;
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
+  wentHidden=document.visibilityState==="hidden";
   const sysTxt=aiContext();
   const order=st.settings.provider==="openrouter"?[callOpenRouter,callGemini]:[callGemini,callOpenRouter];
   let res=null; const errs=[];
@@ -495,6 +501,12 @@ async function askAI(text){
     res=await f(sysTxt,prompt); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
+  if((!res||!res.out) && wentHidden && !errs.every(e=>e==="nessuna connessione")){
+    st.cur.aiRetry=text; save();
+    if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text); }
+    sys("Richiesta interrotta perché sei uscito dall'app: la ripeto appena torni qui.");
+    return;
+  }
   if(!res||!res.out){ bot(esc(errs.length && errs.every(e=>e==="nessuna connessione") ? "Il telefono risulta offline: per le domande serve internet. Le serie le registro anche offline." : "Non sono riuscito a rispondere ("+errs.join("; ")+"). Riprova tra poco; se succede spesso tieni l'app aperta in primo piano mentre aspetti la risposta.")); return; }
   const out=res.out;
   let j=null; try{ j=JSON.parse(out.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/,"$1")); }catch(e){}
