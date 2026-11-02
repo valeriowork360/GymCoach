@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "39";
+const APP_VERSION = "40";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -497,13 +497,26 @@ function findExInText(t){
 }
 const isHistoryQ = t => /(ultim[ao] (volta|carico|seduta|sessione|allenamento)|che (carico|peso) (avevo|ho usato|ho fatto)|quant[oie] (kg|chili|rip\w*|ripetizioni) (avevo|ho fatto)|quanto (avevo|ho) (fatto|sollevato|spinto|tirato)|storico (di|del|della|dello)|la volta scorsa|l'altra volta)/i.test(t);
 function showHistoryEx(forId){
-  const id=forId||item()[0], rows=[];
-  for(let i=st.history.length-1;i>=0 && rows.length<6;i--){
-    const h=st.history[i], e=h.ex.find(x=>x.ex===id&&x.sets.length);
-    if(e) rows.push(`${dateTxt(h.start)} (${h.session}): ${esc(perfTxt(e.sets))}`);
-  }
-  const sg=st.sugg[id];
-  bot(rows.length?`<b>Storico ${esc(EX[id].n)}</b><br>`+rows.join("<br>")+(suggTxt(id)?`<br>👉 Carico consigliato per la prossima volta: <b>${suggTxt(id)}</b>`:""):`Nessuno storico per ${esc(EX[id].n)}: non l'hai ancora registrato nell'app.`);
+  const id=forId||item()[0], e=EX[id], ses=[];
+  for(let i=st.history.length-1;i>=0 && ses.length<5;i--){ const h=st.history[i], x=h.ex.find(y=>y.ex===id&&y.sets.length); if(x) ses.push({h,sets:x.sets}); }
+  if(!ses.length) return bot(`Nessuno storico per <b>${esc(e.n)}</b>: non l'hai ancora registrato nell'app.`);
+  const hi=((st.cur&&item()[0]===id)?item():slotOf(id))[3];
+  let t=`<div class="ih">Storico — ${esc(e.n)}</div><div class="muted">Ultime ${ses.length} sedute, la più recente in alto · carico ${modeOf(id)}</div>`;
+  ses.forEach(({h,sets},k)=>{
+    const ms=[...new Set(sets.map(x=>x.m).filter(Boolean))];
+    t+=`<div class="is ${k===0?"warn":""}">${dateTxt(h.start)} · ${esc(h.session)}</div>`;
+    if(ms.length) t+=`<div class="muted">${esc(ms.join(" · "))}</div>`;
+    let n=0;
+    t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${sets.map(x=>{
+      const lab = x.extra ? (x.tipo?x.tipo.slice(0,5)+".":"extra") : String(++n);
+      const top = !x.extra && (x.reps??0)>=hi && (x.rir??-1)>=RIR_MIN;
+      return `<tr class="${x.extra?"xr":""}"><td>${lab}</td><td class="${x.extra?"":"wv"}">${esc(x.sec!=null?x.sec+" s":setWB(x))}</td><td>${x.rr?esc(x.rr):x.reps??"?"}${top?" ✓":""}</td><td>${x.rt?esc(x.rt):x.rir??"?"}</td></tr>`; }).join("")}</table>`;
+    const notes=sets.map(x=>x.note).filter(Boolean); if(notes.length) t+=`<div class="muted">${esc([...new Set(notes)].join(" · "))}</div>`;
+  });
+  const g=suggested(id);
+  if(g) t+=`<div class="is ok">Prossima volta</div><div><b class="okb">${suggTxt(id)}</b> <span class="muted">${modeOf(id)}</span></div>${g.rule?`<div class="muted">${md(g.rule.txt)}</div>`:st.sugg[id]&&st.sugg[id].txt?`<div class="muted">${md(st.sugg[id].txt)}</div>`:""}`;
+  t+=`<div class="muted" style="margin-top:6px">✓ = cima del range (${hi} rip) a RIR ≥ ${RIR_MIN}. Grafico completo in 📈.</div>`;
+  bot(t,"intro");
 }
 
 /* ---------------- AI (Gemini, opzionale) ---------------- */

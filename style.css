@@ -327,3 +327,5 @@ body.resizing iframe{pointer-events:none}
 
 .qw button{padding:8px 0;white-space:nowrap;font-size:13.5px;min-width:0;border-radius:9px}
 .qw .qu{font-size:12px;color:var(--mut);padding-right:2px}
+
+.msg .mt tr.xr td{color:var(--mut);font-size:12.5px}
