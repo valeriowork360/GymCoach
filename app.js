@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "30";
+const APP_VERSION = "31";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -421,6 +421,7 @@ function goEx(k,auto){
   if(k>=list.length) return bot("Era l'ultimo esercizio. Tocca <b>Fine sessione</b> per archiviare.");
   st.cur.exIdx=k; st.cur.vid=0; st.cur.pending=null; save();
   drawVideo(); drawExbar(); drawTop(); introExercise(); drawChips();
+  showVideosTop();
 }
 
 function findExInText(t){
@@ -1393,4 +1394,26 @@ window.addEventListener("online",()=>{ if(st.sync.pending) syncNow(true); });
 if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
 
 render();
+/* ---------------- pagina scorrevole: video in alto, chat che si allarga scorrendo ----------------
+   #workout scorre; la parte bassa (chat + barra) ha altezza = schermo − parte di video ancora visibile,
+   e uno spaziatore invisibile mantiene costante la lunghezza della pagina. */
+(function(){
+  const W=$("#workout"), top=$("#wtop"), dock=$("#dock"), sp=$("#wspacer"), chat=$("#chat");
+  let raf=0;
+  function fit(){
+    raf=0; if(W.hidden) return;
+    const H=top.offsetHeight, ch=W.clientHeight, vis=Math.max(0,Math.min(H,H-W.scrollTop));
+    const atBottom = chat.scrollHeight-chat.scrollTop-chat.clientHeight < 40;
+    dock.style.height=(ch-vis)+"px"; sp.style.height=vis+"px";
+    if(atBottom) chat.scrollTop=1e9;
+  }
+  const req=()=>{ if(!raf) raf=requestAnimationFrame(fit); };
+  W.addEventListener("scroll",req,{passive:true});
+  window.addEventListener("resize",req);
+  if(window.ResizeObserver){ const ro=new ResizeObserver(req); ro.observe(W); ro.observe(top); }
+  window.fitDock=fit;
+  window.showVideosTop=()=>{ W.scrollTo({top:0,behavior:"smooth"}); };
+  window.showChatFull=()=>{ W.scrollTo({top:top.offsetHeight,behavior:"smooth"}); };
+  $("#msg").addEventListener("focus",()=>setTimeout(()=>showChatFull(),60));
+})();
 window.__appOk=true;

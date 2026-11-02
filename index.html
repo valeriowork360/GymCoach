@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="30">
+<meta name="app-version" content="31">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 <div id="app">
@@ -30,6 +30,7 @@
   </header>
 
   <section id="workout" hidden>
+   <div class="wtop" id="wtop">
     <div class="player" id="player">
       <div class="stage">
         <div class="m-tile" id="mTile"><div class="m-screen"><div id="ytM"></div></div><span class="m-ph" id="mPh">🎵</span><button class="m-tap" id="mPlay" type="button" aria-label="Riproduci o metti in pausa la musica">▶</button></div>
@@ -50,6 +51,8 @@
         <label class="m-loop"><input type="checkbox" id="mLoop"> Ripeti brano / playlist</label>
       </div>
     </div>
+   </div>
+   <div class="dock" id="dock">
     <div class="timer" id="timer" hidden>
       <span class="t-lab">Recupero</span>
       <span class="t-val" id="tVal">0:00</span>
@@ -67,6 +70,8 @@
       <input id="msg" placeholder="Es. 24 kg 9 rip RIR 2 — o fai una domanda" enterkeyhint="send">
       <button class="send" id="btnSend" aria-label="Invia">➤</button>
     </form>
+   </div>
+   <div class="wspacer" id="wspacer"></div>
   </section>
 
   <section id="home" class="home" hidden></section>
@@ -100,7 +105,7 @@
   };
 })();
 </script>
-<script src="data.js?v=30"></script>
-<script src="app.js?v=30"></script>
+<script src="data.js?v=31"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>
