@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "26";
+const APP_VERSION = "27";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -274,8 +274,16 @@ async function onSend(text){
   }
 
   const p=parseSet(text);
+  // modalità "tutto a Gemini": l'AI interpreta anche le serie; senza rete si torna al riconoscimento locale
+  if(st.settings.allAI && aiReady() && navigator.onLine) return askAI(text,null,true);
   if(!isQuestion(t) && p.found){ st.cur.pending=null; return logSet(p); }
   return askAI(text);
+}
+/* ripiego locale quando l'AI non risponde in modalità "tutto a Gemini" */
+function localFallback(text){
+  const p=parseSet(text);
+  if(!isQuestion(text.toLowerCase()) && p.found){ sys("L'AI non risponde: registro la serie con il riconoscimento automatico."); st.cur.pending=null; logSet(p); return true; }
+  return false;
 }
 
 function logSet(p){
@@ -530,7 +538,7 @@ document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="hidden") wentHidden=true;
   else if(st.cur && st.cur.aiRetry){ const t=st.cur.aiRetry; st.cur.aiRetry=null; save(); sys("Riprovo la domanda rimasta in sospeso…"); askAI(t,retryImg); retryImg=null; }
 });
-async function askAI(text,img){
+async function askAI(text,img,viaAll){
   if(!aiReady()){
     bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
     return;
@@ -548,9 +556,10 @@ async function askAI(text,img){
     res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } },img); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
+  if((!res||!res.out) && viaAll && localFallback(text)) return;
   if((!res||!res.out) && wentHidden && !errs.every(e=>e==="nessuna connessione")){
     st.cur.aiRetry=text; retryImg=img||null; save();
-    if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text,img); }
+    if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text,img,viaAll); }
     sys("Richiesta interrotta perché sei uscito dall'app: la ripeto appena torni qui.");
     return;
   }
@@ -933,6 +942,9 @@ function openSettings(){
     <p class="muted">Se il primo non risponde, l'app prova da sola l'altro (se hai inserito anche quella chiave).</p>
     <label class="f" for="sThink">Risposte del coach Gemini</label>
     <select class="inp" id="sThink"><option value="minimal" ${s.think==="minimal"?"selected":""}>Lampo (ragionamento minimo, le più rapide)</option><option value="low" ${!["minimal","medium"].includes(s.think)?"selected":""}>Veloci (consigliato in palestra)</option><option value="medium" ${s.think==="medium"?"selected":""}>Più ragionate (più lente)</option></select>
+    <label class="f" for="sAll">Come leggo i tuoi messaggi</label>
+    <select class="inp" id="sAll"><option value="0" ${!s.allAI?"selected":""}>Riconoscimento automatico per le serie (istantaneo)</option><option value="1" ${s.allAI?"selected":""}>Tutto a Gemini, come una chat normale</option></select>
+    <p class="muted">Con «Tutto a Gemini» anche le serie passano dall'AI (1–3 s in più ciascuna). Senza rete, o se l'AI non risponde, uso il riconoscimento automatico. «Annulla», «salta», «chiudi» restano sempre immediati.</p>
     <label class="f" for="sKey">Chiave API Gemini (gratuita)</label>
     <input class="inp" id="sKey" type="password" value="${esc(s.apiKey)}" placeholder="Incolla qui la chiave" autocomplete="off">
     <p class="muted">Creala gratis su <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Resta salvata solo su questo telefono. Senza chiave l'app funziona lo stesso: registra le serie e dà i consigli sul carico.</p>
@@ -965,7 +977,7 @@ function openSettings(){
       <div class="card"><h3>Azzera l'app su questo telefono</h3><p class="muted" style="margin:0 0 10px">Cancella archivio, impostazioni, chiavi e token da questo telefono. Il backup su GitHub non viene toccato. Per confermare scrivi <b>CANCELLA</b>.</p>
       <div class="m-form"><input class="inp" id="sWipeTxt" placeholder="CANCELLA" autocomplete="off" autocapitalize="characters"><button class="btn danger" id="sWipe" disabled>Azzera</button></div></div>
     </details>`);
-  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.think=$("#sThink").value; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.think=$("#sThink").value; s.allAI=$("#sAll").value==="1"; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     document.querySelectorAll("[data-inclb]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.incLb[i.dataset.inclb]=v; });
     s.defUnit=$("#sUnit").value;
