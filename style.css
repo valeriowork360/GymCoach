@@ -144,3 +144,7 @@ a{color:var(--acc)}
 .sbtn.alt b{color:var(--ok)}
 .inc.inc3{grid-template-columns:1fr 72px 72px}
 .inc.inc3 b{font-size:12px;text-align:center;font-weight:600}
+details.adv{margin-top:18px}
+details.adv summary{color:var(--mut);font-size:13px;cursor:pointer;padding:6px 2px}
+details.adv .card{margin-top:8px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
