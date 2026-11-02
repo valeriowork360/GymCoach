@@ -1,5 +1,5 @@
 // Cache dell'app per l'uso offline in palestra. Rete prima, cache come riserva.
-const CACHE = "gymcoach-v5";
+const CACHE = "gymcoach-v6";
 const SHELL = ["./", "index.html", "style.css", "app.js", "data.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });

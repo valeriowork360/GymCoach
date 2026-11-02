@@ -12,7 +12,7 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
@@ -204,6 +204,7 @@ async function onSend(text){
   if(/^(indietro|precedente)( esercizio)?$/.test(t)) return goEx(st.cur.exIdx-1);
   if(/^(fine|termina|finito|chiudi)( la)?( sessione| allenamento)?$/.test(t)) return finishSession();
   if(/^(storico|progressi)$/.test(t)) return showHistoryEx();
+  if(isHistoryQ(t) && !/(perch|consigl|dovrei|devo|meglio)/.test(t)) return showHistoryEx(findExInText(t)||item()[0]);
   { const m=t.match(/^(?:cambia|sostituisci)(?: esercizio)?(?: con)?\s*(.*)$/); if(m) return openSwap(text.slice(text.length-m[1].length).trim()); }
   if(isTimeIt(item())){
     if(/^(avvia|via|start|inizia|parti|timer)\b/.test(t)) return startHold();
@@ -307,13 +308,23 @@ function goEx(k,auto){
   drawVideo(); drawExbar(); drawTop(); introExercise(); drawChips();
 }
 
-function showHistoryEx(){
-  const id=item()[0], rows=[];
+function findExInText(t){
+  const low=t.toLowerCase(); let best=null,score=0;
+  for(const [id,e] of Object.entries(EX)){
+    const words=e.n.toLowerCase().replace(/[^a-zàèéìòù0-9 ]/g," ").split(/\s+/).filter(w=>w.length>=4&&!["manubri","macchina","sopra","testa","piedi","con"].includes(w));
+    const sc=words.filter(w=>low.includes(w)).length; if(sc>score){ score=sc; best=id; }
+  }
+  return score?best:null;
+}
+const isHistoryQ = t => /(ultim[ao] (volta|carico|seduta|sessione|allenamento)|che (carico|peso) (avevo|ho usato|ho fatto)|quant[oie] (kg|chili|rip\w*|ripetizioni) (avevo|ho fatto)|quanto (avevo|ho) (fatto|sollevato|spinto|tirato)|storico (di|del|della|dello)|la volta scorsa|l'altra volta)/i.test(t);
+function showHistoryEx(forId){
+  const id=forId||item()[0], rows=[];
   for(let i=st.history.length-1;i>=0 && rows.length<6;i--){
     const h=st.history[i], e=h.ex.find(x=>x.ex===id&&x.sets.length);
     if(e) rows.push(`${dateTxt(h.start)} (${h.session}): ${esc(perfTxt(e.sets))}`);
   }
-  bot(rows.length?`<b>Storico ${esc(EX[id].n)}</b><br>`+rows.join("<br>"):`Nessuno storico per ${esc(EX[id].n)}: questa è la prima volta.`);
+  const sg=st.sugg[id];
+  bot(rows.length?`<b>Storico ${esc(EX[id].n)}</b><br>`+rows.join("<br>")+(sg&&sg.kg!=null?`<br>👉 Carico consigliato per la prossima volta: <b>${kgTxt(sg.kg)} kg</b>`:""):`Nessuno storico per ${esc(EX[id].n)}: non l'hai ancora registrato nell'app.`);
 }
 
 /* ---------------- AI (Gemini, opzionale) ---------------- */
@@ -338,6 +349,11 @@ function exHistoryTxt(id,max=6){
 function recentSessionsTxt(max=6){
   return st.history.slice(-max).map(h=>`${dateTxt(h.start)} ${h.session} (${Math.round((h.end-h.start)/60000)} min): `+h.ex.map(e=>`${EX[e.ex]?EX[e.ex].n:e.ex} ${perfTxt(e.sets)}`).join("; ")).join("\n")||"nessuna";
 }
+function allExLastTxt(){
+  const rows=[];
+  for(const id of Object.keys(EX)){ const p=lastPerf(id); if(p) rows.push(`- ${EX[id].n}: ${dateTxt(p.date)} (${p.session}) ${perfTxt(p.sets)}${st.sugg[id]&&st.sugg[id].kg!=null?` → prossimo carico consigliato ${kgTxt(st.sugg[id].kg)} kg`:""}`); }
+  return rows.join("\n")||"nessun dato registrato";
+}
 function aiContext(){
   const it=item(), [id,n,lo,hi,rest]=it, e=EX[id];
   const today=curList().map((x,k)=>{const s=workSets(k);return `- ${k===st.cur.exIdx?"▶ ":""}${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
@@ -357,45 +373,72 @@ Storico di questo esercizio (più recente prima): ${exHistoryTxt(id)}.
 Carico consigliato oggi dall'app: ${suggestedKg(id)??"non definito"}.
 Ultime sessioni:
 ${recentSessionsTxt()}
+Ultima prestazione registrata per ogni esercizio (usala per rispondere a domande su carichi e ripetizioni passate; se un dato non c'è, dillo chiaramente invece di inventarlo):
+${allExLastTxt()}
 
 FORMATO: rispondi SOLO con JSON valido, in uno di questi formati:
 {"azione":"serie","kg":numero o null,"rip":numero o null,"rir":numero o null} → se il messaggio comunica una serie appena fatta;
 {"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata);
 {"azione":"risposta","testo":"..."} → per tutto il resto. Nel testo puoi usare **grassetto** e a capo.`;
 }
+async function callGemini(sys,prompt){
+  const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
+  const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
+  let err="";
+  for(const model of models){
+    try{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+        method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},
+        body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json"}})});
+      if(r.status===404){ err="modello Gemini non trovato"; continue; }
+      if(r.status===429) return {err:"limite gratuito di Gemini raggiunto per ora"};
+      if(r.status===400||r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||""; return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
+      if(!r.ok){ err="Gemini: errore "+r.status; continue; }
+      const j=await r.json(); const out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+      if(out) return {out,by:model};
+    }catch(e){ return {err:"nessuna connessione",offline:true}; }
+  }
+  return {err};
+}
+async function callOpenRouter(sys,prompt){
+  const key=st.settings.orKey; if(!key) return {err:"manca la chiave OpenRouter"};
+  const models=[...new Set([st.settings.orModel||"moonshotai/kimi-k2.6:free","moonshotai/kimi-k2.6:free","moonshotai/kimi-k2:free","openrouter/free"])];
+  try{
+    const r=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key,"HTTP-Referer":location.origin,"X-Title":"Gym Coach"},
+      body:JSON.stringify({model:models[0],models,messages:[{role:"system",content:sys},{role:"user",content:prompt}]})});
+    if(r.status===401) return {err:"chiave OpenRouter non valida"};
+    if(r.status===402) return {err:"credito OpenRouter esaurito"};
+    if(r.status===429) return {err:"limite gratuito di OpenRouter raggiunto (50 domande al giorno senza credito)"};
+    if(!r.ok){ const j=await r.json().catch(()=>({})); return {err:"OpenRouter: "+((j.error&&j.error.message)||r.status)}; }
+    const j=await r.json(); const out=(j.choices||[])[0]?.message?.content||"";
+    return out?{out,by:j.model||models[0]}:{err:"OpenRouter: risposta vuota"};
+  }catch(e){ return {err:"nessuna connessione",offline:true}; }
+}
+function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey); }
 async function askAI(text){
-  const key=st.settings.apiKey;
-  if(!key){
-    bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi la chiave gratuita di Gemini in ⚙ Impostazioni.`);
+  if(!aiReady()){
+    bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
     return;
   }
   const recent=st.cur.chat.slice(-15,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
   const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}`;
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
-  const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
-  let out=null, err="";
-  for(const model of models){
-    try{
-      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
-        method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},
-        body:JSON.stringify({systemInstruction:{parts:[{text:aiContext()}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json"}})
-      });
-      if(r.status===404){ err="modello non trovato"; continue; }
-      if(r.status===429){ err="Limite gratuito di Gemini raggiunto per ora: riprova tra un minuto."; break; }
-      if(r.status===400||r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); err=(j.error&&j.error.message)||"chiave non valida"; if(/API key/i.test(err)) err="La chiave Gemini non è valida: controllala in ⚙ Impostazioni."; break; }
-      if(!r.ok){ err="errore "+r.status; continue; }
-      const j=await r.json();
-      out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
-      if(out) break;
-    }catch(e){ err="Nessuna connessione: per le domande serve internet. Le serie le registro anche offline."; break; }
+  const sysTxt=aiContext();
+  const order=st.settings.provider==="openrouter"?[callOpenRouter,callGemini]:[callGemini,callOpenRouter];
+  let res=null; const errs=[];
+  for(const f of order){
+    if(f===callGemini&&!st.settings.apiKey || f===callOpenRouter&&!st.settings.orKey) continue;
+    res=await f(sysTxt,prompt); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
-  if(!out){ bot(esc(err||"Non sono riuscito a rispondere.")); return; }
-  let j=null; try{ j=JSON.parse(out.replace(/^```(json)?|```$/g,"").trim()); }catch(e){}
+  if(!res||!res.out){ bot(esc(errs.some(e=>/connessione/.test(e))?"Nessuna connessione: per le domande serve internet. Le serie le registro anche offline.":"Non sono riuscito a rispondere: "+errs.join("; ")+".")); return; }
+  const out=res.out;
+  let j=null; try{ j=JSON.parse(out.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/,"$1")); }catch(e){}
   if(j && j.azione==="cambia" && j.esercizio){ bot(md(`Ok, apro il cambio esercizio con **${j.esercizio}**: conferma o scegline un altro.`)); return openSwap(j.esercizio); }
   if(j && j.azione==="serie" && isTimeIt(item())) return logTimed();
   if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,reps:j.rip??null,rir:j.rir??null}); }
-  bot(md(j&&j.testo ? j.testo : out));
+  bot(md(j&&j.testo ? j.testo : out.replace(/^```\w*|```$/g,"")));
 }
 
 /* ---------------- timer di recupero ---------------- */
@@ -690,12 +733,21 @@ $("#btnArchive").onclick=openArchive;
 function openSettings(){
   const s=st.settings;
   openSheet("Impostazioni",`
-    <label class="f" for="sKey">Chiave API Gemini (gratuita, per la chat con domande libere)</label>
+    <label class="f" for="sProv">Coach AI per le domande libere</label>
+    <select class="inp" id="sProv"><option value="gemini" ${s.provider!=="openrouter"?"selected":""}>Gemini (Google) — consigliato</option><option value="openrouter" ${s.provider==="openrouter"?"selected":""}>Kimi o altri modelli (OpenRouter)</option></select>
+    <p class="muted">Se il primo non risponde, l'app prova da sola l'altro (se hai inserito anche quella chiave).</p>
+    <label class="f" for="sKey">Chiave API Gemini (gratuita)</label>
     <input class="inp" id="sKey" type="password" value="${esc(s.apiKey)}" placeholder="Incolla qui la chiave" autocomplete="off">
     <p class="muted">Creala gratis su <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Resta salvata solo su questo telefono. Senza chiave l'app funziona lo stesso: registra le serie e dà i consigli sul carico.</p>
     <label class="f" for="sModel">Modello Gemini</label>
     <input class="inp" id="sModel" value="${esc(s.model)}">
     <div class="row" style="margin-top:8px"><button class="btn" id="sTest">Prova la chiave</button><span class="muted" id="sTestMsg"></span></div>
+    <label class="f" for="sOrKey">Chiave OpenRouter (facoltativa, per Kimi)</label>
+    <input class="inp" id="sOrKey" type="password" value="${esc(s.orKey)}" placeholder="sk-or-…" autocomplete="off">
+    <p class="muted">Creala su <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>. I modelli che finiscono con <b>:free</b> sono gratuiti: 50 domande al giorno, oppure 1.000 al giorno dopo una ricarica una tantum di 10 $.</p>
+    <label class="f" for="sOrModel">Modello OpenRouter</label>
+    <input class="inp" id="sOrModel" value="${esc(s.orModel)}">
+    <div class="row" style="margin-top:8px"><button class="btn" id="sOrTest">Prova OpenRouter</button><span class="muted" id="sOrMsg"></span></div>
     <label class="f">Incremento minimo di carico (kg)</label>
     <div class="inc">${Object.entries(EQ_LABEL).map(([k,l])=>`<span>${l[0].toUpperCase()+l.slice(1)}</span><input class="inp" inputmode="decimal" data-inc="${k}" value="${kgTxt(s.inc[k])}">`).join("")}</div>
     <button class="btn acc wide" id="sSave">Salva</button>
@@ -710,7 +762,7 @@ function openSettings(){
       <div class="row" style="margin-top:10px"><button class="btn" id="sGhNow">☁ Backup ora</button><button class="btn" id="sGhRestore">⬇ Ripristina da GitHub</button></div>
       <p class="muted" id="sGhMsg">${syncStatus()}</p></div>
     <div class="card"><h3>Zona pericolosa</h3><button class="btn danger" id="sWipe">Cancella tutti i dati</button></div>`);
-  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-3.8-flash";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.orKey=$("#sOrKey").value.trim(); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     st.cyclePos=+$("#sCycle").value; save(); };
   $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); if(st.settings.ghToken) syncNow(); };
@@ -720,6 +772,7 @@ function openSettings(){
     try{ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":s.apiKey},body:JSON.stringify({contents:[{role:"user",parts:[{text:"Rispondi solo: ok"}]}]})});
       $("#sTestMsg").textContent = r.ok ? "✓ Funziona" : r.status===404 ? "Modello non trovato: prova gemini-3.8-flash" : r.status===429 ? "Limite raggiunto, riprova tra poco" : "Chiave non valida ("+r.status+")";
     }catch(e){ $("#sTestMsg").textContent="Nessuna connessione"; } };
+  $("#sOrTest").onclick=async()=>{ collect(); $("#sOrMsg").textContent="Provo…"; const r=await callOpenRouter("Rispondi in JSON {\"ok\":true}","test"); $("#sOrMsg").textContent=r.out?`✓ Funziona (${r.by})`:r.err; };
   $("#sWipe").onclick=e=>{ const b=e.target; if(b.dataset.armed){ localStorage.removeItem(LS); st=defState(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo: cancella archivio e impostazioni"; } };
 }
 $("#btnSettings").onclick=openSettings;
