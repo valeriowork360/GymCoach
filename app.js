@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "15";
+const APP_VERSION = "16";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -13,7 +13,7 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},incLb:{db:5,bb:5,cable:5,machine:10},defUnit:"kg",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},incLb:{db:5,bb:5,cable:5,machine:10},defUnit:"kg",think:"low",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
@@ -431,33 +431,54 @@ ${recentSessionsTxt()}
 Ultima prestazione registrata per ogni esercizio (usala per rispondere a domande su carichi e ripetizioni passate; se un dato non c'è, dillo chiaramente invece di inventarlo):
 ${allExLastTxt()}
 
-FORMATO: rispondi SOLO con JSON valido, in uno di questi formati:
-{"azione":"serie","kg":numero o null (il carico nel numero detto dall'utente),"unita":"kg" o "lb" o null,"rip":numero o null,"rir":numero o null} → se il messaggio comunica una serie appena fatta;
-{"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata);
-{"azione":"risposta","testo":"..."} → per tutto il resto. Nel testo puoi usare **grassetto** e a capo.`;
+FORMATO DELLA RISPOSTA:
+- Se il messaggio comunica una serie appena fatta, rispondi SOLO con questa riga: #SERIE kg=<numero o ?> unita=<kg|lb|?> rip=<numero o ?> rir=<numero o ?>
+- Se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata), rispondi SOLO con: #CAMBIA <nome dell'esercizio>
+- In tutti gli altri casi rispondi direttamente in testo semplice (puoi usare **grassetto** e andare a capo), senza JSON e senza preamboli.`;
 }
-async function callGemini(sys,prompt){
+async function callGemini(sys,prompt,onDelta){
   const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
   const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
-  let err="", retried=false;
+  let err="", retried=false, noThink=false;
   for(const model of models){
+    const think = !noThink && /^gemini-(3|flash-latest)/.test(model);
+    let got="";
     try{
-      const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),45000);
-      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+      const ctl=new AbortController(); let to=setTimeout(()=>ctl.abort(),45000);
+      const gc = think ? {thinkingConfig:{thinkingLevel: st.settings.think==="medium"?"medium":"low"}} : {};
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,{
         method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
-        body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json"}})});
-      if(r.status===404){ err="modello Gemini non trovato"; continue; }
-      if(r.status===429) return {err:"limite gratuito di Gemini raggiunto per ora"};
-      if(r.status===400||r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||""; return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
-      if(r.status>=500){ err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
-      if(!r.ok){ err="Gemini: errore "+r.status; continue; }
+        body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:gc})});
+      if(r.status===404){ clearTimeout(to); err="modello Gemini non trovato"; continue; }
+      if(r.status===429){ clearTimeout(to); return {err:"limite gratuito di Gemini raggiunto per ora"}; }
+      if(r.status===400||r.status===401||r.status===403){ clearTimeout(to); const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||"";
+        if(think && r.status===400 && /think/i.test(m)){ noThink=true; models.splice(models.indexOf(model)+1,0,model); continue; }
+        return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
+      if(r.status>=500){ clearTimeout(to); err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
+      if(!r.ok){ clearTimeout(to); err="Gemini: errore "+r.status; continue; }
+      // lettura dello stream (Server-Sent Events): il testo compare man mano
+      const rd=r.body.getReader(), dec=new TextDecoder(); let buf="", block="";
+      for(;;){
+        const {done,value}=await rd.read(); if(done) break;
+        clearTimeout(to); to=setTimeout(()=>ctl.abort(),30000);
+        buf+=dec.decode(value,{stream:true});
+        let k; while((k=buf.indexOf("\n"))>=0){
+          const line=buf.slice(0,k).replace(/\r$/,""); buf=buf.slice(k+1);
+          if(line.startsWith("data:")) block+=line.slice(5).trim();
+          else if(line==="" && block){ try{ const j=JSON.parse(block); const parts=(j.candidates||[])[0]?.content?.parts||[];
+              for(const p of parts) if(p.text && !p.thought) got+=p.text;
+              if(j.promptFeedback&&j.promptFeedback.blockReason) err="Gemini: domanda bloccata ("+j.promptFeedback.blockReason+")";
+            }catch(e){} block=""; if(onDelta && got) onDelta(got); }
+        }
+      }
+      if(block){ try{ const j=JSON.parse(block); for(const p of ((j.candidates||[])[0]?.content?.parts||[])) if(p.text&&!p.thought) got+=p.text; }catch(e){} }
       clearTimeout(to);
-      const j=await r.json().catch(()=>({})); const out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
-      if(out) return {out,by:model};
-      err="Gemini: risposta vuota"+((j.promptFeedback&&j.promptFeedback.blockReason)?` (${j.promptFeedback.blockReason})`:"");
+      if(got) return {out:got,by:model};
+      err=err||"Gemini: risposta vuota";
     }catch(e){
+      if(got) return {out:got,by:model,partial:true};
       if(navigator.onLine===false) return {err:"nessuna connessione",offline:true};
-      err = e.name==="AbortError" ? "Gemini non ha risposto entro 45 secondi" : `errore di rete con Gemini (${e.message||e.name})`;
+      err = e.name==="AbortError" ? "Gemini non ha risposto in tempo" : `errore di rete con Gemini (${e.message||e.name})`;
       if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1200)); models.splice(models.indexOf(model)+1,0,model); }
     }
   }
@@ -498,7 +519,7 @@ async function askAI(text){
   let res=null; const errs=[];
   for(const f of order){
     if(f===callGemini&&!st.settings.apiKey || f===callOpenRouter&&!st.settings.orKey) continue;
-    res=await f(sysTxt,prompt); if(res.out) break; errs.push(res.err); if(res.offline) break;
+    res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } }); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
   if((!res||!res.out) && wentHidden && !errs.every(e=>e==="nessuna connessione")){
@@ -508,8 +529,15 @@ async function askAI(text){
     return;
   }
   if(!res||!res.out){ bot(esc(errs.length && errs.every(e=>e==="nessuna connessione") ? "Il telefono risulta offline: per le domande serve internet. Le serie le registro anche offline." : "Non sono riuscito a rispondere ("+errs.join("; ")+"). Riprova tra poco; se succede spesso tieni l'app aperta in primo piano mentre aspetti la risposta.")); return; }
-  const out=res.out;
-  let j=null; try{ j=JSON.parse(out.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/,"$1")); }catch(e){}
+  const out=res.out.trim();
+  const ms=out.match(/^#SERIE\b(.*)$/m);
+  if(ms){ const g=k=>{ const m=ms[1].match(new RegExp(k+"\\s*=\\s*([\\w.,]+)")); return m&&m[1]!=="?"?m[1]:null; };
+    if(isTimeIt(item())) return logTimed();
+    const num=v=>v==null?null:+String(v).replace(",",".");
+    st.cur.pending=null; return logSet({kg:num(g("kg")),unit:g("unita")==="lb"?"lb":g("unita")==="kg"?"kg":null,reps:num(g("rip")),rir:num(g("rir"))}); }
+  const mc=out.match(/^#CAMBIA\s+(.+)$/m);
+  if(mc){ bot(md(`Ok, apro il cambio esercizio con **${mc[1].trim()}**: conferma o scegline un altro.`)); return openSwap(mc[1].trim()); }
+  let j=null; if(/^\s*\{/.test(out)){ try{ j=JSON.parse(out); }catch(e){} }
   if(j && j.azione==="cambia" && j.esercizio){ bot(md(`Ok, apro il cambio esercizio con **${j.esercizio}**: conferma o scegline un altro.`)); return openSwap(j.esercizio); }
   if(j && j.azione==="serie" && isTimeIt(item())) return logTimed();
   if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,unit:j.unita==="lb"?"lb":j.unita==="kg"?"kg":null,reps:j.rip??null,rir:j.rir??null}); }
@@ -815,6 +843,8 @@ function openSettings(){
     <label class="f" for="sProv">Coach AI per le domande libere</label>
     <select class="inp" id="sProv"><option value="gemini" ${s.provider!=="openrouter"?"selected":""}>Gemini (Google) — consigliato</option><option value="openrouter" ${s.provider==="openrouter"?"selected":""}>Kimi o altri modelli (OpenRouter)</option></select>
     <p class="muted">Se il primo non risponde, l'app prova da sola l'altro (se hai inserito anche quella chiave).</p>
+    <label class="f" for="sThink">Risposte del coach Gemini</label>
+    <select class="inp" id="sThink"><option value="low" ${s.think!=="medium"?"selected":""}>Veloci (consigliato in palestra)</option><option value="medium" ${s.think==="medium"?"selected":""}>Più ragionate (più lente)</option></select>
     <label class="f" for="sKey">Chiave API Gemini (gratuita)</label>
     <input class="inp" id="sKey" type="password" value="${esc(s.apiKey)}" placeholder="Incolla qui la chiave" autocomplete="off">
     <p class="muted">Creala gratis su <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Resta salvata solo su questo telefono. Senza chiave l'app funziona lo stesso: registra le serie e dà i consigli sul carico.</p>
@@ -847,7 +877,7 @@ function openSettings(){
       <div class="card"><h3>Azzera l'app su questo telefono</h3><p class="muted" style="margin:0 0 10px">Cancella archivio, impostazioni, chiavi e token da questo telefono. Il backup su GitHub non viene toccato. Per confermare scrivi <b>CANCELLA</b>.</p>
       <div class="m-form"><input class="inp" id="sWipeTxt" placeholder="CANCELLA" autocomplete="off" autocapitalize="characters"><button class="btn danger" id="sWipe" disabled>Azzera</button></div></div>
     </details>`);
-  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.think=$("#sThink").value; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     document.querySelectorAll("[data-inclb]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.incLb[i.dataset.inclb]=v; });
     s.defUnit=$("#sUnit").value;
