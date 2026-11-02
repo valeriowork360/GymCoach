@@ -19,7 +19,7 @@ button{font:inherit;color:inherit}
 /* workout */
 #workout{flex:1;display:flex;flex-direction:column;min-height:0}
 .wscroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y proximity}
-#workout>.chips,#workout>.composer{flex:none}
+#workout>.cbar,#workout>.composer,#workout>.qpanel{flex:none}
 .player{flex:none;background:#000}
 .frame{height:28dvh;min-height:160px;position:relative;background:#000}
 .frame>div{position:absolute;inset:0;width:100%;height:100%}
@@ -292,3 +292,24 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .msg .sp{height:6px}
 .msg .note{margin-top:8px;font-size:13.5px}
 .msg.intro{max-width:96%}
+
+/* v35: comandi + tasto tastiera */
+.cbar{display:flex;align-items:center;gap:6px;padding:0 8px 0 0;border-top:1px solid var(--line)}
+#workout:has(#composer[hidden]) .cbar{padding-bottom:env(safe-area-inset-bottom)}
+.cbar .chips{flex:1;min-width:0;padding:6px 6px 6px 10px}
+.kbtn{flex:none;appearance:none;width:44px;height:38px;border-radius:12px;border:1px solid var(--acc);background:var(--panel);color:var(--acc);font-size:18px;cursor:pointer}
+.kbtn.on{background:var(--acc);color:var(--acc-ink)}
+
+/* v35: inserimento rapido */
+.cbar .kbtn+.kbtn{margin-left:-2px}
+.qpanel{border-top:1px solid var(--line);background:var(--panel);padding:4px 0 6px}
+.qlab{font:700 12px Inter,sans-serif;color:var(--mut);padding:4px 12px 2px;text-transform:uppercase;letter-spacing:.03em}
+.qrow{display:flex;gap:6px;overflow-x:auto;padding:2px 12px 4px;scrollbar-width:none}
+.qrow::-webkit-scrollbar{display:none}
+.qb{flex:none;appearance:none;min-width:46px;height:38px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:600 15px Inter,sans-serif;cursor:pointer}
+.qb.hint{border-color:var(--acc);color:var(--acc)}
+.qb.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.qfoot{display:flex;align-items:center;gap:10px;padding:4px 12px 0}
+.qfoot span{flex:1;font-size:13px}
+.qfoot .btn{padding:8px 14px}
+.qfoot .btn:disabled{opacity:.45}

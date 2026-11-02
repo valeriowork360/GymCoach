@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="34">
+<meta name="app-version" content="35">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=34">
+<link rel="stylesheet" href="style.css?v=35">
 </head>
 <body>
 <div id="app">
@@ -66,8 +66,9 @@
    </div>
    <div class="wspacer" id="wspacer"></div>
   </div>
-    <div class="chips" id="chips"></div>
-    <form class="composer" id="composer" autocomplete="off">
+    <div class="cbar"><div class="chips" id="chips"></div><button type="button" class="kbtn" id="btnQuick" aria-label="Inserimento rapido: carico, ripetizioni, RIR">🎚</button><button type="button" class="kbtn" id="btnKbd" aria-label="Mostra o nascondi la barra per scrivere">⌨</button></div>
+    <div class="qpanel" id="qpanel" hidden></div>
+    <form class="composer" id="composer" autocomplete="off" hidden>
       <button type="button" class="icon-btn mic" id="btnMic" aria-label="Detta" hidden>🎤</button>
       <button type="button" class="icon-btn" id="btnPhoto" aria-label="Foto di un macchinario">📷</button>
       <input type="file" id="photoIn" accept="image/*" hidden>
@@ -107,7 +108,7 @@
   };
 })();
 </script>
-<script src="data.js?v=34"></script>
-<script src="app.js?v=34"></script>
+<script src="data.js?v=35"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>

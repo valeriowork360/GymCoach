@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "34";
+const APP_VERSION = "35";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -148,13 +148,40 @@ function coachSet(it,set){
   return {v,w,u,why};
 }
 /* consiglio per la prossima seduta (double progression), nell'unità dell'ultima serie */
-function nextTime(it,sets){
+/* sedute passate di un esercizio (più recente prima), solo serie allenanti con carico */
+function perfsOf(id){
+  const out=[]; for(let i=st.history.length-1;i>=0;i--){ const h=st.history[i], e=h.ex.find(x=>x.ex===id);
+    const ws=e?e.sets.filter(x=>!x.extra&&x.kg!=null&&x.sec==null):[]; if(ws.length) out.push({date:h.start,sets:ws}); }
+  return out;
+}
+/* seduta "al top": il carico massimo è arrivato in cima al range con RIR ≥ 2 */
+function topOf(ws){ const mx=Math.max(...ws.map(x=>x.kg)); const at=ws.filter(x=>Math.abs(x.kg-mx)<0.01); return {kg:mx,set:at[at.length-1],at}; }
+function atTop(ws,hi){ const t=topOf(ws); return t.at.some(x=>(x.reps??0)>=hi && (x.rir??-1)>=RIR_MIN); }
+/* consiglio di carico dallo storico: si sale solo se le ultime 2 sedute sono al top con lo stesso carico, altrimenti si mantiene */
+function ruleSugg(id,curSets){
+  const it=(st.cur&&item()[0]===id)?item():slotOf(id), hi=it[3];
+  const ps=perfsOf(id).map(p=>p.sets);
+  const seq = curSets&&curSets.filter(x=>!x.extra&&x.kg!=null).length ? [curSets.filter(x=>!x.extra&&x.kg!=null),...ps] : ps;
+  if(!seq.length) return null;
+  const t1=topOf(seq[0]), u=unitOf(t1.set), w1=valOf(t1.set), inc=incFor(id,u);
+  const same = seq[1] && Math.abs(topOf(seq[1]).kg-t1.kg)/t1.kg < 0.03;
+  if(atTop(seq[0],hi) && same && atTop(seq[1],hi))
+    return {v:Math.round((w1+inc)*100)/100,u,up:true,txt:`Due sedute di fila con ${wTxt(w1,u)} a ${hi} rip e RIR ≥ ${RIR_MIN}: **sali a ${wTxt(Math.round((w1+inc)*100)/100,u)}**.`};
+  const why = atTop(seq[0],hi) ? `ultima volta al top (${hi} rip a RIR ≥ ${RIR_MIN}); se ci riesci di nuovo, la prossima volta si sale`
+            : `per salire servono 2 sedute di fila a ${hi} rip con RIR 2–3`;
+  return {v:w1,u,up:false,txt:`**Mantieni ${wTxt(w1,u)}**: ${why}.`};
+}
+function nextTime(it,sets,prevSets){
   const [id,,lo,hi]=it;
   const ws=sets.filter(s=>!s.extra); if(!ws.length) return null;
   const last=ws[ws.length-1], u=unitOf(last), inc=incFor(id,u), w0=valOf(last);
   const mk=(v,txt)=>({v,u,kg:v==null?null:toKg(v,u),txt});
   if(!w0) return mk(null,"Prossima volta punta ad aggiungere ripetizioni mantenendo RIR 2–3.");
-  if(ws.every(s=>s.reps>=hi && s.rir>=RIR_MIN)) return mk(w0+inc,`Tutte le serie al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta sali a ${wTxt(w0+inc,u)}**.`);
+  if(ws.every(s=>s.reps>=hi && s.rir>=RIR_MIN)){
+    const prevOk = prevSets && prevSets.length && Math.abs(topOf(prevSets).kg-topOf(ws).kg)/topOf(ws).kg<0.03 && atTop(prevSets,hi);
+    if(prevOk) return mk(w0+inc,`Seconda seduta di fila al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta sali a ${wTxt(w0+inc,u)}**.`);
+    return mk(w0,`Al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta resta a ${wTxt(w0,u)}** e conferma; se lo rifai, poi si sale a ${wTxt(w0+inc,u)}.`);
+  }
   const v=judge(it,last);
   if(v==="heavy"){ const w=Math.max(inc,Math.min(targetLoad(it,last)??w0, w0-inc)); return mk(w,`La prossima volta parti da **${wTxt(w,u)}** per restare nel range a RIR 2–3.`); }
   if(v==="light"){ const w=Math.max(targetLoad(it,last)??w0, w0+inc); return mk(w,`La prossima volta prova **${wTxt(w,u)}**.`); }
@@ -163,9 +190,9 @@ function nextTime(it,sets){
 /* carico consigliato per oggi: {v,u} nell'unità usata l'ultima volta */
 function suggested(exId){
   const s=st.sugg[exId]; if(s && s.kg!=null) return s.u==="lb"?{v:s.v,u:"lb"}:{v:s.kg,u:"kg"};
-  if(s && s.kg==null && s.txt) return null;   // c'è solo una nota, senza un numero
-  const p=lastPerf(exId); if(p){ const ws=p.sets.filter(x=>!x.extra&&x.kg!=null); if(ws.length){ const l=ws[ws.length-1]; return {v:valOf(l),u:unitOf(l)}; } }
-  return null;
+  // nessun numero (o solo una nota): consiglio calcolato dalle ultime sedute
+  if(!EX[exId] || EX[exId].kind==="time") return null;
+  const r=ruleSugg(exId); return r?{v:r.v,u:r.u,rule:r}:null;
 }
 function suggestedKg(exId){ const g=suggested(exId); return g?toKg(g.v,g.u):null; }
 function suggTxt(exId){ const g=suggested(exId); if(!g) return null; return g.u==="lb"?`${wTxt(g.v,"lb")} (≈${r1(toKg(g.v,"lb"))} kg)`:`${wTxt(g.v,"kg")} (≈${r1(g.v/LB)} lb)`; }
@@ -272,7 +299,7 @@ function introExercise(){
   if(e.note) t+=`<div class="down" style="margin-top:4px">⚠ ${esc(e.note)}</div>`;
   // oggi
   t+=`<div class="is ok">Oggi — proposta</div>`;
-  t+= g ? `<div class="ok"><b class="okb">Carico consigliato: ${conv(g.v,g.u)} ${mode}.</b></div>`
+  t+= g ? `<div class="ok"><b class="okb">Carico consigliato: ${conv(g.v,g.u)} ${mode}.</b></div>${g.rule?`<div class="muted">${md(g.rule.txt)}</div>`:""}`
         : `<div>${p||xn?"Scegli il carico in base all'ultima volta"+(xn&&xn.ref?" e alla nota qui sotto":"")+".":`Prima volta: un carico con cui arrivi a ~${Math.round((lo+hi)/2)} rip lasciandone 2–3 in canna.`} <span class="muted">Carico ${mode}.</span></div>`;
   const done=workSets(st.cur.exIdx);
   t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th><th>Rec.</th></tr>${Array.from({length:n},(_,k)=>{ const d=done[k];
@@ -401,7 +428,7 @@ function logSet(p){
   }
   bot(txt);
   if(lastOfEx){
-    const nt=nextTime(it,setsOf(i));
+    const nt=nextTime(it,setsOf(i),(perfsOf(id)[0]||{}).sets);
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
     afterExercise(i,rest);
   } else if(!extra) startTimer(rest);
@@ -876,7 +903,8 @@ function drawExbar(){
   $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}${big}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
-function drawChips(){
+function drawChips(){ drawChips0(); try{ drawQuick(); }catch(e){} }
+function drawChips0(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
   if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
@@ -1127,6 +1155,44 @@ $("#photoIn").onchange=async e=>{
 /* ---------------- composer e dettatura ---------------- */
 $("#msg").addEventListener("focus",()=>document.body.classList.add("kbd"));
 $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.remove("kbd"),150));
+/* barra di scrittura a scomparsa: si apre col tasto ⌨ accanto ai comandi */
+function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden=!open; $("#btnKbd").classList.toggle("on",!!open); $("#btnKbd").textContent=open?"✕":"⌨"; }
+$("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
+setComposer(!!st.ui.composer);
+/* inserimento rapido: tre righe di tasti (carico, ripetizioni, RIR); al terzo tocco la serie è registrata */
+let qsel={w:null,r:null,q:null};
+function quickRange(id){
+  const e=EX[id], g=suggested(id), cur=setsOf(st.cur.exIdx).filter(x=>x.kg!=null&&!x.extra);
+  const u=prefUnit(), last=cur.length?cur[cur.length-1]:null;
+  let c = last&&unitOf(last)===u ? valOf(last) : g ? (g.u===u?g.v:fromKg(toKg(g.v,g.u),u)) : (u==="lb"?45:20);
+  const inc=incFor(id,u), step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;
+  c=Math.round(c*100)/100;
+  const arr=[]; for(let k=-6;k<=6;k++){ const v=Math.round((c+k*step)*100)/100; if(v>0) arr.push(v); }
+  return {u,c,arr};
+}
+function drawQuick(){
+  const P=$("#qpanel"); if(!st.cur||P.hidden) return;
+  const it=item();
+  if(isTimeIt(it)){ P.innerHTML=`<div class="qrow"><button class="qb on" data-qdone>✓ Giro fatto</button></div>`; P.querySelector("[data-qdone]").onclick=logTimed; return; }
+  const [id,,lo,hi]=it, {u,c,arr}=quickRange(id);
+  const reps=[]; for(let v=Math.max(1,lo-4);v<=hi+5;v++) reps.push(v);
+  const row=(lab,key,vals,fmt,hint)=>`<div class="qlab">${lab}</div><div class="qrow" data-row="${key}">${vals.map(v=>`<button type="button" class="qb ${qsel[key]===v?"on":""} ${hint!=null&&v===hint&&qsel[key]==null?"hint":""}" data-k="${key}" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
+  P.innerHTML = row(`Carico (${u}) <span class="muted">${modeOf(id)}</span>`,"w",arr,v=>kgTxt(v),c)
+    + row("Ripetizioni","r",reps,v=>v,null) + row("RIR","q",[0,1,2,3,4,5],v=>v,null)
+    + `<div class="qfoot"><span class="muted" id="qsum"></span><button type="button" class="btn acc" id="qgo">✓ Registra</button></div>`;
+  const sum=()=>{ const w=qsel.w??c; $("#qsum").textContent=`${kgTxt(w)} ${u} × ${qsel.r??"?"} · RIR ${qsel.q??"?"}`; $("#qgo").disabled=qsel.r==null||qsel.q==null; };
+  const go=()=>{ const w=qsel.w??c, r=qsel.r, q=qsel.q; qsel={w:null,r:null,q:null};
+    unlockAudio(); user(`${kgTxt(w)} ${u} ${r} rip RIR ${q}`); st.cur.pending=null; logSet({kg:w,unit:u,unitOk:true,reps:r,rir:q}); drawQuick(); };
+  P.querySelectorAll(".qb[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, v=+b.dataset.v; qsel[k]= qsel[k]===v?null:v;
+    if(qsel.w!=null&&qsel.r!=null&&qsel.q!=null) return go();
+    P.querySelectorAll(`.qb[data-k="${k}"]`).forEach(x=>x.classList.toggle("on",+x.dataset.v===qsel[k])); if(k==="w") P.querySelectorAll('.qb[data-k="w"]').forEach(x=>x.classList.remove("hint")); sum(); });
+  $("#qgo").onclick=go; sum();
+  const h=P.querySelector('.qrow[data-row="w"] .on, .qrow[data-row="w"] .hint'); if(h) h.parentNode.scrollLeft=h.offsetLeft-h.parentNode.clientWidth/2+h.offsetWidth/2;
+  const rr=P.querySelector('.qrow[data-row="r"]'), rb=rr&&[...rr.children].find(x=>+x.dataset.v===lo); if(rb) rr.scrollLeft=rb.offsetLeft-8;
+}
+function setQuick(open){ st.ui.quick=!!open; save(); $("#qpanel").hidden=!open; $("#btnQuick").classList.toggle("on",!!open); if(open){ qsel={w:null,r:null,q:null}; drawQuick(); } }
+$("#btnQuick").onclick=()=>setQuick(!st.ui.quick);
+setQuick(!!st.ui.quick);
 let micStop=null;   // ferma la dettatura in corso (senza inviare) se si preme Invia a mano
 $("#composer").onsubmit=e=>{ e.preventDefault(); if(micStop) micStop(); const v=$("#msg").value; $("#msg").value=""; onSend(v); };
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -1240,7 +1306,7 @@ function swapTo(id){
 function slotOf(id){ for(const k of Object.keys(SESSIONS)){ const x=SESSIONS[k].find(y=>y[0]===id); if(x) return x; } return [id,2,8,12,120]; }
 function recomputeSugg(id){
   const p=lastPerf(id); if(!p){ delete st.sugg[id]; return; }
-  const nt=EX[id] && EX[id].kind!=="time" ? nextTime(slotOf(id),p.sets) : null;
+  const nt=EX[id] && EX[id].kind!=="time" ? nextTime(slotOf(id),p.sets,(perfsOf(id)[1]||{}).sets) : null;
   if(nt && nt.kg!=null) st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:p.date}; else delete st.sugg[id];
 }
 function recomputeCycle(){
