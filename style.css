@@ -19,7 +19,8 @@ button{font:inherit;color:inherit}
 /* workout */
 #workout{flex:1;display:flex;flex-direction:column;min-height:0}
 .player{flex:none;background:#000}
-.frame{height:34dvh;min-height:180px;position:relative;background:#000}
+.frame{height:28dvh;min-height:160px;position:relative;background:#000}
+.frame>div{position:absolute;inset:0;width:100%;height:100%}
 .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .player.collapsed .frame{display:none}
 body.kbd .frame{height:20dvh;min-height:120px}
@@ -113,3 +114,31 @@ label.f{display:block;margin:12px 0 4px;font-size:13px;color:var(--mut)}
 .inp{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:11px;font:500 15px Inter,sans-serif}
 .inc{display:grid;grid-template-columns:1fr 90px;gap:6px 10px;align-items:center;font-size:14px}
 a{color:var(--acc)}
+
+/* musica (funzione Duetto: due lettori, ognuno col suo volume) */
+.music{flex:none;background:var(--panel);border-bottom:1px solid var(--line);padding:5px 10px 6px}
+.m-row{display:flex;align-items:center;gap:10px}
+.m-screen{width:64px;height:36px;border-radius:8px;overflow:hidden;background:#000;flex:none;position:relative}
+.m-screen iframe,.m-screen>div{position:absolute;inset:0;width:100%;height:100%;border:0}
+.m-ph{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;pointer-events:none}
+.m-info{flex:1;min-width:0;appearance:none;background:none;border:0;text-align:left;padding:0;cursor:pointer}
+.m-info b,.m-info span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-info b{font-size:13.5px}
+.m-info span{font-size:12px;color:var(--mut)}
+.m-play{width:40px;height:34px;font-size:15px}
+.m-play.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.m-vols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:4px}
+.m-vols label{display:flex;align-items:center;gap:6px;font-size:14px}
+.m-vols input{flex:1;min-width:0;accent-color:var(--acc)}
+.m-vols output{width:28px;flex:none;text-align:right;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+.m-more{margin-top:8px}
+.m-form{display:flex;gap:6px}
+.m-form .inp{padding:9px 10px;font-size:15px}
+.m-recent{display:flex;gap:6px;overflow-x:auto;margin-top:8px;scrollbar-width:none}
+.m-recent::-webkit-scrollbar{display:none}
+.m-loop{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);margin-top:8px}
+.timer.hold{background:#0f1a18;border-bottom-color:#1d4a3e}
+.timer.hold .t-val{color:var(--ok)}
+.timer.hold .t-bar i{background:var(--ok)}
+.home h3.sec{font:700 16px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:20px 2px 0}
+.sbtn.alt b{color:var(--ok)}

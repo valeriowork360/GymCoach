@@ -49,7 +49,12 @@ function lastPerf(exId){
   }
   return null;
 }
-function perfTxt(sets){ return sets.filter(s=>!s.extra).map(s=>`${kgTxt(s.kg)} kg × ${s.reps} (RIR ${s.rir})`).join(" · "); }
+function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${kgTxt(s.kg)} kg × ${s.reps} (RIR ${s.rir})`; }
+function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
+function cleanSet({kg,reps,rir,extra,sec}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(extra?{extra:true}:{})}; }
+const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
+const isExtraSess = s => typeof EXTRA_SESSIONS!=="undefined" && EXTRA_SESSIONS.includes(s);
+const holdTxt = it => `${it[2]} s${EX[it[0]].sides?" per lato":""}`;
 
 /* ---------------- logica del coach ---------------- */
 const e1rm = (w,r,q) => w*(1+(r+q)/30);                // stima con formula di Epley
@@ -154,6 +159,7 @@ function drawMsg(m){
 }
 
 function introExercise(){
+  if(isTimeIt(item())) return introTimed();
   const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=SESSIONS[st.cur.session];
   const p=lastPerf(id), sk=suggestedKg(id), sg=st.sugg[id];
   let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} serie × ${lo}–${hi} rip · RIR ${RIR_MIN}–${RIR_MAX} · recupero ${restTxt(rest)}`;
@@ -165,6 +171,13 @@ function introExercise(){
   const done=workSets(st.cur.exIdx).length;
   if(done) t+=`<br><span class="muted">Già fatte ${done}/${n} serie.</span>`;
   else t+=`<br><span class="muted">A fine serie scrivimi, per esempio: <i>${kgTxt(sk??20)} kg ${hi-1} rip RIR 2</i></span>`;
+  bot(t,"intro");
+}
+
+function introTimed(){
+  const it=item(), e=exOf(it), [id,n,sec,,rest]=it, list=SESSIONS[st.cur.session], done=workSets(st.cur.exIdx).length;
+  let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} giri × ${holdTxt(it)} · pausa ${rest} s<br><span class="muted">${esc(e.cue)}</span>`;
+  t+= done ? `<br><span class="muted">Già fatti ${done}/${n} giri.</span>` : `<br><span class="muted">Tocca <b>▶ Avvia</b>: il timer conta ${e.sides?"un lato, suona per cambiare lato, poi l'altro":"la durata"} e registra il giro da solo. Oppure scrivi <i>fatto</i>.</span>`;
   bot(t,"intro");
 }
 
@@ -180,6 +193,11 @@ async function onSend(text){
   if(/^(indietro|precedente)( esercizio)?$/.test(t)) return goEx(st.cur.exIdx-1);
   if(/^(fine|termina|finito|chiudi)( la)?( sessione| allenamento)?$/.test(t)) return finishSession();
   if(/^(storico|progressi)$/.test(t)) return showHistoryEx();
+  if(isTimeIt(item())){
+    if(/^(avvia|via|start|inizia|parti|timer)\b/.test(t)) return startHold();
+    if(/^(fatto|fatta|ok|finito|completato|done|giro fatto)\b/.test(t)) return logTimed();
+    return askAI(text);
+  }
 
   // risposta a una domanda in sospeso (RIR, ripetizioni, carico)
   const pend=st.cur.pending;
@@ -219,15 +237,35 @@ function logSet(p){
   if(lastOfEx){
     const nt=nextTime(it,setsOf(i));
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
-    save(); syncNow(true);
-    const list=SESSIONS[st.cur.session];
-    const nextIdx=list.findIndex((x,k)=>k>i && workSets(k).length<x[1]);
-    if(nextIdx>=0){ startTimer(rest); goEx(nextIdx,true); }
-    else { const pending=list.findIndex((x,k)=>workSets(k).length<x[1]);
-      if(pending>=0){ bot(`Manca ancora <b>${esc(EX[list[pending][0]].n)}</b>.`); startTimer(rest); goEx(pending,true); }
-      else { stopTimer(); bot(`🏁 <b>Hai completato tutta la sessione ${st.cur.session}!</b> Tocca <b>Fine sessione</b> per archiviarla.`); }
-    }
+    afterExercise(i,rest);
   } else if(!extra) startTimer(rest);
+  drawExbar(); drawChips();
+}
+function afterExercise(i,rest){
+  save(); syncNow(true);
+  const list=SESSIONS[st.cur.session];
+  const nextIdx=list.findIndex((x,k)=>k>i && workSets(k).length<x[1]);
+  if(nextIdx>=0){ startTimer(rest); goEx(nextIdx,true); }
+  else { const pending=list.findIndex((x,k)=>workSets(k).length<x[1]);
+    if(pending>=0){ bot(`Manca ancora <b>${esc(EX[list[pending][0]].n)}</b>.`); startTimer(rest); goEx(pending,true); }
+    else { stopTimer(); bot(`🏁 <b>Hai completato tutta la sessione ${st.cur.session}!</b> Tocca <b>Fine sessione</b> per archiviarla.`); }
+  }
+}
+/* esercizi a tempo (mobilità, stretching) */
+function startHold(){
+  const it=item(), e=exOf(it), sec=it[2];
+  unlockAudio();
+  startTimer(sec*(e.sides?2:1),{label:e.sides?"Lato 1":"Tenuta",sideAt:e.sides?sec:null,hold:true});
+  drawChips();
+}
+function logTimed(){
+  const it=item(), e=exOf(it), [id,n,sec,,rest]=it, i=st.cur.exIdx, ws=workSets(i);
+  stopTimer();
+  const extra=ws.length>=n, num=ws.length+1;
+  setsOf(i).push({sec,t:Date.now(),...(extra?{extra:true}:{})}); save();
+  if(extra) bot("Giro extra registrato ✓");
+  else if(num<n){ bot(`Giro ${num}/${n} fatto ✓ Pausa ${rest} s, poi giro ${num+1}.`); startTimer(rest,{label:"Pausa"}); }
+  else { bot(`<b>${esc(e.n)}</b> completato ✓`); afterExercise(i,rest); }
   drawExbar(); drawChips();
 }
 
@@ -237,11 +275,11 @@ function undoSet(){
     // se l'esercizio corrente è vuoto, annulla l'ultima serie dell'esercizio precedente
     const prev=Object.keys(st.cur.log).map(Number).filter(k=>st.cur.log[k].length).sort((a,b)=>b-a)[0];
     if(prev==null) return bot("Non c'è nessuna serie da annullare.");
-    const s=st.cur.log[prev].pop(); restoreSugg(SESSIONS[st.cur.session][prev][0]); save(); bot(`Annullata: ${esc(EX[SESSIONS[st.cur.session][prev][0]].n)} — ${kgTxt(s.kg)} kg × ${s.reps}, RIR ${s.rir}.`);
+    const s=st.cur.log[prev].pop(); restoreSugg(SESSIONS[st.cur.session][prev][0]); save(); bot(`Annullata: ${esc(EX[SESSIONS[st.cur.session][prev][0]].n)} — ${esc(setTxt(s))}.`);
     return goEx(prev);
   }
   const s=sets.pop(); restoreSugg(item()[0]); st.cur.pending=null; save(); stopTimer();
-  bot(`Annullata l'ultima serie (${kgTxt(s.kg)} kg × ${s.reps}, RIR ${s.rir}).`);
+  bot(`Annullata l'ultima ${s.sec!=null?"registrazione":"serie"} (${esc(setTxt(s))}).`);
   drawExbar(); drawChips();
 }
 
@@ -269,13 +307,13 @@ function showHistoryEx(){
 /* ---------------- AI (Gemini, opzionale) ---------------- */
 function aiContext(){
   const it=item(), [id,n,lo,hi,rest]=it, e=EX[id];
-  const today=SESSIONS[st.cur.session].map((x,k)=>{const s=workSets(k);return `- ${EX[x[0]].n}: ${x[1]}×${x[2]}–${x[3]}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
+  const today=SESSIONS[st.cur.session].map((x,k)=>{const s=workSets(k);return `- ${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
   const p=lastPerf(id);
   return `Sei il coach di palestra personale dell'utente, dentro un'app di registro allenamenti. Rispondi SEMPRE in italiano, in modo breve e pratico (massimo 90 parole), da personal trainer esperto e prudente.
 Obiettivo: ipertrofia e progressione tecnica/di forza. Programma PPL + Upper/Lower, 2 serie allenanti per esercizio, RIR target 2–3 (0–1 non è il target), double progression: prima aumentare le ripetizioni nel range, poi il carico quando entrambe le serie raggiungono il limite alto a RIR 2–3. Non convertire unità, fori o kg/lato tra macchine diverse. Se l'utente segnala dolore (non semplice fatica) consiglia di fermarsi o modificare l'esercizio e, se persiste, di sentire un professionista; non fare diagnosi.
 Sessione di oggi: ${st.cur.session}
 ${today}
-Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}, attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3, recupero ${rest}s. Indicazioni tecniche: ${e.cue}
+Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Indicazioni tecniche: ${e.cue}
 Serie fatte oggi su questo esercizio: ${perfTxt(setsOf(st.cur.exIdx))||"nessuna"}.
 Ultima volta: ${p?dateTxt(p.date)+" "+perfTxt(p.sets):"nessun dato"}. Carico consigliato oggi: ${suggestedKg(id)??"non definito"}.
 Rispondi SOLO con JSON valido, in uno di questi due formati:
@@ -311,25 +349,31 @@ async function askAI(text){
   typing.remove();
   if(!out){ bot(esc(err||"Non sono riuscito a rispondere.")); return; }
   let j=null; try{ j=JSON.parse(out.replace(/^```(json)?|```$/g,"").trim()); }catch(e){}
+  if(j && j.azione==="serie" && isTimeIt(item())) return logTimed();
   if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,reps:j.rip??null,rir:j.rir??null}); }
   bot(md(j&&j.testo ? j.testo : out));
 }
 
 /* ---------------- timer di recupero ---------------- */
-let tEnd=0,tTot=0,tInt=null,beeped=false,ac=null;
+let tEnd=0,tTot=0,tInt=null,beeped=false,ac=null,tOpts={},sideBeeped=false;
 function unlockAudio(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==="suspended") ac.resume(); }catch(e){} }
 function beep(){
   try{ if(ac){ [0,.3,.6].forEach(o=>{const os=ac.createOscillator(),g=ac.createGain();os.frequency.value=880;os.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.3,ac.currentTime+o);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+o+.22);os.start(ac.currentTime+o);os.stop(ac.currentTime+o+.25);}); } }catch(e){}
   try{ navigator.vibrate && navigator.vibrate([400,150,400]); }catch(e){}
 }
-function startTimer(sec){ tTot=sec; tEnd=Date.now()+sec*1000; beeped=false; if(st.cur){st.cur.timer={end:tEnd,tot:tTot};save();} $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
-function stopTimer(){ clearInterval(tInt); $("#timer").hidden=true; if(st.cur){st.cur.timer=null;save();} }
+function shortBeep(){ try{ if(ac){ const os=ac.createOscillator(),g=ac.createGain();os.frequency.value=660;os.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.3,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);os.start();os.stop(ac.currentTime+.3);} }catch(e){} try{ navigator.vibrate&&navigator.vibrate(250); }catch(e){} }
+function startTimer(sec,opts={}){ tOpts=opts; tTot=sec; tEnd=Date.now()+sec*1000; beeped=false; sideBeeped=false;
+  $(".t-lab").textContent=opts.label||"Recupero"; $("#timer").classList.toggle("hold",!!opts.hold);
+  if(st.cur){st.cur.timer={end:tEnd,tot:tTot,label:opts.label||"Recupero",sideAt:opts.sideAt||null,hold:!!opts.hold};save();}
+  $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
+function stopTimer(){ clearInterval(tInt); tOpts={}; $("#timer").hidden=true; if(st.cur){st.cur.timer=null;save();} }
 function tick(){
   const left=(tEnd-Date.now())/1000;
   $("#tVal").textContent = left>=0 ? fmtT(left) : "+"+fmtT(-left);
   $("#tVal").classList.toggle("over",left<0);
   $("#tBar").style.width=clamp(100*(1-left/tTot),0,100)+"%";
-  if(left<=0 && !beeped){ beeped=true; beep(); }
+  if(tOpts.sideAt && !sideBeeped && left<=tOpts.sideAt && left>0){ sideBeeped=true; shortBeep(); $(".t-lab").textContent="Cambia lato · Lato 2"; }
+  if(left<=0 && !beeped){ beeped=true; beep(); if(tOpts.hold && st.cur && isTimeIt(item())){ logTimed(); return; } }
   if(left<-300) stopTimer();
 }
 $("#tPlus").onclick=()=>{ tEnd+=15000; tTot+=15; beeped=false; if(st.cur){st.cur.timer={end:tEnd,tot:tTot};save();} tick(); };
@@ -337,7 +381,7 @@ $("#tStop").onclick=stopTimer;
 
 /* ---------------- schermo sempre acceso ---------------- */
 let wake=null;
-async function keepAwake(){ try{ if(st.cur && "wakeLock" in navigator && !wake){ wake=await navigator.wakeLock.request("screen"); wake.addEventListener("release",()=>wake=null); } }catch(e){} }
+async function keepAwake(){ try{ if((st.cur||ymPlaying) && "wakeLock" in navigator && !wake){ wake=await navigator.wakeLock.request("screen"); wake.addEventListener("release",()=>wake=null); } }catch(e){} }
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ keepAwake(); if(st.cur&&st.cur.timer) tick(); } });
 
 /* ---------------- disegno ---------------- */
@@ -345,27 +389,115 @@ function drawTop(){
   if(!st.cur){ $("#topSess").textContent="Gym Coach"; $("#topSub").textContent="Registro allenamenti"; return; }
   const list=SESSIONS[st.cur.session], done=list.reduce((a,x,k)=>a+Math.min(x[1],workSets(k).length),0), tot=list.reduce((a,x)=>a+x[1],0);
   $("#topSess").textContent=st.cur.session;
-  $("#topSub").textContent=`Esercizio ${st.cur.exIdx+1}/${list.length} · ${done}/${tot} serie · iniziata ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`;
+  $("#topSub").textContent=`Esercizio ${st.cur.exIdx+1}/${list.length} · ${done}/${tot} ${isExtraSess(st.cur.session)?"giri":"serie"} · iniziata ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`;
 }
 function drawVideo(){
   const e=exOf(item()), vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
-  if(!st.ui.videoHidden){
-    const src=`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1&rel=0&modestbranding=1`;
-    const f=$("#frame iframe");
-    if(!f || f.dataset.id!==id) $("#frame").innerHTML=`<iframe data-id="${id}" src="${src}" title="Video ${esc(e.n)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
-  } else $("#frame").innerHTML="";
+  if(!st.ui.videoHidden) showExerciseVideo(id); else destroyExerciseVideo();
   $("#vchips").innerHTML = e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">▶ ${esc(ch)}</button>`).join("")
     + `<button class="vchip ghost" id="vToggle">${st.ui.videoHidden?"Mostra video":"Nascondi video"}</button>`
     + `<a class="vchip ghost" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--mut)">Apri in YouTube ↗</a>`;
   $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); drawVideo(); });
   $("#vToggle").onclick=()=>{ st.ui.videoHidden=!st.ui.videoHidden; save(); drawVideo(); };
 }
+
+/* ---------------- Duetto: video dell'esercizio + musica, ognuno col suo volume ---------------- */
+st.ui.volV ??= 0;
+st.ui.music = {src:null,raw:"",title:"",vol:35,loop:true,recent:[],...(st.ui.music||{})};
+const apiOk=()=>!!(window.YT&&YT.Player);
+let yv=null,yvReady=false,yvId=null,yvWant=null, ym=null,ymReady=false,ymPlaying=false,ymWant=false;
+function parseYT(s){
+  s=(s||"").trim(); if(!s) return null;
+  if(/^[\w-]{11}$/.test(s)) return {id:s,list:null};
+  try{
+    const u=new URL(/^https?:/i.test(s)?s:"https://"+s);
+    const list=u.searchParams.get("list"); let id=u.searchParams.get("v");
+    if(u.hostname.includes("youtu.be")) id=u.pathname.slice(1).split("/")[0];
+    const m=u.pathname.match(/^\/(shorts|live|embed)\/([\w-]{11})/); if(m) id=m[2];
+    if(id&&!/^[\w-]{11}$/.test(id)) id=null;
+    return (id||list)?{id,list}:null;
+  }catch(e){ return null; }
+}
+function applyVolV(){ if(!yvReady) return; try{ const v=st.ui.volV; if(v<=0) yv.mute(); else { yv.unMute(); yv.setVolume(v); } }catch(e){} }
+function showExerciseVideo(id){
+  yvWant=id;
+  if(!apiOk()) return;                          // il lettore si crea quando l'API di YouTube è pronta
+  if(yv){ if(yvReady && yvId!==id){ yv.loadVideoById(id); yvId=id; applyVolV(); } return; }
+  $("#frame").innerHTML='<div id="ytV"></div>';
+  yv=new YT.Player("ytV",{width:"100%",height:"100%",videoId:id,
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
+    events:{
+      onReady:e=>{ yvReady=true; yvId=id; if(yvWant&&yvWant!==id){ yv.loadVideoById(yvWant); yvId=yvWant; } applyVolV(); try{ e.target.playVideo(); }catch(err){} },
+      onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
+    }});
+}
+function destroyExerciseVideo(){ try{ yv&&yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }
+
+function ensureMusic(){
+  const m=st.ui.music; if(!apiOk()||ym||!m.src) return;
+  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; }
+  $("#mPh").hidden=true;
+  ym=new YT.Player("ytM",{width:"100%",height:"100%",videoId:m.src.list?undefined:m.src.id,playerVars:pv,
+    events:{
+      onReady:()=>{ ymReady=true; ym.setVolume(m.vol); if(ymWant) ym.playVideo(); drawMusic(); },
+      onStateChange:e=>{ const S=YT.PlayerState;
+        if(e.data===S.ENDED && m.loop){ if(m.src&&m.src.list) ym.playVideoAt(0); else { ym.seekTo(0); ym.playVideo(); } return; }
+        ymPlaying=(e.data===S.PLAYING||e.data===S.BUFFERING);
+        if(e.data===S.PLAYING){ ymWant=false; noteTitle(); keepAwake(); }
+        drawMusic(); },
+      onError:e=>{ ymPlaying=false; ymWant=false; drawMusic(e.data===101||e.data===150?"Questo brano non si può riprodurre fuori da YouTube":"Link non disponibile"); }
+    }});
+}
+function noteTitle(){
+  const m=st.ui.music; let t=""; try{ t=(ym.getVideoData()||{}).title||""; }catch(e){}
+  if(t){ m.title=t; m.recent=[{raw:m.raw,title:t,list:!!(m.src&&m.src.list)},...m.recent.filter(r=>r.raw!==m.raw)].slice(0,8); save(); }
+}
+function loadMusic(raw,autoplay=true){
+  const src=parseYT(raw); if(!src){ drawMusic("Link non valido: copialo da YouTube (Condividi → Copia link)"); return false; }
+  const m=st.ui.music; m.src=src; m.raw=raw.trim(); m.title=""; save();
+  ymWant=autoplay; unlockAudio();
+  if(!ym) ensureMusic();
+  else if(ymReady){ if(src.list) ym.loadPlaylist({list:src.list,listType:"playlist",index:0}); else ym.loadVideoById(src.id); ym.setVolume(m.vol); if(!autoplay) ym.pauseVideo(); }
+  drawMusic(); return true;
+}
+function toggleMusic(){
+  const m=st.ui.music; unlockAudio();
+  if(!m.src){ $("#mPanel").hidden=false; drawMusic(); $("#mIn").focus(); return; }
+  if(!ym){ ymWant=true; ensureMusic(); drawMusic(); return; }
+  if(!ymReady){ ymWant=!ymWant; drawMusic(); return; }
+  if(ymPlaying) ym.pauseVideo(); else ym.playVideo();
+}
+function drawMusic(msg){
+  const m=st.ui.music;
+  $("#mTitle").textContent = m.title || (m.src ? (m.src.list?"Playlist caricata":"Brano caricato") : "Musica");
+  $("#mSub").textContent = msg || (m.src ? (ymPlaying?"In riproduzione":ymWant?"Avvio…":"In pausa")+(m.src.list?" · playlist":"")+(m.loop?" · ripeti":"") : "Tocca per incollare un link YouTube");
+  $("#mPlay").textContent = (ymPlaying||ymWant) ? "❚❚" : "▶"; $("#mPlay").classList.toggle("on",ymPlaying);
+  $("#mPh").hidden = !!ym;
+  $("#volV").value=st.ui.volV; $("#oV").textContent=st.ui.volV;
+  $("#volM").value=m.vol; $("#oM").textContent=m.vol;
+  $("#mLoop").checked=!!m.loop;
+  $("#mMore").textContent = $("#mPanel").hidden ? "⌄" : "⌃";
+  $("#mRecent").innerHTML = m.recent.map((r,k)=>`<button class="vchip ${r.raw===m.raw?"on":""}" data-r="${k}">${r.list?"☰ ":"♪ "}${esc(r.title.length>28?r.title.slice(0,27)+"…":r.title)}</button>`).join("");
+  $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadMusic(m.recent[+b.dataset.r].raw,true); $("#mPanel").hidden=true; drawMusic(); });
+}
+$("#mPlay").onclick=toggleMusic;
+$("#mMore").onclick=$("#mInfo").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); };
+$("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
+$("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
+$("#volV").oninput=e=>{ st.ui.volV=+e.target.value; $("#oV").textContent=st.ui.volV; applyVolV(); save(); };
+$("#volM").oninput=e=>{ const v=+e.target.value; st.ui.music.vol=v; $("#oM").textContent=v; if(ymReady) ym.setVolume(v); save(); };
+window.onYouTubeIframeAPIReady=()=>{ if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); drawMusic(); };
+function loadYTApi(){ const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true; document.head.appendChild(sc); }
+loadYTApi();
+setTimeout(()=>{ if(!apiOk()) loadYTApi(); },8000);
+
 function drawExbar(){
   const it=item(), e=exOf(it), [,n,lo,hi,rest]=it, ws=workSets(st.cur.exIdx);
-  let dots=""; for(let s=0;s<n;s++){ const x=ws[s]; dots+=`<span class="dot ${x?"done":s===ws.length?"next":""}" title="Serie ${s+1}">${x?x.reps:s+1}</span>`; }
-  const sk=suggestedKg(it[0]);
-  $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}<span class="rx">${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${kgTxt(sk)} kg`:""}</span></div><div class="dots">${dots}</div>`;
+  let dots=""; for(let s=0;s<n;s++){ const x=ws[s]; dots+=`<span class="dot ${x?"done":s===ws.length?"next":""}" title="Serie ${s+1}">${x?(x.sec!=null?"✓":x.reps):s+1}</span>`; }
+  const sk=isTimeIt(it)?null:suggestedKg(it[0]);
+  const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${kgTxt(sk)} kg`:""}`;
+  $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
 function drawChips(){
@@ -374,24 +506,27 @@ function drawChips(){
   if(pend && pend.need==="rir") html=[0,1,2,3,4,5].map(v=>`<button class="chip acc" data-say="RIR ${v}">RIR ${v}</button>`).join("");
   else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=Math.max(1,lo-2);v<=hi+2;v++) html+=`<button class="chip acc" data-say="${v} rip">${v}</button>`; }
   else {
-    const list=SESSIONS[st.cur.session], allDone=list.every((x,k)=>workSets(k).length>=x[1]);
-    html=`<button class="chip" data-cmd="undo">↶ Annulla serie</button>`
+    const list=SESSIONS[st.cur.session], allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
+    html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
+      +`<button class="chip" data-cmd="undo">↶ Annulla</button>`
       +`<button class="chip" data-cmd="next">Esercizio successivo →</button>`
       +`<button class="chip" data-cmd="hist">📈 Storico</button>`
       +`<button class="chip" data-cmd="list">☰ Elenco</button>`
       +`<button class="chip ${allDone?"acc":""}" data-cmd="end">🏁 Fine sessione</button>`;
   }
   c.innerHTML=html;
+  $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
-  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
+  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
 function render(){
   if(st.cur){
     $("#home").hidden=true; $("#workout").hidden=false;
-    drawTop(); drawVideo(); drawExbar(); drawChat(); drawChips();
-    if(st.cur.timer && st.cur.timer.end>Date.now()-300000){ tEnd=st.cur.timer.end; tTot=st.cur.timer.tot; beeped=tEnd<Date.now(); $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
+    drawTop(); drawVideo(); drawExbar(); drawChat(); drawChips(); drawMusic();
+    const tm=st.cur.timer;
+    if(tm && tm.end>Date.now()-300000 && !(tm.hold && tm.end<Date.now())){ tEnd=tm.end; tTot=tm.tot; tOpts={label:tm.label,sideAt:tm.sideAt,hold:tm.hold}; beeped=tEnd<Date.now(); sideBeeped=!!tm.sideAt && (tEnd-Date.now())/1000<=tm.sideAt; $(".t-lab").textContent=tm.label||"Recupero"; $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
     keepAwake();
   } else { $("#workout").hidden=true; $("#home").hidden=false; stopTimer(); drawTop(); drawHome(); }
 }
@@ -403,14 +538,16 @@ function drawHome(){
   const nextSess = nx==="REST" ? CYCLE[(ni+1)%CYCLE.length] : nx;
   const last=st.history[st.history.length-1];
   const cyc=CYCLE.map((c,k)=>`<span class="${k===ni?"next":k<=st.cyclePos?"done":""}">${c}</span>`).join("");
-  const cnt=s=>`${SESSIONS[s].length} esercizi · ${SESSIONS[s].reduce((a,x)=>a+x[1],0)} serie`;
+  const cnt=s=>isExtraSess(s)?`${SESSIONS[s].length} esercizi · ~${Math.round(SESSIONS[s].reduce((a,x)=>a+x[1]*(x[2]*(EX[x[0]].sides?2:1)+x[4]),0)/60)} min`:`${SESSIONS[s].length} esercizi · ${SESSIONS[s].reduce((a,x)=>a+x[1],0)} serie`;
   $("#home").innerHTML=`
     <h1>Gym Coach</h1>
     <p class="lead">${last?`Ultima sessione: <b>${last.session}</b> il ${new Date(last.start).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"})}.`:"Nessuna sessione registrata finora."}</p>
     <div class="cyc">${cyc}</div>
     ${nx==="REST"?`<div class="card" style="margin:0 0 12px"><h3>Prossimo passaggio: riposo</h3><p class="muted" style="margin:0 0 10px">Se hai già riposato, segnalo e passa a ${nextSess}.</p><button class="btn" id="restDone">Riposo fatto ✓</button></div>`:""}
     <button class="big" data-s="${nextSess}">▶ Inizia ${nextSess}<small>${cnt(nextSess)}${nx==="REST"?" · dopo il riposo":""}</small></button>
-    <div class="grid">${Object.keys(SESSIONS).filter(s=>s!==nextSess).map(s=>`<button class="sbtn" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
+    <div class="grid">${Object.keys(SESSIONS).filter(s=>s!==nextSess&&!isExtraSess(s)).map(s=>`<button class="sbtn" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
+    <h3 class="sec">Recupero attivo <span class="muted">· fuori dal ciclo</span></h3>
+    <div class="grid">${(typeof EXTRA_SESSIONS!=="undefined"?EXTRA_SESSIONS:[]).map(s=>`<button class="sbtn alt" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
     <div class="card"><h3>Come funziona</h3><p class="muted" style="margin:0">Durante ogni esercizio vedi i suoi video. A fine serie scrivi o detta, per esempio <i>24 kg 9 rip RIR 2</i>: registro la serie, ti dico se il carico è giusto, alto o basso, e parte il recupero. Puoi anche fare domande sull'esercizio${st.settings.apiKey?"":" (serve la chiave Gemini gratuita in ⚙)"}.</p></div>`;
   $("#home").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>startSession(b.dataset.s));
   const rd=$("#restDone"); if(rd) rd.onclick=()=>{ st.cyclePos=ni; save(); drawHome(); };
@@ -425,17 +562,17 @@ function startSession(s){
 function finishSession(){
   if(!st.cur) return;
   const list=SESSIONS[st.cur.session];
-  const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(({kg,reps,rir,extra})=>({kg,reps,rir,...(extra?{extra:true}:{})}))})).filter(e=>e.sets.length);
+  const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
   if(!ex.length){
     openSheet("Fine sessione",`<p>Non hai registrato nessuna serie. Vuoi chiudere la sessione senza salvarla?</p><div class="row"><button class="btn danger" id="discard">Chiudi senza salvare</button><button class="btn" id="keep">Continua</button></div>`);
     $("#discard").onclick=()=>{ st.cur=null; save(); closeSheet(); render(); }; $("#keep").onclick=closeSheet; return;
   }
-  openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> serie allenanti in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio e il ciclo passerà al passaggio successivo.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>`);
+  openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>`);
   $("#keep").onclick=closeSheet;
   $("#confirmEnd").onclick=()=>{
     st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex});
-    const pos=CYCLE.indexOf(st.cur.session); st.cyclePos=pos;
+    const pos=CYCLE.indexOf(st.cur.session); if(pos>=0) st.cyclePos=pos;
     st.cur=null; save(); syncNow(); closeSheet(); stopTimer();
     try{ wake && wake.release(); }catch(e){}
     render();
@@ -461,14 +598,14 @@ $("#btnList").onclick=openList;
 
 function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),cyclePos:st.cyclePos,sugg:st.sugg,history:st.history},null,1); }
 function exportText(){
-  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>`${kgTxt(s.kg)}kg×${s.reps} RIR${s.rir}${s.extra?" (extra)":""}`).join(", ")}`).join("\n")).join("\n\n");
+  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>(s.sec!=null?`${s.sec}s`:`${kgTxt(s.kg)}kg×${s.reps} RIR${s.rir}`)+(s.extra?" (extra)":"")).join(", ")}`).join("\n")).join("\n\n");
 }
 function openArchive(){
   const hs=[...st.history].reverse();
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
-    return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} serie · ${dur} min</span></summary>
-      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b><br><span>${esc(e.sets.map(s=>`${kgTxt(s.kg)} kg × ${s.reps} · RIR ${s.rir}${s.extra?" (extra)":""}`).join("  |  "))}</span></div>`).join("")}
+    return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${dur} min</span></summary>
+      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b><br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
       <div><button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
@@ -556,7 +693,7 @@ function allSessions(){
   const out=[...st.history];
   if(st.cur){
     const list=SESSIONS[st.cur.session];
-    const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(({kg,reps,rir,extra})=>({kg,reps,rir,...(extra?{extra:true}:{})}))})).filter(e=>e.sets.length);
+    const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
     if(ex.length) out.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:null,inCorso:true,ex});
   }
   return out.sort((a,b)=>a.start-b.start);
@@ -566,10 +703,10 @@ function buildMaster(){
   for(const id of Object.keys(EX)){
     const storico=[];
     for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
-      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),serie:e.sets.map(s=>({kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})}))}); }
-    const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return {sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
+    const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return isTimeIt(x)?{sessione:k,giri:x[1],durata:holdTxt(x),pausa_s:x[4]}:{sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
     let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg){ const e=e1rm(s.kg,s.rip,s.rir); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data}; } }));
-    esercizi[id]={nome:EX[id].n,attrezzo:EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,miglior_serie_stimata:best,storico};
+    esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,miglior_serie_stimata:best,storico};
   }
   return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi,sessioni:sessions};
 }
@@ -577,8 +714,8 @@ function masterMd(m){
   let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}\n`;
   for(const [id,e] of Object.entries(m.esercizi)){
     if(!e.storico.length) continue;
-    t+=`\n## ${e.nome}\n\nSchede: ${e.nelle_schede.map(x=>`${x.sessione} (${x.serie}×${x.range})`).join(", ")} · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}\n\n| Data | Sessione | Serie (kg × rip · RIR) |\n|---|---|---|\n`;
-    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""} | ${r.serie.map(s=>`${kgTxt(s.kg)} × ${s.rip} · RIR ${s.rir}${s.extra?" (extra)":""}`).join(" — ")} |\n`;
+    t+=`\n## ${e.nome}\n\nSchede: ${e.nelle_schede.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${e.nelle_schede[0]&&e.nelle_schede[0].giri?"":` · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
+    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
   }
   return t;
 }
