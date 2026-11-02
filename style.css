@@ -24,6 +24,8 @@ button{font:inherit;color:inherit}
 .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .player.collapsed .frame{display:none}
 body.kbd .frame{height:20dvh;min-height:120px}
+.frame.multi{height:34dvh;min-height:200px}
+body.kbd .frame.multi{height:22dvh;min-height:130px}
 .vchips{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none}
 .vchips::-webkit-scrollbar{display:none}
 .vchip{flex:none;appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 11px;font-size:12.5px;cursor:pointer;white-space:nowrap}
@@ -154,3 +156,21 @@ details.adv .card{margin-top:8px}
 .msg.photo{padding:4px;background:var(--acc)}
 .msg.photo img{display:block;max-width:180px;max-height:220px;border-radius:10px}
 .composer .icon-btn{height:46px}
+
+/* più video affiancati */
+.vgrid{position:absolute;inset:0;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding:6px;background:#000;scrollbar-width:none}
+.vgrid::-webkit-scrollbar{display:none}
+.vcard{flex:none;height:100%;aspect-ratio:9/16;position:relative;scroll-snap-align:center;border-radius:12px;overflow:hidden;border:2px solid #222;background:#111}
+.vcard.on{border-color:var(--acc)}
+.vcard>div,.vcard iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vlab{position:absolute;left:6px;right:6px;bottom:6px;z-index:2;appearance:none;border:0;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font:600 11.5px Inter,sans-serif;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.vcard.on .vlab{background:var(--acc);color:var(--acc-ink)}
+
+/* cursori del volume: più grandi e lontani dal lettore */
+.m-screen{pointer-events:none}
+.m-vols{margin-top:8px;gap:16px}
+.m-vols input[type=range]{-webkit-appearance:none;appearance:none;height:34px;background:transparent;margin:0}
+.m-vols input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--line)}
+.m-vols input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--acc);margin-top:-10px;border:0}
+.m-vols input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+.m-vols input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--acc);border:0}

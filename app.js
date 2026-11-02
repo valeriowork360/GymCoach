@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "19";
+const APP_VERSION = "20";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -591,20 +591,65 @@ function drawTop(){
 function drawVideo(){
   const e=exOf(item());
   if(!e.v.length){
-    destroyExerciseVideo(); yvWant=null;
+    destroyGrid(); destroyExerciseVideo(); yvWant=null;
     const q=encodeURIComponent(e.n+" tecnica esecuzione");
+    $("#frame").classList.remove("multi");
     $("#frame").innerHTML=`<div style="display:grid;place-items:center;text-align:center;color:var(--mut);padding:16px">Nessun video salvato per questo esercizio.<br><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Cerca “${esc(e.n)}” su YouTube ↗</a></div>`;
     $("#player").classList.remove("collapsed");
     $("#vchips").innerHTML=`<span class="muted" style="padding:4px 2px">Esercizio personalizzato</span>`; return;
   }
   const vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
+  const multi = st.ui.vidLayout!=="single" && e.v.length>1;
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
-  if(!st.ui.videoHidden) showExerciseVideo(id); else destroyExerciseVideo();
-  $("#vchips").innerHTML = e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">▶ ${esc(ch)}</button>`).join("")
+  $("#frame").classList.toggle("multi",multi);
+  if(st.ui.videoHidden){ destroyGrid(); destroyExerciseVideo(); }
+  else if(multi){ destroyExerciseVideo(); buildGrid(e,vi); }
+  else { destroyGrid(); showExerciseVideo(id); }
+  $("#vchips").innerHTML = e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">${multi?"":"▶ "}${esc(ch)}</button>`).join("")
+    + (e.v.length>1?`<button class="vchip ghost" id="vLayout">${multi?"▢ Uno alla volta":"▦ Affiancati"}</button>`:"")
     + `<button class="vchip ghost" id="vToggle">${st.ui.videoHidden?"Mostra video":"Nascondi video"}</button>`
     + `<a class="vchip ghost" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--mut)">Apri in YouTube ↗</a>`;
-  $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); drawVideo(); });
+  $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); if(multi&&grid){ setGridActive(+b.dataset.k,true); drawVideoChips(); } else drawVideo(); });
+  const lay=$("#vLayout"); if(lay) lay.onclick=()=>{ st.ui.vidLayout = multi?"single":"multi"; save(); drawVideo(); };
   $("#vToggle").onclick=()=>{ st.ui.videoHidden=!st.ui.videoHidden; save(); drawVideo(); };
+}
+function drawVideoChips(){ const vi=st.cur.vid||0; $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.classList.toggle("on",+b.dataset.k===vi)); }
+
+/* ---------------- più video affiancati (scorri di lato) ---------------- */
+let grid=null;
+function buildGrid(e,active){
+  const key=e.v.map(x=>x[0]).join(",");
+  if(grid && grid.key===key){ setGridActive(active,false); return; }
+  destroyGrid();
+  $("#frame").innerHTML=`<div class="vgrid" id="vgrid">${e.v.map(([vid,ch],k)=>`<div class="vcard" data-k="${k}"><div id="ytG${k}"></div><button class="vlab" data-k="${k}" type="button">${k===active?"🔊":"🔇"} ${esc(ch)}</button></div>`).join("")}</div>`;
+  grid={key,ids:e.v.map(x=>x[0]),players:[],ready:[],active};
+  $("#vgrid").querySelectorAll(".vlab").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; save(); setGridActive(+b.dataset.k,false); drawVideoChips(); });
+  if(apiOk()) startGridPlayers();
+  setGridActive(active,false);
+}
+function startGridPlayers(){
+  if(!grid || grid.io) return;
+  const g=grid;
+  g.io=new IntersectionObserver(ents=>ents.forEach(en=>{ const k=+en.target.dataset.k; if(en.isIntersecting && !g.players[k] && grid===g) makeGridPlayer(g,k); }),{root:$("#vgrid"),threshold:0.15});
+  document.querySelectorAll("#vgrid .vcard").forEach(c=>g.io.observe(c));
+}
+function makeGridPlayer(g,k){
+  g.players[k]=new YT.Player("ytG"+k,{width:"100%",height:"100%",videoId:g.ids[k],
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
+    events:{ onReady:e=>{ g.ready[k]=true; applyVolV(); try{ e.target.playVideo(); }catch(_){} },
+             onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ e.target.seekTo(0); e.target.playVideo(); } } }});
+}
+function setGridActive(k,scroll){
+  if(!grid) return; grid.active=k;
+  document.querySelectorAll("#vgrid .vcard").forEach(c=>{ const on=+c.dataset.k===k; c.classList.toggle("on",on); const l=c.querySelector(".vlab"); if(l) l.textContent=(on?"🔊 ":"🔇 ")+l.textContent.replace(/^\S+\s/,""); });
+  if(scroll){ const c=document.querySelector(`#vgrid .vcard[data-k="${k}"]`); if(c) c.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"}); }
+  applyVolV();
+}
+function destroyGrid(){
+  if(!grid) return;
+  try{ grid.io&&grid.io.disconnect(); }catch(e){}
+  grid.players.forEach(p=>{ try{ p&&p.destroy(); }catch(e){} });
+  grid=null; $("#frame").innerHTML="";
 }
 
 /* ---------------- Duetto: video dell'esercizio + musica, ognuno col suo volume ---------------- */
@@ -624,7 +669,11 @@ function parseYT(s){
     return (id||list)?{id,list}:null;
   }catch(e){ return null; }
 }
-function applyVolV(){ if(!yvReady) return; try{ const v=st.ui.volV; if(v<=0) yv.mute(); else { yv.unMute(); yv.setVolume(v); } }catch(e){} }
+function applyVolV(){
+  const v=st.ui.volV;
+  if(grid){ grid.players.forEach((p,k)=>{ if(!p||!grid.ready[k]) return; try{ if(k===grid.active && v>0){ p.unMute(); p.setVolume(v); } else p.mute(); }catch(e){} }); return; }
+  if(!yvReady) return; try{ if(v<=0) yv.mute(); else { yv.unMute(); yv.setVolume(v); } }catch(e){}
+}
 function showExerciseVideo(id){
   yvWant=id;
   if(!apiOk()) return;                          // il lettore si crea quando l'API di YouTube è pronta
@@ -637,7 +686,7 @@ function showExerciseVideo(id){
       onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
     }});
 }
-function destroyExerciseVideo(){ try{ yv&&yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }
+function destroyExerciseVideo(){ if(!yv) return; try{ yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }
 
 function ensureMusic(){
   const m=st.ui.music; if(!apiOk()||ym||!m.src) return;
@@ -692,7 +741,7 @@ $("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
 $("#volV").oninput=e=>{ st.ui.volV=+e.target.value; $("#oV").textContent=st.ui.volV; applyVolV(); save(); };
 $("#volM").oninput=e=>{ const v=+e.target.value; st.ui.music.vol=v; $("#oM").textContent=v; if(ymReady) ym.setVolume(v); save(); };
-window.onYouTubeIframeAPIReady=()=>{ if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); drawMusic(); };
+window.onYouTubeIframeAPIReady=()=>{ if(grid) startGridPlayers(); else if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); drawMusic(); };
 function loadYTApi(){ const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true; document.head.appendChild(sc); }
 loadYTApi();
 setTimeout(()=>{ if(!apiOk()) loadYTApi(); },8000);
