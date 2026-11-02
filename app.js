@@ -457,11 +457,11 @@ async function callGemini(sys,prompt,onDelta){
       if(r.status>=500){ clearTimeout(to); err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
       if(!r.ok){ clearTimeout(to); err="Gemini: errore "+r.status; continue; }
       // lettura dello stream (Server-Sent Events): il testo compare man mano
-      const rd=r.body.getReader(), dec=new TextDecoder(); let buf="", block="";
+      const rd=r.body.getReader(), dec=new TextDecoder(); let buf="", block="", raw="";
       for(;;){
         const {done,value}=await rd.read(); if(done) break;
         clearTimeout(to); to=setTimeout(()=>ctl.abort(),30000);
-        buf+=dec.decode(value,{stream:true});
+        const piece=dec.decode(value,{stream:true}); buf+=piece; if(raw.length<200000) raw+=piece;
         let k; while((k=buf.indexOf("\n"))>=0){
           const line=buf.slice(0,k).replace(/\r$/,""); buf=buf.slice(k+1);
           if(line.startsWith("data:")) block+=line.slice(5).trim();
@@ -472,6 +472,7 @@ async function callGemini(sys,prompt,onDelta){
         }
       }
       if(block){ try{ const j=JSON.parse(block); for(const p of ((j.candidates||[])[0]?.content?.parts||[])) if(p.text&&!p.thought) got+=p.text; }catch(e){} }
+      if(!got && /^\s*[\[{]/.test(raw)){ try{ [].concat(JSON.parse(raw)).forEach(j=>{ for(const p of ((j.candidates||[])[0]?.content?.parts||[])) if(p.text&&!p.thought) got+=p.text; }); }catch(e){} }
       clearTimeout(to);
       if(got) return {out:got,by:model};
       err=err||"Gemini: risposta vuota";
