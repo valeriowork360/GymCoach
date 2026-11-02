@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "13";
+const APP_VERSION = "14";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -442,17 +442,24 @@ async function callGemini(sys,prompt){
   let err="", retried=false;
   for(const model of models){
     try{
+      const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),45000);
       const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
-        method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},
+        method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
         body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json"}})});
       if(r.status===404){ err="modello Gemini non trovato"; continue; }
       if(r.status===429) return {err:"limite gratuito di Gemini raggiunto per ora"};
       if(r.status===400||r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||""; return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
       if(r.status>=500){ err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
       if(!r.ok){ err="Gemini: errore "+r.status; continue; }
-      const j=await r.json(); const out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+      clearTimeout(to);
+      const j=await r.json().catch(()=>({})); const out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
       if(out) return {out,by:model};
-    }catch(e){ return {err:"nessuna connessione",offline:true}; }
+      err="Gemini: risposta vuota"+((j.promptFeedback&&j.promptFeedback.blockReason)?` (${j.promptFeedback.blockReason})`:"");
+    }catch(e){
+      if(navigator.onLine===false) return {err:"nessuna connessione",offline:true};
+      err = e.name==="AbortError" ? "Gemini non ha risposto entro 45 secondi" : `errore di rete con Gemini (${e.message||e.name})`;
+      if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1200)); models.splice(models.indexOf(model)+1,0,model); }
+    }
   }
   return {err};
 }
@@ -469,7 +476,7 @@ async function callOpenRouter(sys,prompt){
     if(!r.ok){ const j=await r.json().catch(()=>({})); return {err:"OpenRouter: "+((j.error&&j.error.message)||r.status)}; }
     const j=await r.json(); const out=(j.choices||[])[0]?.message?.content||"";
     return out?{out,by:j.model||models[0]}:{err:"OpenRouter: risposta vuota"};
-  }catch(e){ return {err:"nessuna connessione",offline:true}; }
+  }catch(e){ return navigator.onLine===false?{err:"nessuna connessione",offline:true}:{err:`errore di rete con OpenRouter (${e.message||e.name})`}; }
 }
 function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey); }
 async function askAI(text){
@@ -488,7 +495,7 @@ async function askAI(text){
     res=await f(sysTxt,prompt); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
-  if(!res||!res.out){ bot(esc(errs.some(e=>/connessione/.test(e))?"Nessuna connessione: per le domande serve internet. Le serie le registro anche offline.":"Non sono riuscito a rispondere: "+errs.join("; ")+".")); return; }
+  if(!res||!res.out){ bot(esc(errs.length && errs.every(e=>e==="nessuna connessione") ? "Il telefono risulta offline: per le domande serve internet. Le serie le registro anche offline." : "Non sono riuscito a rispondere ("+errs.join("; ")+"). Riprova tra poco; se succede spesso tieni l'app aperta in primo piano mentre aspetti la risposta.")); return; }
   const out=res.out;
   let j=null; try{ j=JSON.parse(out.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/,"$1")); }catch(e){}
   if(j && j.azione==="cambia" && j.esercizio){ bot(md(`Ok, apro il cambio esercizio con **${j.esercizio}**: conferma o scegline un altro.`)); return openSwap(j.esercizio); }
