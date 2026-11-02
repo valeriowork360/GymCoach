@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "32";
+const APP_VERSION = "33";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1001,6 +1001,8 @@ function openSettings(){
     <select class="inp" id="sUnit"><option value="kg" ${s.defUnit!=="lb"?"selected":""}>Chili (kg)</option><option value="lb" ${s.defUnit==="lb"?"selected":""}>Libbre (lb)</option></select>
     <label class="f">Incremento minimo di carico — il salto più piccolo disponibile in palestra</label>
     <div class="inc inc3"><span></span><b class="muted">kg</b><b class="muted">lb</b>${Object.entries(EQ_LABEL).map(([k,l])=>`<span>${l[0].toUpperCase()+l.slice(1)} <span class="muted">(${LOAD_MODE[k]})</span></span><input class="inp" inputmode="decimal" data-inc="${k}" value="${kgTxt(s.inc[k])}"><input class="inp" inputmode="decimal" data-inclb="${k}" value="${kgTxt(s.incLb[k])}">`).join("")}</div>
+    <label class="f">Peso medio della barra — per confrontare bilanciere e manubri nei Progressi</label>
+    <div class="inc"><span>Bilanciere (kg)</span><input class="inp" id="sBar" inputmode="decimal" value="${kgTxt(s.barKg??20)}"><span>Barra Smith (kg)</span><input class="inp" id="sSmith" inputmode="decimal" value="${kgTxt(s.smithKg??15)}"></div>
     <button class="btn acc wide" id="sSave">Salva</button>
     <div class="card"><h3>Ciclo</h3><p class="muted" style="margin:0 0 8px">Ultimo passaggio completato: <b>${st.cyclePos>=0?CYCLE[st.cyclePos]:"nessuno"}</b>. Correggilo se serve:</p>
       <select class="inp" id="sCycle"><option value="-1">Nessuno (si riparte da PUSH)</option>${CYCLE.map((c,k)=>`<option value="${k}" ${k===st.cyclePos?"selected":""}>${k+1}. ${c}</option>`).join("")}</select></div>
@@ -1021,6 +1023,7 @@ function openSettings(){
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     document.querySelectorAll("[data-inclb]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.incLb[i.dataset.inclb]=v; });
     s.defUnit=$("#sUnit").value;
+    { const b=parseFloat($("#sBar").value.replace(",",".")), m=parseFloat($("#sSmith").value.replace(",",".")); if(b>=0) s.barKg=b; if(m>=0) s.smithKg=m; }
     st.cyclePos=+$("#sCycle").value; save(); };
   $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); if(st.settings.ghToken) syncNow(); };
   $("#sGhNow").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Backup in corso…"; await syncNow(); $("#sGhMsg").textContent=syncStatus(); };
@@ -1223,6 +1226,26 @@ function deleteSession(id){
 
 /* ---------------- dashboard dei progressi ---------------- */
 const SERIES_COL=["#3987e5","#d95926","#199e70"], OTHER_COL="#6b727c";
+/* Confronto tra attrezzi nei Progressi.
+   "mano": peso per manubrio / per lato; il bilanciere diventa (barra media + dischi di entrambi i lati) / 2.
+   "tot": carico totale; manubri ×2, dischi per lato ×2, bilanciere = barra + dischi; pacco pesi invariato. */
+function eqOfSet(id,s){
+  const m=`${s.m||""} ${s.raw||""}`;
+  if(/smith|multipower/i.test(m) || id==="smith_sq") return "smith";
+  if(/bilanc/i.test(m)) return "bb";
+  if(/manubr|\/mano/i.test(m)) return "db";
+  const e=EX[id]; return e ? e.eq||"machine" : "machine";
+}
+function normKg(id,s,mode){
+  if(!s.kg) return null;
+  const q=eqOfSet(id,s), k=s.kg;
+  if(q==="bb"||q==="smith"){ const bar=q==="bb"?(st.settings.barKg??20):(st.settings.smithKg??15); return mode==="tot" ? bar+2*k : (bar+2*k)/2; }
+  if(mode!=="tot") return k;
+  if(q==="db"||q==="plate") return 2*k;
+  if(/per lato/.test((EX[id]&&EX[id].lm)||"")) return 2*k;   // es. croci ai cavi: un pacco per lato
+  return k;
+}
+const e1n = (id,s,mode) => { const w=normKg(id,s,mode); return (w && s.reps) ? w*(1+(s.reps+(s.rir||0))/30) : null; };
 const e1 = s => (s.kg && s.reps) ? s.kg*(1+(s.reps+(s.rir||0))/30) : null;   // stessa formula del tuo Excel (RIR mancante = 0)
 const mondayOf = ts => { const d=new Date(ts); d.setHours(0,0,0,0); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return d.getTime(); };
 function statsData(){
@@ -1265,14 +1288,22 @@ function openStats(sel){
 function drawExStats(id){
   const {hs}=statsData();
   // miglior serie per seduta, separata per macchina/variante
+  const split=!!st.ui.statsSplit, mode=st.ui.statsTot?"tot":"mano";
   const pts=[]; hs.forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(!e) return;
-    const by={}; e.sets.filter(s=>!s.extra&&s.sec==null).forEach(s=>{ const v=e1(s); const m=s.m||"—"; if(v!=null && (!by[m]||v>by[m].v)) by[m]={v,s}; });
-    Object.entries(by).forEach(([m,b])=>pts.push({t:h.start,m,v:b.v,s:b.s,h})); });
+    const by={}; e.sets.filter(s=>!s.extra&&s.sec==null).forEach(s=>{ const v=e1n(id,s,mode); const m=split?(s.m||"—"):"all"; if(v!=null && (!by[m]||v>by[m].v)) by[m]={v,s}; });
+    Object.entries(by).forEach(([m,b])=>pts.push({t:h.start,m,v:b.v,s:b.s,h,w:normKg(id,b.s,mode)})); });
+  const hasBar=hs.some(h=>{ const e=h.ex.find(x=>x.ex===id); return e&&e.sets.some(s=>["bb","smith"].includes(eqOfSet(id,s))); });
+  const modeTxt = mode==="tot" ? "carico totale" : "per manubrio / per lato";
+  const ctrls=`<div class="seg"><button type="button" data-split="0" class="${split?"":"on"}">Linea unica</button><button type="button" data-split="1" class="${split?"on":""}">Per macchina</button></div>
+    <div class="seg"><button type="button" data-tot="0" class="${mode==="tot"?"":"on"}">Per mano/lato</button><button type="button" data-tot="1" class="${mode==="tot"?"on":""}">Totale</button></div>`;
   const box=$("#stChart");
   const rows=[]; hs.slice().reverse().forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(e) rows.push(`<tr><td>${dateTxt(h.start)}</td><td>${esc(h.session)}</td><td>${e.sets.filter(s=>!s.extra).map(s=>esc(setTxt(s))+(s.m?` <span class="xs">· ${esc(s.m)}</span>`:"")).join("<br>")||"<span class='xs'>solo riscaldamento/prove</span>"}</td></tr>`); });
   const tableHtml=`<details class="tbl"><summary>Tabella delle sedute (${rows.length})</summary><table class="stt"><thead><tr><th>Data</th><th>Seduta</th><th>Serie allenanti</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
   const note=(st.exNotes||{})[id];
-  if(!pts.length){ box.innerHTML=`<p class="muted">Nessuna serie con carico in kg e ripetizioni da mettere nel grafico (per esempio carichi in fori o unità sconosciuta).</p>${note&&note.ref?`<p class="note">📌 ${esc(note.ref)}</p>`:""}${tableHtml}`; return; }
+  const wire=()=>{ box.querySelectorAll("[data-split]").forEach(b=>b.onclick=()=>{ st.ui.statsSplit=b.dataset.split==="1"; save(); drawExStats(id); });
+    box.querySelectorAll("[data-tot]").forEach(b=>b.onclick=()=>{ st.ui.statsTot=b.dataset.tot==="1"; save(); drawExStats(id); }); };
+  if(!pts.length){ box.innerHTML=`<p class="muted">Nessuna serie con carico in kg e ripetizioni da mettere nel grafico (per esempio carichi in fori o unità sconosciuta).</p>${note&&note.ref?`<p class="note">📌 ${esc(note.ref)}</p>`:""}${tableHtml}`; wire(); return; }
+  const labOf=m=>m==="all"?"Tutte le serie (lb convertite in kg)":m==="—"?"Attrezzo unico":m;
   // macchine: le 3 usate più di recente hanno un colore, le altre grigie
   const lastUse={}; pts.forEach(p=>lastUse[p.m]=Math.max(lastUse[p.m]||0,p.t));
   const machines=Object.keys(lastUse).sort((a,b)=>lastUse[b]-lastUse[a]);
@@ -1289,18 +1320,22 @@ function drawExStats(id){
     if(ps.length>1) svg+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${ps.map(p=>`${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ")}"/>`;
     ps.forEach(p=>{ const k=pts.indexOf(p); svg+=`<circle cx="${x(p.t)}" cy="${y(p.v)}" r="4.5" fill="${c}" stroke="#17191c" stroke-width="2"/><circle cx="${x(p.t)}" cy="${y(p.v)}" r="13" fill="transparent" class="hit" data-p="${k}"/>`; }); });
   svg+=`</svg>`;
-  const legend=`<div class="legend">${machines.slice(0,3).map(m=>`<span><i style="background:${colOf(m)}"></i>${esc(m==="—"?"Attrezzo unico":m)}</span>`).join("")}${machines.length>3?`<span><i style="background:${OTHER_COL}"></i>Altre ${machines.length-3} macchine</span>`:""}</div>`;
+  const legend=`<div class="legend">${machines.slice(0,3).map(m=>`<span><i style="background:${colOf(m)}"></i>${esc(labOf(m))}</span>`).join("")}${machines.length>3?`<span><i style="background:${OTHER_COL}"></i>Altre ${machines.length-3} macchine</span>`:""}</div>`;
   const best={}; pts.forEach(p=>{ if(!best[p.m]||p.v>best[p.m].v) best[p.m]=p; });
   const lastP=pts.slice().sort((a,b)=>b.t-a.t)[0];
-  box.innerHTML=`<p class="muted" style="margin:8px 0 2px">Forza stimata (e1RM, kg) della serie migliore di ogni seduta. Confronta solo punti dello stesso colore: macchine diverse non sono confrontabili.</p>${legend}<div class="chartwrap">${svg}<div class="tip" id="stTip" hidden></div></div>
+  const expl = `Forza stimata (e1RM, kg, ${modeTxt}) della serie migliore di ogni seduta.`
+    + (hasBar ? ` Bilanciere: (barra ${kgTxt(st.settings.barKg??20)} kg + dischi dei due lati)${mode==="tot"?"":" ÷ 2, per confrontarlo coi manubri"}${id==="smith_sq"||hs.some(h=>{const e=h.ex.find(x=>x.ex===id);return e&&e.sets.some(s=>eqOfSet(id,s)==="smith");})?`; Smith con barra ${kgTxt(st.settings.smithKg??15)} kg`:""} (modificabile in ⚙).` : "")
+    + (split ? " Confronta solo punti dello stesso colore." : " Le libbre sono convertite in kg; macchine diverse possono dare valori diversi.");
+  box.innerHTML=`${ctrls}<p class="muted" style="margin:8px 0 2px">${expl}</p>${legend}<div class="chartwrap">${svg}<div class="tip" id="stTip" hidden></div></div>
     <div class="kv"><span>Ultima seduta</span><b>${dateTxt(lastP.t)} · ${esc(setTxt(lastP.s))}</b></div>
-    ${machines.slice(0,3).map(m=>`<div class="kv"><span>Record ${esc(m==="—"?"":m)}</span><b>${Math.round(best[m].v)} kg e1RM · ${esc(setTxt(best[m].s))} · ${dateTxt(best[m].t)}</b></div>`).join("")}
+    ${machines.slice(0,3).map(m=>`<div class="kv"><span>Record ${esc(m==="all"||m==="—"?"":m)}</span><b>${Math.round(best[m].v)} kg e1RM · ${esc(setTxt(best[m].s))} · ${dateTxt(best[m].t)}</b></div>`).join("")}
     ${note&&note.ref?`<p class="note">📌 ${esc(note.ref)}</p>`:""}${tableHtml}`;
   box.querySelectorAll(".hit").forEach(c=>c.onclick=ev=>{ const p=pts[+c.dataset.p], tip=$("#stTip");
-    tip.innerHTML=`<b>${dateTxt(p.t)} · ${esc(p.h.session)}</b><br>${esc(setTxt(p.s))}<br>${esc(p.m==="—"?"":p.m)}<br>e1RM ${p.v.toFixed(1)} kg`;
+    tip.innerHTML=`<b>${dateTxt(p.t)} · ${esc(p.h.session)}</b><br>${esc(setTxt(p.s))}<br>${esc(p.s.m||"")}<br>≈ ${kgTxt(Math.round(p.w*10)/10)} kg ${modeTxt} · e1RM ${p.v.toFixed(1)} kg`;
     tip.hidden=false; const r=box.querySelector(".chartwrap").getBoundingClientRect(), cr=c.getBoundingClientRect();
     tip.style.left=Math.min(r.width-170,Math.max(0,cr.left-r.left-80))+"px"; tip.style.top=Math.max(0,cr.top-r.top-78)+"px"; });
   box.querySelector(".chartwrap").addEventListener("click",ev=>{ if(!ev.target.classList.contains("hit")) $("#stTip").hidden=true; });
+  wire();
 }
 $("#btnStats").onclick=()=>openStats();
 

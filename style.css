@@ -267,3 +267,8 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .dock{display:flex;flex-direction:column;min-height:0;scroll-snap-align:start}
 .dock .chat{flex:1;min-height:0}
 .wspacer{pointer-events:none}
+
+/* interruttori del grafico Progressi */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:8px 6px 0 0}
+.seg button{appearance:none;border:0;background:var(--panel2);color:var(--mut);padding:6px 10px;font:600 12.5px Inter,sans-serif;cursor:pointer}
+.seg button.on{background:var(--acc);color:var(--acc-ink)}
