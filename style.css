@@ -148,3 +148,6 @@ details.adv{margin-top:18px}
 details.adv summary{color:var(--mut);font-size:13px;cursor:pointer;padding:6px 2px}
 details.adv .card{margin-top:8px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
+.li.alt .nm b{font-weight:600}
+.li.alt .rx{font-size:12px}
+.inc.inc3 > span{font-size:13.5px}

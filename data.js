@@ -17,7 +17,7 @@ const EX = {
   hammer:{n:"Hammer curl manubri",s:"",eq:"db",cue:"Presa neutra (pollici in alto) per tutta la ripetizione, gomiti fermi ai fianchi.",v:[["_aoad2yuP5w","DeltaBolic · varianti curl"],["fVdCFehqd0c","Dickerson Ross · brachiale"]]},
   smith_sq:{n:"Smith machine squat",s:"",eq:"bb",cue:"Piedi leggermente avanti rispetto al bilanciere, scendi in profondità con la schiena neutra.",v:[["iKCJCydYYrE","DeltaBolic"],["jPrzu4kp47o","DeltaBolic"],["Jrr50i0wVUA","João Pedro"]]},
   db_rdl:{n:"Romanian deadlift manubri",s:"",eq:"db",cue:"Ginocchia leggermente flesse e ferme, spingi i fianchi indietro, manubri vicini alle gambe.",v:[["QbbURJEUALw","DeltaBolic"],["5FToP72plRQ","Sam Johnston"],["0hjQsGS9hWM","Noha Rabasco · ITA"],["qk0lUhqvII0","V Athlete · ITA"],["Wou9zVQrAfs","DeltaBolic · RDL vs stiff"]]},
-  leg_press:{n:"Leg press inclinata",s:"",eq:"machine",cue:"Bacino sempre appoggiato, scendi finché resta in posizione, non bloccare le ginocchia in alto.",v:[["EotSw18oR9w","DeltaBolic"],["_vN05ay2sjs","Sam Johnston"],["wDNPCqFailQ","Fit With elmira"],["To8Juu6ufMA","Noha Rabasco · ITA"]]},
+  leg_press:{n:"Leg press inclinata",s:"",eq:"plate",cue:"Bacino sempre appoggiato, scendi finché resta in posizione, non bloccare le ginocchia in alto.",v:[["EotSw18oR9w","DeltaBolic"],["_vN05ay2sjs","Sam Johnston"],["wDNPCqFailQ","Fit With elmira"],["To8Juu6ufMA","Noha Rabasco · ITA"]]},
   leg_curl:{n:"Leg curl macchina",s:"",eq:"machine",cue:"Asse del ginocchio allineato al perno della macchina, bacino fermo, fase negativa lenta.",v:[["xdbEG3xGLI8","DeltaBolic · seduto"],["EnZZIaPCb8k","DeltaBolic"],["7kgCV4InX80","Noha Rabasco · ITA"]]},
   calf:{n:"Standing calf raise",s:"",eq:"machine",cue:"Allungamento completo in basso con breve pausa, poi sali sull'avampiede fino in cima.",v:[["4-BeqqIFiPM","João Pedro"],["ey9a2M71-vU","DeltaBolic"],["1_B7pkicFk8","Davis Diley"]]},
   bb_bench:{n:"Panca piana bilanciere",s:"Schienale 0°",eq:"bb",cue:"Arco moderato, scapole retratte, bilanciere a metà-basso petto, piedi ben piantati.",note:"Da confermare: in UPPER il bilanciere non è ancora confermato al posto dei manubri.",v:[["EdDqD4aKwxM","Davis Diley"],["i-gLOirnPaU","Davis Diley · 5 step"],["5NStATS0zrw","DeltaBolic"],["llJtcqNVXcw","Fit With elmira"]]},
@@ -27,16 +27,43 @@ const EX = {
 
 // [esercizio, serie, rip minime, rip massime, recupero in secondi]
 const SESSIONS = {
-  PUSH:[["db_flat",2,6,10,180],["db_incl",2,8,12,120],["cable_fly",2,12,15,90],["db_ohp",2,8,12,120],["lat_raise",2,12,20,90],["rope_pd",2,10,15,90],["oh_ext",2,10,15,90]],
-  PULL:[["lat_pd",2,8,12,120],["cs_row",2,8,12,120],["sa_pd",2,10,15,90],["db_curl",2,10,15,90],["hammer",2,10,15,90]],
-  LEGS:[["smith_sq",2,8,12,180],["db_rdl",2,8,12,180],["leg_press",2,9,12,180],["leg_curl",2,10,15,120],["calf",2,10,20,90]],
-  UPPER:[["bb_bench",2,6,10,180],["lat_pd",2,8,12,120],["db_incl",2,8,12,120],["cs_row",2,8,12,120],["lat_raise",2,12,20,90],["rev_pec",2,12,20,90],["rope_pd",2,10,15,90]],
-  LOWER:[["leg_press",2,9,12,180],["db_rdl",2,8,12,180],["leg_ext",2,10,15,90],["leg_curl",2,10,15,120],["calf",2,10,20,90],["db_curl",2,10,15,90]]
+  PUSH:[["db_flat",2,6,10,180],["db_incl",2,8,12,150],["cable_fly",2,12,15,90],["db_ohp",2,8,12,150],["lat_raise",2,12,20,90],["rope_pd",2,10,15,90],["oh_ext",2,10,15,90]],
+  PULL:[["lat_pd",2,8,12,150],["cs_row",2,8,12,150],["sa_pd",2,10,15,90],["db_curl",2,10,15,90],["hammer",2,10,15,90]],
+  LEGS:[["smith_sq",2,8,12,180],["db_rdl",2,8,12,180],["leg_press",2,9,12,180],["leg_curl",2,10,15,150],["calf",2,10,20,90]],
+  UPPER:[["bb_bench",2,6,10,180],["lat_pd",2,8,12,150],["db_incl",2,8,12,150],["cs_row",2,8,12,150],["lat_raise",2,12,20,90],["rev_pec",2,12,20,90],["rope_pd",2,10,15,90]],
+  LOWER:[["leg_press",2,9,12,180],["db_rdl",2,8,12,180],["leg_ext",2,10,15,90],["leg_curl",2,10,15,150],["calf",2,10,20,90],["db_curl",2,10,15,90]]
 };
 
 const CYCLE = ["PUSH","PULL","LEGS","REST","UPPER","REST","LOWER"];
 const RIR_MIN = 2, RIR_MAX = 3;
-const EQ_LABEL = {db:"manubri (peso per manubrio)",bb:"bilanciere",cable:"cavo",machine:"macchina"};
+const EQ_LABEL = {db:"manubri",bb:"bilanciere / Smith",plate:"macchina a dischi",cable:"cavo",machine:"macchina a pacco pesi"};
+// come si intende il carico: per manubrio, per lato (dischi su bilanciere, Smith e macchine a dischi), totale (pacco pesi e cavi)
+const LOAD_MODE = {db:"per manubrio",bb:"per lato",plate:"per lato",cable:"totale",machine:"totale"};
+
+/* Alternative mirate per il cambio esercizio: stesso muscolo e stesso tipo di stimolo.
+   [id esistente o nome nuovo, motivo] */
+const ALT = {
+  db_flat:[["bb_bench","stessa spinta orizzontale, carico più alto"],["Chest press orizzontale macchina","spinta orizzontale stabile, facile da portare vicino al cedimento"],["Panca piana al Smith","stessa traiettoria guidata"],["Piegamenti zavorrati","spinta orizzontale a corpo libero"]],
+  db_incl:[["Panca inclinata al Smith 30°","stesso angolo, traiettoria guidata"],["Chest press inclinata macchina","petto alto con macchina stabile"],["Panca inclinata bilanciere 30°","stesso angolo con bilanciere"],["Croci ai cavi dal basso (low-to-high)","petto alto in isolamento"]],
+  cable_fly:[["Pec deck (croci alla macchina)","isolamento del petto con buon allungamento"],["Croci con manubri su panca piana","forte carico in allungamento"],["Croci ai cavi da seduto su panca","stesso movimento, busto stabile"]],
+  db_ohp:[["Shoulder press macchina","spinta verticale stabile"],["Shoulder press al Smith da seduto","traiettoria guidata, schienale alto"],["Shoulder press manubri in piedi","stessa spinta, più core"]],
+  lat_raise:[["Alzate laterali al cavo","tensione costante e carico anche in allungamento"],["Alzate laterali alla macchina","deltoide laterale isolato e stabile"],["Alzate laterali da seduto con manubri","meno slancio"]],
+  rope_pd:[["Pushdown al cavo con barra dritta","stesso movimento, più carico"],["Pushdown monobraccio al cavo","lavoro unilaterale"],["Dip alla macchina","tricipiti con carico alto"]],
+  oh_ext:[["Estensioni sopra la testa al cavo con corda","stesso stimolo in allungamento"],["Estensioni sopra la testa con manubrio","capo lungo in allungamento"],["Estensioni sopra la testa monobraccio al cavo","unilaterale, buon allungamento"]],
+  lat_pd:[["Lat machine presa neutra","stesso movimento, presa più comoda"],["Trazioni assistite alla macchina","stessa trazione verticale"],["Pulldown monobraccio al cavo","più allungamento del gran dorsale"],["Pullover alla macchina","dorsali con braccia tese"]],
+  cs_row:[["Rematore con manubri su panca inclinata","stesso supporto al petto"],["T-bar row con supporto petto","rematore stabile, carico alto"],["Pulley basso (seated cable row)","rematore orizzontale al cavo"],["Rematore alla macchina a dischi","stesso pattern, carico alto"]],
+  sa_pd:[["Pullover al cavo con corda","stesso movimento con più ampiezza"],["Pullover alla macchina","dorsali a braccia tese, stabile"],["Pullover con manubrio su panca","forte allungamento"]],
+  db_curl:[["Curl su panca inclinata con manubri","bicipite in allungamento"],["Curl al cavo basso","tensione costante"],["Curl con bilanciere EZ","più carico"],["Curl alla macchina (preacher)","isolamento stabile"]],
+  hammer:[["Hammer curl al cavo con corda","stessa presa neutra, tensione costante"],["Curl presa inversa con bilanciere EZ","brachiale e brachioradiale"],["Hammer curl incrociato (cross-body)","stessa presa, più brachiale"]],
+  smith_sq:[["Hack squat alla macchina","squat guidato, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["leg_press","stesso focus quadricipiti"],["Squat con bilanciere","stesso pattern libero"]],
+  db_rdl:[["Romanian deadlift con bilanciere","stesso hip hinge, più carico"],["Romanian deadlift al Smith","hip hinge guidato"],["Iperestensioni a 45° (focus femorali e glutei)","stessa catena posteriore in allungamento"]],
+  leg_press:[["Hack squat alla macchina","spinta guidata, focus quadricipiti"],["Pendulum squat","quadricipiti in profondità"],["smith_sq","stesso focus quadricipiti"],["Leg press orizzontale","stesso movimento da seduto"]],
+  leg_curl:[["Leg curl seduto","il leg curl da seduto allunga di più i femorali (Maeo 2021)"],["Leg curl sdraiato","stesso isolamento dei femorali"],["Nordic curl assistito","eccentrica intensa sui femorali"]],
+  calf:[["Calf raise alla leg press","polpacci a gamba tesa"],["Calf raise in piedi al Smith","stesso esercizio con bilanciere guidato"],["Calf raise monopodalico con manubrio","stesso stimolo, unilaterale"]],
+  bb_bench:[["db_flat","stessa spinta con più ampiezza"],["Panca piana al Smith","traiettoria guidata"],["Chest press orizzontale macchina","spinta stabile"]],
+  rev_pec:[["Croci inverse ai cavi incrociati","deltoide posteriore con tensione costante"],["Alzate posteriori con manubri su panca inclinata","deltoide posteriore con petto in appoggio"],["Face pull alla corda","deltoide posteriore e cuffia dei rotatori"]],
+  leg_ext:[["Leg extension monogamba","stesso isolamento, una gamba alla volta"],["Sissy squat assistito","quadricipiti in allungamento"],["Hack squat alla macchina","quadricipiti con carico alto"]]
+};
 
 /* ---------- Recupero attivo: mobilità e stretching (a tempo, senza carichi) ----------
    kind:"time" → sec = durata di un giro (per lato se sides), niente kg/RIR */
