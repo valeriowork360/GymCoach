@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "10";
+const APP_VERSION = "11";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -439,7 +439,7 @@ FORMATO: rispondi SOLO con JSON valido, in uno di questi formati:
 async function callGemini(sys,prompt){
   const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
   const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
-  let err="";
+  let err="", retried=false;
   for(const model of models){
     try{
       const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
@@ -448,6 +448,7 @@ async function callGemini(sys,prompt){
       if(r.status===404){ err="modello Gemini non trovato"; continue; }
       if(r.status===429) return {err:"limite gratuito di Gemini raggiunto per ora"};
       if(r.status===400||r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||""; return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
+      if(r.status>=500){ err="i server di Gemini sono sovraccarichi"; if(!retried){ retried=true; await new Promise(z=>setTimeout(z,1500)); models.splice(models.indexOf(model)+1,0,model); } continue; }
       if(!r.ok){ err="Gemini: errore "+r.status; continue; }
       const j=await r.json(); const out=((j.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||"").join("");
       if(out) return {out,by:model};
@@ -833,12 +834,14 @@ function openSettings(){
   $("#sTest").onclick=async()=>{ collect(); $("#sTestMsg").textContent="Provo…";
     const k=s.apiKey;
     if(k.length<20){ $("#sTestMsg").textContent=`La chiave sembra incompleta (${k.length} caratteri): copiala di nuovo da AI Studio con il pulsante di copia.`; return; }
-    let msg="";
+    let msg="", only404=true;
     for(const model of [...new Set([s.model,"gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash"])]){
       try{ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:JSON.stringify({contents:[{role:"user",parts:[{text:"Rispondi solo: ok"}]}]})});
-        if(r.ok){ if(model!==s.model){ s.model=model; $("#sModel").value=model; save(); } $("#sTestMsg").textContent=`✓ Funziona (${model})`; return; }
+        if(r.ok){ if(model!==s.model && only404){ s.model=model; $("#sModel").value=model; save(); } $("#sTestMsg").textContent=`✓ La chiave funziona (${model}${only404?"":`; ${s.model} era sovraccarico, l'app lo riproverà`})`; return; }
         const j=await r.json().catch(()=>({})); msg=`Errore ${r.status}: ${(j.error&&j.error.message)||"risposta non valida"}`;
-        if(r.status!==404) break;
+        if(r.status>=500) msg=`La chiave è valida ✓ ma i server di Google sono sovraccarichi in questo momento (errore ${r.status}). Riprova tra qualche minuto: durante l'allenamento l'app ritenta da sola.`;
+        if(r.status>=500) only404=false;
+        if(r.status!==404 && r.status<500) break;
       }catch(e){ msg="Nessuna connessione"; break; }
     }
     $("#sTestMsg").textContent=msg;
