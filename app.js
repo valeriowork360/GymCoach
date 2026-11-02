@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -13,14 +13,14 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},incLb:{db:5,bb:5,cable:5,machine:10},defUnit:"kg",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
 function loadState(){
   try{
     const s = JSON.parse(localStorage.getItem(LS));
-    if(s){ const d=defState(); return {...d,...s,sync:{...d.sync,...s.sync},settings:{...d.settings,...s.settings,inc:{...d.settings.inc,...(s.settings||{}).inc}},ui:{...d.ui,...s.ui}}; }
+    if(s){ const d=defState(); return {...d,...s,sync:{...d.sync,...s.sync},settings:{...d.settings,...s.settings,inc:{...d.settings.inc,...(s.settings||{}).inc},incLb:{...d.settings.incLb,...(s.settings||{}).incLb}},ui:{...d.ui,...s.ui}}; }
   }catch(e){}
   return defState();
 }
@@ -61,26 +61,36 @@ function lastPerf(exId){
   }
   return null;
 }
-function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${kgTxt(s.kg)} kg × ${s.reps} (RIR ${s.rir})`; }
+/* ---------- unità: kg e libbre ----------
+   Ogni serie conserva kg (per i calcoli e lo storico comune) e, se registrata in libbre, u:"lb" e v (valore in lb). */
+const LB=0.45359237;
+const unitOf = s => s && s.u==="lb" ? "lb" : "kg";
+const valOf  = s => s.u==="lb" ? s.v : s.kg;
+const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
+const fromKg = (k,u) => u==="lb" ? k/LB : k;
+const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
+const setW   = s => s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
+function incFor(id,u){ const eq=EX[id].eq||"machine"; return (u==="lb"?st.settings.incLb[eq]:st.settings.inc[eq])||(u==="lb"?5:2.5); }
+function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setW(s)} × ${s.reps} (RIR ${s.rir})`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
-function cleanSet({kg,reps,rir,extra,sec}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(extra?{extra:true}:{})}; }
+function cleanSet({kg,reps,rir,extra,sec,u,v}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
 const isExtraSess = s => typeof EXTRA_SESSIONS!=="undefined" && EXTRA_SESSIONS.includes(s);
 const holdTxt = it => `${it[2]} s${EX[it[0]].sides?" per lato":""}`;
 
 /* ---------------- logica del coach ---------------- */
-const e1rm = (w,r,q) => w*(1+(r+q)/30);                // stima con formula di Epley
+const e1rm = (w,r,q) => w*(1+(r+q)/30);                // stima con formula di Epley (vale in kg e in lb)
 const loadFor = (e,r,q) => e/(1+(r+q)/30);
 function roundInc(w,inc){ return Math.max(inc, Math.round(w/inc)*inc); }
 
-/* carico consigliato per centrare il range a RIR 2–3 partendo da una serie */
+/* carico consigliato (nella stessa unità della serie) per centrare il range a RIR 2–3 */
 function targetLoad(it,set){
-  const [id,,lo,hi]=it, inc=st.settings.inc[EX[id].eq]||2.5;
-  if(!set.kg) return null;
-  const mid=(lo+hi)/2, e=e1rm(set.kg,set.reps,set.rir);
+  const [id,,lo,hi]=it, u=unitOf(set), inc=incFor(id,u), w0=valOf(set);
+  if(!w0) return null;
+  const mid=(lo+hi)/2, e=e1rm(w0,set.reps,set.rir);
   let w=roundInc(loadFor(e,mid,(RIR_MIN+RIR_MAX)/2),inc);
-  const maxStep=Math.max(inc, set.kg*0.15);
-  w=clamp(w,set.kg-maxStep,set.kg+maxStep);
+  const maxStep=Math.max(inc, w0*0.15);
+  w=clamp(w,w0-maxStep,w0+maxStep);
   return roundInc(w,inc);
 }
 function judge(it,set){
@@ -92,35 +102,51 @@ function judge(it,set){
   return "ok";
 }
 function coachSet(it,set){
-  const [id,,lo,hi]=it, inc=st.settings.inc[EX[id].eq]||2.5, v=judge(it,set);
+  const [id,,lo,hi]=it, u=unitOf(set), inc=incFor(id,u), w0=valOf(set), v=judge(it,set);
   let w=targetLoad(it,set);
-  if(set.kg && w!=null){
-    if(v==="heavy" && w>=set.kg) w=Math.max(inc,set.kg-inc);
-    if(v==="light" && w<=set.kg) w=set.kg+inc;
-    if(v==="ok") w=set.kg;
+  if(w0 && w!=null){
+    if(v==="heavy" && w>=w0) w=Math.max(inc,w0-inc);
+    if(v==="light" && w<=w0) w=w0+inc;
+    if(v==="ok") w=w0;
   }
   let why;
   if(v==="ok") why=`<span class="ok">✔ Carico giusto</span>: ${set.reps} rip nel range ${lo}–${hi} a RIR ${set.rir}.`;
   else if(v==="heavy") why=`<span class="down">⬇ Troppo pesante</span>: ${set.rir<RIR_MIN?`RIR ${set.rir} è troppo vicino al cedimento`:`${set.reps} rip sono sotto il minimo di ${lo}`}.`;
   else why=`<span class="up">⬆ Troppo leggero</span>: ${set.rir>RIR_MAX?`RIR ${set.rir}, ti restavano troppe ripetizioni`:`${set.reps} rip superano il massimo di ${hi}`}.`;
-  return {v,w,why};
+  return {v,w,u,why};
 }
-/* consiglio per la prossima seduta (double progression) */
+/* consiglio per la prossima seduta (double progression), nell'unità dell'ultima serie */
 function nextTime(it,sets){
-  const [id,,lo,hi]=it, inc=st.settings.inc[EX[id].eq]||2.5;
+  const [id,,lo,hi]=it;
   const ws=sets.filter(s=>!s.extra); if(!ws.length) return null;
-  const last=ws[ws.length-1];
-  if(!last.kg) return {kg:null,txt:"Prossima volta punta ad aggiungere ripetizioni mantenendo RIR 2–3."};
-  if(ws.every(s=>s.reps>=hi && s.rir>=RIR_MIN)) return {kg:last.kg+inc,txt:`Tutte le serie al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta sali a ${kgTxt(last.kg+inc)} kg**.`};
+  const last=ws[ws.length-1], u=unitOf(last), inc=incFor(id,u), w0=valOf(last);
+  const mk=(v,txt)=>({v,u,kg:v==null?null:toKg(v,u),txt});
+  if(!w0) return mk(null,"Prossima volta punta ad aggiungere ripetizioni mantenendo RIR 2–3.");
+  if(ws.every(s=>s.reps>=hi && s.rir>=RIR_MIN)) return mk(w0+inc,`Tutte le serie al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta sali a ${wTxt(w0+inc,u)}**.`);
   const v=judge(it,last);
-  if(v==="heavy"){ const w=Math.min(targetLoad(it,last)??last.kg, last.kg-inc); return {kg:Math.max(inc,w),txt:`La prossima volta parti da **${kgTxt(Math.max(inc,w))} kg** per restare nel range a RIR 2–3.`}; }
-  if(v==="light"){ const w=Math.max(targetLoad(it,last)??last.kg, last.kg+inc); return {kg:w,txt:`La prossima volta prova **${kgTxt(w)} kg**.`}; }
-  return {kg:last.kg,txt:`La prossima volta **resta a ${kgTxt(last.kg)} kg** e prova ad aggiungere ripetizioni fino a ${hi} in entrambe le serie.`};
+  if(v==="heavy"){ const w=Math.max(inc,Math.min(targetLoad(it,last)??w0, w0-inc)); return mk(w,`La prossima volta parti da **${wTxt(w,u)}** per restare nel range a RIR 2–3.`); }
+  if(v==="light"){ const w=Math.max(targetLoad(it,last)??w0, w0+inc); return mk(w,`La prossima volta prova **${wTxt(w,u)}**.`); }
+  return mk(w0,`La prossima volta **resta a ${wTxt(w0,u)}** e prova ad aggiungere ripetizioni fino a ${hi} in entrambe le serie.`);
 }
-function suggestedKg(exId){
-  const s=st.sugg[exId]; if(s && s.kg!=null) return s.kg;
-  const p=lastPerf(exId); if(p){ const ws=p.sets.filter(x=>!x.extra); if(ws.length) return ws[ws.length-1].kg; }
+/* carico consigliato per oggi: {v,u} nell'unità usata l'ultima volta */
+function suggested(exId){
+  const s=st.sugg[exId]; if(s && s.kg!=null) return s.u==="lb"?{v:s.v,u:"lb"}:{v:s.kg,u:"kg"};
+  const p=lastPerf(exId); if(p){ const ws=p.sets.filter(x=>!x.extra&&x.kg!=null); if(ws.length){ const l=ws[ws.length-1]; return {v:valOf(l),u:unitOf(l)}; } }
   return null;
+}
+function suggestedKg(exId){ const g=suggested(exId); return g?toKg(g.v,g.u):null; }
+function suggTxt(exId){ const g=suggested(exId); if(!g) return null; return g.u==="lb"?`${wTxt(g.v,"lb")} (≈${kgTxt(Math.round(toKg(g.v,"lb")*10)/10)} kg)`:wTxt(g.v,"kg"); }
+/* unità da usare per l'esercizio corrente se l'utente non la dice */
+function prefUnit(){
+  const i=st.cur.exIdx, id=item()[0], ov=(st.cur.unitPref||{})[i]; if(ov) return ov;
+  const ss=setsOf(i).filter(x=>x.kg!=null); if(ss.length) return unitOf(ss[ss.length-1]);
+  const g=suggested(id); if(g) return g.u;
+  return st.settings.defUnit||"kg";
+}
+/* riferimento in kg per capire se un numero è più plausibile in kg o in libbre */
+function refKg(id){
+  const ss=setsOf(st.cur.exIdx).filter(x=>x.kg!=null); if(ss.length) return ss[ss.length-1].kg;
+  return suggestedKg(id);
 }
 
 /* ---------------- parser delle serie ---------------- */
@@ -132,10 +158,10 @@ function norm(t){
   return t;
 }
 function parseSet(raw){
-  let t=" "+norm(raw)+" ", kg=null, reps=null, rir=null, m;
+  let t=" "+norm(raw)+" ", kg=null, unit=null, reps=null, rir=null, m;
   const take=(re,f)=>{ m=t.match(re); if(m){ f(m); t=t.replace(m[0]," "); return true;} return false; };
   take(/\brir\s*(?:di|=|:)?\s*(\d)\b/,m=>rir=+m[1]) || take(/\b(\d)\s*rir\b/,m=>rir=+m[1]) || take(/@\s*(\d)\b/,m=>rir=+m[1]) || take(/\b(\d)\s*(?:in canna|di riserva|buffer)/,m=>rir=+m[1]);
-  take(/(\d+(?:\.\d+)?)\s*(?:kg|kili|kilo|chili|chilo|k)\b/,m=>kg=+m[1]);
+  take(/(\d+(?:\.\d+)?)\s*(lbs?|libbr[ae]|pounds?|kg|kili|kilo|chili|chilo|k)\b/,m=>{ kg=+m[1]; unit=/^(lb|libbr|pound)/.test(m[2])?"lb":"kg"; });
   take(/(\d+)\s*(?:rip\w*|reps?|volte|ripetizioni)\b/,m=>reps=+m[1]);
   if(kg==null && reps==null) take(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+)\b/,m=>{kg=+m[1];reps=+m[2];});
   if(reps==null) take(/(?:\bx|×|\bper)\s*(\d+)\b/,m=>reps=+m[1]);
@@ -150,7 +176,8 @@ function parseSet(raw){
   if(kg!=null && reps==null && rir==null && left.length===1){ reps=kg; kg=null; } // "9" da solo = ripetizioni
   if(reps!=null && (reps<1||reps>60)) reps=null;
   if(rir!=null && rir>10) rir=null;
-  return {kg,reps,rir,found:reps!=null||rir!=null&&kg!=null};
+  if(unit==null){ if(/\b(lbs?|libbr[ae]|pounds?)\b/.test(t)) unit="lb"; else if(/\b(kg|chili|kili)\b/.test(t)) unit="kg"; }
+  return {kg,unit,reps,rir,found:reps!=null||rir!=null&&kg!=null};
 }
 const isQuestion = t => /\?/.test(t) || /^\s*(come|perch|cosa|qual|quant[oie]? |quando|posso|devo|dovrei|meglio|ho (dolore|male)|mi fa|che |dove|spiega|consigli|è normale|e se|va bene)/i.test(t);
 
@@ -173,16 +200,16 @@ function drawMsg(m){
 function introExercise(){
   if(isTimeIt(item())) return introTimed();
   const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=curList();
-  const p=lastPerf(id), sk=suggestedKg(id), sg=st.sugg[id];
+  const p=lastPerf(id), sk=suggTxt(id), g=suggested(id);
   let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} serie × ${lo}–${hi} rip · RIR ${RIR_MIN}–${RIR_MAX} · recupero ${restTxt(rest)}`;
   if(e.note) t+=`<br><span class="down">⚠ ${esc(e.note)}</span>`;
   if(p) t+=`<br>Ultima volta (${dateTxt(p.date)}): ${esc(perfTxt(p.sets))}`;
-  if(sk!=null) t+=`<br>👉 <b>Oggi: ${kgTxt(sk)} kg</b>${sg&&sg.txt?"":""}`;
+  if(sk!=null) t+=`<br>👉 <b>Oggi: ${sk}</b>`;
   else t+=`<br>👉 Prima volta: scegli un carico con cui arrivi a ~${Math.round((lo+hi)/2)} rip lasciandone 2–3 in canna.`;
   t+=`<br><span class="muted">${esc(e.cue)}</span>`;
   const done=workSets(st.cur.exIdx).length;
   if(done) t+=`<br><span class="muted">Già fatte ${done}/${n} serie.</span>`;
-  else t+=`<br><span class="muted">A fine serie scrivimi, per esempio: <i>${kgTxt(sk??20)} kg ${hi-1} rip RIR 2</i></span>`;
+  else t+=`<br><span class="muted">A fine serie scrivimi, per esempio: <i>${g?wTxt(g.v,g.u):"20 kg"} ${hi-1} rip RIR 2</i> (anche in libbre: <i>50 lb</i>)</span>`;
   bot(t,"intro");
 }
 
@@ -217,9 +244,14 @@ async function onSend(text){
   const pend=st.cur.pending;
   if(pend){
     const p=parseSet(text), only=t.match(/^\D*(\d+(?:[.,]\d+)?)\D*$/);
+    if(pend.need==="unit"){
+      let u=null;
+      if(/lb|libbr|pound/.test(t)) u="lb"; else if(/kg|chil|kil/.test(t)) u="kg"; else if(/^s[iì]\b/.test(t)) u=pend.alt; else if(/^no\b/.test(t)) u=pend.unit;
+      if(u){ return logSet({...pend,unit:u,unitOk:true}); }
+    }
     if(pend.need==="rir"){ const v=p.rir??(only?+only[1].replace(",","."):null); if(v!=null && v<=10) return logSet({...pend,rir:v}); }
     if(pend.need==="reps"){ const v=p.reps??(only?+only[1]:null); if(v) return logSet({...pend,reps:v,rir:pend.rir??p.rir}); }
-    if(pend.need==="kg"){ const v=p.kg??(only?+only[1].replace(",","."):null); if(v!=null) return logSet({...pend,kg:v}); }
+    if(pend.need==="kg"){ const v=p.kg??(only?+only[1].replace(",","."):null); if(v!=null) return logSet({...pend,kg:v,unit:p.unit??null}); }
   }
 
   const p=parseSet(text);
@@ -229,31 +261,53 @@ async function onSend(text){
 
 function logSet(p){
   const it=item(), [id,n,lo,hi,rest]=it, i=st.cur.exIdx, sets=setsOf(i), ws=workSets(i);
-  let kg=p.kg;
-  if(kg==null) kg = sets.length ? sets[sets.length-1].kg : suggestedKg(id);
-  if(kg==null){ st.cur.pending={need:"kg",reps:p.reps,rir:p.rir}; save(); bot("Con che carico (kg)?"); return drawChips(); }
-  if(p.reps==null){ st.cur.pending={need:"reps",kg,rir:p.rir}; save(); bot(`Quante ripetizioni con ${kgTxt(kg)} kg?`); return drawChips(); }
-  if(p.rir==null){ st.cur.pending={need:"rir",kg,reps:p.reps}; save(); bot(`${kgTxt(kg)} kg × ${p.reps}: quante <b>RIR</b> ti sentivi (ripetizioni rimaste in canna)?`); return drawChips(); }
+  let val=p.kg, u=p.unit||null;
+  if(val==null){
+    const prev=sets.filter(x=>x.kg!=null).pop();
+    if(prev){ val=valOf(prev); u=u||unitOf(prev); }
+    else { const g=suggested(id); if(g){ val=g.v; u=u||g.u; } }
+  }
+  if(val==null){ st.cur.pending={need:"kg",reps:p.reps,rir:p.rir}; save(); bot(`Con che carico? (es. <i>24 kg</i> o <i>50 lb</i>)`); return drawChips(); }
+  if(u==null) u=prefUnit();
+  // controllo kg/libbre: se il numero somiglia molto di più allo storico nell'altra unità, chiedo conferma
+  if(!p.unitOk && p.kg!=null){
+    const ref=refKg(id), alt=u==="kg"?"lb":"kg";
+    if(ref){ const eSame=Math.abs(toKg(val,u)-ref)/ref, eAlt=Math.abs(toKg(val,alt)-ref)/ref;
+      if(eAlt<0.2 && eSame>0.35){
+        st.cur.pending={need:"unit",kg:val,unit:u,alt,reps:p.reps,rir:p.rir}; save();
+        bot(`Hai scritto <b>${wTxt(val,u)}</b>, ma il tuo ultimo carico su questo esercizio è circa <b>${kgTxt(Math.round(fromKg(ref,u)*10)/10)} ${u}</b> (≈ ${kgTxt(Math.round(fromKg(ref,alt)))} ${alt}). Intendevi <b>${wTxt(val,alt)}</b>?`);
+        return drawChips();
+      }
+    }
+  }
+  if(p.reps==null){ st.cur.pending={need:"reps",kg:val,unit:u,unitOk:true,rir:p.rir}; save(); bot(`Quante ripetizioni con ${wTxt(val,u)}?`); return drawChips(); }
+  if(p.rir==null){ st.cur.pending={need:"rir",kg:val,unit:u,unitOk:true,reps:p.reps}; save(); bot(`${wTxt(val,u)} × ${p.reps}: quante <b>RIR</b> ti sentivi (ripetizioni rimaste in canna)?`); return drawChips(); }
   st.cur.pending=null;
   const extra = ws.length>=n;
-  const set={kg,reps:p.reps,rir:p.rir,t:Date.now(),...(extra?{extra:true}:{})};
+  const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,t:Date.now(),...(extra?{extra:true}:{})};
   sets.push(set); save();
-  const c=coachSet(it,set), num=ws.length+1;
-  let txt = extra ? `Serie extra registrata: ${kgTxt(kg)} kg × ${set.reps}, RIR ${set.rir} <span class="muted">(non conta nelle serie allenanti)</span>.`
-                  : `Serie ${num}/${n}: <b>${kgTxt(kg)} kg × ${set.reps}</b>, RIR ${set.rir}.<br>${c.why}`;
+  const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
+  let txt = extra ? `Serie extra registrata: ${setW(set)} × ${set.reps}, RIR ${set.rir} <span class="muted">(non conta nelle serie allenanti)</span>.`
+                  : `Serie ${num}/${n}: <b>${setW(set)} × ${set.reps}</b>${conv}, RIR ${set.rir}.<br>${c.why}`;
   const lastOfEx = !extra && num>=n;
   if(!extra && !lastOfEx){
-    if(c.v==="ok") txt+=` Serie ${num+1}: <b>resta a ${kgTxt(kg)} kg</b>.`;
-    else if(c.w!=null) txt+=` Serie ${num+1}: <b>${c.v==="heavy"?"scendi":"sali"} a ${kgTxt(c.w)} kg</b>.`;
+    if(c.v==="ok") txt+=` Serie ${num+1}: <b>resta a ${wTxt(val,u)}</b>.`;
+    else if(c.w!=null) txt+=` Serie ${num+1}: <b>${c.v==="heavy"?"scendi":"sali"} a ${wTxt(c.w,u)}</b>.`;
     txt+=`<br>Recupero ${restTxt(rest)}.`;
   }
   bot(txt);
   if(lastOfEx){
     const nt=nextTime(it,setsOf(i));
-    if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
+    if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
     afterExercise(i,rest);
   } else if(!extra) startTimer(rest);
   drawExbar(); drawChips();
+}
+function toggleUnit(){
+  const nu=prefUnit()==="lb"?"kg":"lb"; (st.cur.unitPref ||= {})[st.cur.exIdx]=nu; save();
+  const r=refKg(item()[0]);
+  bot(`Da ora su questo esercizio uso le <b>${nu==="lb"?"libbre":"chili"}</b>${r?` (l'ultimo carico equivale a circa <b>${kgTxt(Math.round(fromKg(r,nu)*2)/2)} ${nu}</b>)`:""}. Puoi sempre scrivere l'unità nel messaggio.`);
+  drawChips();
 }
 function afterExercise(i,rest){
   save(); syncNow(true);
@@ -325,7 +379,7 @@ function showHistoryEx(forId){
     if(e) rows.push(`${dateTxt(h.start)} (${h.session}): ${esc(perfTxt(e.sets))}`);
   }
   const sg=st.sugg[id];
-  bot(rows.length?`<b>Storico ${esc(EX[id].n)}</b><br>`+rows.join("<br>")+(sg&&sg.kg!=null?`<br>👉 Carico consigliato per la prossima volta: <b>${kgTxt(sg.kg)} kg</b>`:""):`Nessuno storico per ${esc(EX[id].n)}: non l'hai ancora registrato nell'app.`);
+  bot(rows.length?`<b>Storico ${esc(EX[id].n)}</b><br>`+rows.join("<br>")+(suggTxt(id)?`<br>👉 Carico consigliato per la prossima volta: <b>${suggTxt(id)}</b>`:""):`Nessuno storico per ${esc(EX[id].n)}: non l'hai ancora registrato nell'app.`);
 }
 
 /* ---------------- AI (Gemini, opzionale) ---------------- */
@@ -352,7 +406,7 @@ function recentSessionsTxt(max=6){
 }
 function allExLastTxt(){
   const rows=[];
-  for(const id of Object.keys(EX)){ const p=lastPerf(id); if(p) rows.push(`- ${EX[id].n}: ${dateTxt(p.date)} (${p.session}) ${perfTxt(p.sets)}${st.sugg[id]&&st.sugg[id].kg!=null?` → prossimo carico consigliato ${kgTxt(st.sugg[id].kg)} kg`:""}`); }
+  for(const id of Object.keys(EX)){ const p=lastPerf(id); if(p) rows.push(`- ${EX[id].n}: ${dateTxt(p.date)} (${p.session}) ${perfTxt(p.sets)}${st.sugg[id]&&st.sugg[id].kg!=null?` → prossimo carico consigliato ${suggTxt(id)}`:""}`); }
   return rows.join("\n")||"nessun dato registrato";
 }
 function aiContext(){
@@ -361,7 +415,7 @@ function aiContext(){
   const days=st.history.length?Math.round((Date.now()-st.history[st.history.length-1].end)/86400000):null;
   return `Sei il coach personale dell'utente (personal trainer esperto, aggiornato sulla ricerca scientifica su ipertrofia e forza), dentro la sua app di registro allenamenti. Rispondi SEMPRE in italiano.
 STILE: diretto e concreto, come un coach in palestra. Rispondi alla domanda nella prima frase, poi dai indicazioni operative con numeri precisi (kg, ripetizioni, RIR, secondi, gradi) basate sui SUOI dati qui sotto. Niente frasi generiche o da manuale, niente elenchi di avvertenze. Se un dato manca, fai una sola domanda mirata. Lunghezza: 40–140 parole, salvo richiesta di approfondire.
-PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower (ciclo PUSH→PULL→LEGS→REST→UPPER→REST→LOWER, senza giorni fissi), 2 serie allenanti per esercizio, RIR target 2–3, double progression (prima ripetizioni nel range, poi carico quando entrambe le serie arrivano al limite alto a RIR 2–3). Le serie extra non contano. Non convertire unità, fori o kg/lato tra macchine diverse. Incrementi minimi: manubri ${kgTxt(st.settings.inc.db)} kg, bilanciere ${kgTxt(st.settings.inc.bb)} kg, cavi/macchine ${kgTxt(st.settings.inc.cable)} kg.
+PROGRAMMA: obiettivo ipertrofia e progressione tecnica/forza. PPL + Upper/Lower (ciclo PUSH→PULL→LEGS→REST→UPPER→REST→LOWER, senza giorni fissi), 2 serie allenanti per esercizio, RIR target 2–3, double progression (prima ripetizioni nel range, poi carico quando entrambe le serie arrivano al limite alto a RIR 2–3). Le serie extra non contano. Non convertire unità, fori o kg/lato tra macchine diverse. L'utente si allena in palestre diverse: a volte i pesi sono in kg, a volte in libbre (1 lb = 0,4536 kg). Rispondi nella stessa unità che sta usando per quell'esercizio e, se utile, indica l'equivalente. Incrementi minimi in kg: manubri ${kgTxt(st.settings.inc.db)}, bilanciere ${kgTxt(st.settings.inc.bb)}, cavi ${kgTxt(st.settings.inc.cable)}, macchine ${kgTxt(st.settings.inc.machine)}; in libbre: manubri ${kgTxt(st.settings.incLb.db)}, bilanciere ${kgTxt(st.settings.incLb.bb)}, cavi ${kgTxt(st.settings.incLb.cable)}, macchine ${kgTxt(st.settings.incLb.machine)}.
 ${COACH_KNOWLEDGE}
 
 DATI DELL'UTENTE
@@ -371,14 +425,14 @@ ${today}
 Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Tecnica: ${e.cue}${e.note?` Nota: ${e.note}`:""}
 Serie fatte oggi su questo esercizio: ${perfTxt(setsOf(st.cur.exIdx))||"nessuna"}.
 Storico di questo esercizio (più recente prima): ${exHistoryTxt(id)}.
-Carico consigliato oggi dall'app: ${suggestedKg(id)??"non definito"}.
+Carico consigliato oggi dall'app: ${suggTxt(id)??"non definito"}. Unità che sta usando ora: ${prefUnit()}.
 Ultime sessioni:
 ${recentSessionsTxt()}
 Ultima prestazione registrata per ogni esercizio (usala per rispondere a domande su carichi e ripetizioni passate; se un dato non c'è, dillo chiaramente invece di inventarlo):
 ${allExLastTxt()}
 
 FORMATO: rispondi SOLO con JSON valido, in uno di questi formati:
-{"azione":"serie","kg":numero o null,"rip":numero o null,"rir":numero o null} → se il messaggio comunica una serie appena fatta;
+{"azione":"serie","kg":numero o null (il carico nel numero detto dall'utente),"unita":"kg" o "lb" o null,"rip":numero o null,"rir":numero o null} → se il messaggio comunica una serie appena fatta;
 {"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata);
 {"azione":"risposta","testo":"..."} → per tutto il resto. Nel testo puoi usare **grassetto** e a capo.`;
 }
@@ -438,7 +492,7 @@ async function askAI(text){
   let j=null; try{ j=JSON.parse(out.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/,"$1")); }catch(e){}
   if(j && j.azione==="cambia" && j.esercizio){ bot(md(`Ok, apro il cambio esercizio con **${j.esercizio}**: conferma o scegline un altro.`)); return openSwap(j.esercizio); }
   if(j && j.azione==="serie" && isTimeIt(item())) return logTimed();
-  if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,reps:j.rip??null,rir:j.rir??null}); }
+  if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,unit:j.unita==="lb"?"lb":j.unita==="kg"?"kg":null,reps:j.rip??null,rir:j.rir??null}); }
   bot(md(j&&j.testo ? j.testo : out.replace(/^```\w*|```$/g,"")));
 }
 
@@ -591,20 +645,22 @@ setTimeout(()=>{ if(!apiOk()) loadYTApi(); },8000);
 function drawExbar(){
   const it=item(), e=exOf(it), [,n,lo,hi,rest]=it, ws=workSets(st.cur.exIdx);
   let dots=""; for(let s=0;s<n;s++){ const x=ws[s]; dots+=`<span class="dot ${x?"done":s===ws.length?"next":""}" title="Serie ${s+1}">${x?(x.sec!=null?"✓":x.reps):s+1}</span>`; }
-  const sk=isTimeIt(it)?null:suggestedKg(it[0]);
-  const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${kgTxt(sk)} kg`:""}`;
+  const g=isTimeIt(it)?null:suggested(it[0]), sk=g?wTxt(g.v,g.u):null;
+  const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${sk}`:""}`;
   $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
 function drawChips(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
-  if(pend && pend.need==="rir") html=[0,1,2,3,4,5].map(v=>`<button class="chip acc" data-say="RIR ${v}">RIR ${v}</button>`).join("");
+  if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
+  else if(pend && pend.need==="rir") html=[0,1,2,3,4,5].map(v=>`<button class="chip acc" data-say="RIR ${v}">RIR ${v}</button>`).join("");
   else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=Math.max(1,lo-2);v<=hi+2;v++) html+=`<button class="chip acc" data-say="${v} rip">${v}</button>`; }
   else {
     const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
     html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
       +`<button class="chip" data-cmd="undo">↶ Annulla</button>`
+      +(isTimeIt(it)?"":`<button class="chip" data-cmd="unit">⚖ ${prefUnit()==="lb"?"Libbre (lb)":"Chili (kg)"} ⇄</button>`)
       +`<button class="chip" data-cmd="swap">🔁 Cambia esercizio</button>`
       +`<button class="chip" data-cmd="next">Esercizio successivo →</button>`
       +`<button class="chip" data-cmd="hist">📈 Storico</button>`
@@ -614,7 +670,7 @@ function drawChips(){
   c.innerHTML=html;
   $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
-  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
+  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
@@ -696,14 +752,14 @@ $("#btnList").onclick=openList;
 
 function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),cyclePos:st.cyclePos,sugg:st.sugg,custom:st.custom,history:st.history},null,1); }
 function exportText(){
-  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>(s.sec!=null?`${s.sec}s`:`${kgTxt(s.kg)}kg×${s.reps} RIR${s.rir}`)+(s.extra?" (extra)":"")).join(", ")}`).join("\n")).join("\n\n");
+  return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>(s.sec!=null?`${s.sec}s`:`${setW(s).replace(" ","")}×${s.reps} RIR${s.rir}`)+(s.extra?" (extra)":"")).join(", ")}`).join("\n")).join("\n\n");
 }
 function openArchive(){
   const hs=[...st.history].reverse();
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
     return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${dur} min</span></summary>
-      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}<br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
+      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}<br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${setW(s)} × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
       <div class="row"><button class="btn" data-chat="${h.id}">💬 Vedi chat</button><button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
@@ -749,8 +805,10 @@ function openSettings(){
     <label class="f" for="sOrModel">Modello OpenRouter</label>
     <input class="inp" id="sOrModel" value="${esc(s.orModel)}">
     <div class="row" style="margin-top:8px"><button class="btn" id="sOrTest">Prova OpenRouter</button><span class="muted" id="sOrMsg"></span></div>
-    <label class="f">Incremento minimo di carico (kg)</label>
-    <div class="inc">${Object.entries(EQ_LABEL).map(([k,l])=>`<span>${l[0].toUpperCase()+l.slice(1)}</span><input class="inp" inputmode="decimal" data-inc="${k}" value="${kgTxt(s.inc[k])}">`).join("")}</div>
+    <label class="f" for="sUnit">Unità predefinita (se non la scrivi e non c'è storico)</label>
+    <select class="inp" id="sUnit"><option value="kg" ${s.defUnit!=="lb"?"selected":""}>Chili (kg)</option><option value="lb" ${s.defUnit==="lb"?"selected":""}>Libbre (lb)</option></select>
+    <label class="f">Incremento minimo di carico — il salto più piccolo disponibile in palestra</label>
+    <div class="inc inc3"><span></span><b class="muted">kg</b><b class="muted">lb</b>${Object.entries(EQ_LABEL).map(([k,l])=>`<span>${l[0].toUpperCase()+l.slice(1)}</span><input class="inp" inputmode="decimal" data-inc="${k}" value="${kgTxt(s.inc[k])}"><input class="inp" inputmode="decimal" data-inclb="${k}" value="${kgTxt(s.incLb[k])}">`).join("")}</div>
     <button class="btn acc wide" id="sSave">Salva</button>
     <div class="card"><h3>Ciclo</h3><p class="muted" style="margin:0 0 8px">Ultimo passaggio completato: <b>${st.cyclePos>=0?CYCLE[st.cyclePos]:"nessuno"}</b>. Correggilo se serve:</p>
       <select class="inp" id="sCycle"><option value="-1">Nessuno (si riparte da PUSH)</option>${CYCLE.map((c,k)=>`<option value="${k}" ${k===st.cyclePos?"selected":""}>${k+1}. ${c}</option>`).join("")}</select></div>
@@ -766,6 +824,8 @@ function openSettings(){
     <div class="card"><h3>Zona pericolosa</h3><button class="btn danger" id="sWipe">Cancella tutti i dati</button></div>`);
   const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
+    document.querySelectorAll("[data-inclb]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.incLb[i.dataset.inclb]=v; });
+    s.defUnit=$("#sUnit").value;
     st.cyclePos=+$("#sCycle").value; save(); };
   $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); if(st.settings.ghToken) syncNow(); };
   $("#sGhNow").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Backup in corso…"; await syncNow(); $("#sGhMsg").textContent=syncStatus(); };
@@ -885,10 +945,10 @@ function buildMaster(){
   for(const id of Object.keys(EX)){
     const storico=[];
     for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
-      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,...(s.u==="lb"?{lb:s.v}:{}),rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
     const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return isTimeIt(x)?{sessione:k,giri:x[1],durata:holdTxt(x),pausa_s:x[4]}:{sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
     let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg){ const e=e1rm(s.kg,s.rip,s.rir); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data}; } }));
-    esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,miglior_serie_stimata:best,storico};
+    esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,prossimo_carico_testo:suggTxt(id),miglior_serie_stimata:best,storico};
   }
   const sessioni=sessions.map(({chat,chatSynced,...h})=>({...h,chat_file:chatPath(h)}));
   return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi_personalizzati:st.custom,esercizi,sessioni};
@@ -898,8 +958,8 @@ function masterMd(m){
   for(const [id,e] of Object.entries(m.esercizi)){
     if(!e.storico.length) continue;
     const sch=e.nelle_schede;
-    t+=`\n## ${e.nome}\n\nSchede: ${!sch.length?"esercizio personalizzato":sch.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${sch[0]&&sch[0].giri?"":` · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
-    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""}${r.al_posto_di?` · al posto di ${r.al_posto_di}`:""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
+    t+=`\n## ${e.nome}\n\nSchede: ${!sch.length?"esercizio personalizzato":sch.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${sch[0]&&sch[0].giri?"":` · Prossimo carico: ${e.prossimo_carico_testo||"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
+    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""}${r.al_posto_di?` · al posto di ${r.al_posto_di}`:""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${s.lb!=null?`${kgTxt(s.lb)} lb (${kgTxt(Math.round(s.kg*10)/10)} kg)`:`${kgTxt(s.kg)} kg`} × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
   }
   return t;
 }

@@ -142,3 +142,5 @@ a{color:var(--acc)}
 .timer.hold .t-bar i{background:var(--ok)}
 .home h3.sec{font:700 16px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:20px 2px 0}
 .sbtn.alt b{color:var(--ok)}
+.inc.inc3{grid-template-columns:1fr 72px 72px}
+.inc.inc3 b{font-size:12px;text-align:center;font-weight:600}

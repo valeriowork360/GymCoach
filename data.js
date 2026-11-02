@@ -36,7 +36,7 @@ const SESSIONS = {
 
 const CYCLE = ["PUSH","PULL","LEGS","REST","UPPER","REST","LOWER"];
 const RIR_MIN = 2, RIR_MAX = 3;
-const EQ_LABEL = {db:"manubri (kg per manubrio)",bb:"bilanciere",cable:"cavo",machine:"macchina"};
+const EQ_LABEL = {db:"manubri (peso per manubrio)",bb:"bilanciere",cable:"cavo",machine:"macchina"};
 
 /* ---------- Recupero attivo: mobilità e stretching (a tempo, senza carichi) ----------
    kind:"time" → sec = durata di un giro (per lato se sides), niente kg/RIR */
