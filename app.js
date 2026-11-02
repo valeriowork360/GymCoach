@@ -12,13 +12,14 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{apiKey:"",model:"gemini-flash-latest",inc:{db:2,bb:2.5,cable:2.5,machine:2.5}}
+    settings:{apiKey:"",model:"gemini-flash-latest",inc:{db:2,bb:2.5,cable:2.5,machine:2.5},ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    sync:{pending:false,last:0,err:""}
   };
 }
 function loadState(){
   try{
     const s = JSON.parse(localStorage.getItem(LS));
-    if(s){ const d=defState(); return {...d,...s,settings:{...d.settings,...s.settings,inc:{...d.settings.inc,...(s.settings||{}).inc}},ui:{...d.ui,...s.ui}}; }
+    if(s){ const d=defState(); return {...d,...s,sync:{...d.sync,...s.sync},settings:{...d.settings,...s.settings,inc:{...d.settings.inc,...(s.settings||{}).inc}},ui:{...d.ui,...s.ui}}; }
   }catch(e){}
   return defState();
 }
@@ -218,7 +219,7 @@ function logSet(p){
   if(lastOfEx){
     const nt=nextTime(it,setsOf(i));
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
-    save();
+    save(); syncNow(true);
     const list=SESSIONS[st.cur.session];
     const nextIdx=list.findIndex((x,k)=>k>i && workSets(k).length<x[1]);
     if(nextIdx>=0){ startTimer(rest); goEx(nextIdx,true); }
@@ -435,7 +436,7 @@ function finishSession(){
   $("#confirmEnd").onclick=()=>{
     st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex});
     const pos=CYCLE.indexOf(st.cur.session); st.cyclePos=pos;
-    st.cur=null; save(); closeSheet(); stopTimer();
+    st.cur=null; save(); syncNow(); closeSheet(); stopTimer();
     try{ wake && wake.release(); }catch(e){}
     render();
   };
@@ -474,7 +475,7 @@ function openArchive(){
     <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">I dati sono salvati solo su questo telefono. Fai ogni tanto un backup: il file si può reimportare, il testo si può incollare in una chat con Claude per un'analisi.</p>
     <div class="row"><button class="btn" id="exFile">⬇ Esporta file</button><button class="btn" id="exCopy">📋 Copia testo</button><label class="btn" style="display:inline-block">⬆ Importa file<input type="file" id="imFile" accept="application/json,.json" hidden></label></div><p class="muted" id="exMsg"></p></div>`);
   $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.armed){ st.history=st.history.filter(h=>h.id!==b.dataset.del); save(); openArchive(); }
+    if(b.dataset.armed){ st.history=st.history.filter(h=>h.id!==b.dataset.del); save(); syncNow(); openArchive(); }
     else { b.dataset.armed=1; b.textContent="Tocca di nuovo per eliminare"; }
   });
   $("#exFile").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([exportJSON()],{type:"application/json"})); a.download=`gym-coach-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
@@ -487,7 +488,7 @@ function openArchive(){
       st.history.sort((a,b)=>a.start-b.start);
       if(j.sugg) st.sugg={...j.sugg,...st.sugg};
       if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
-      save(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
+      save(); syncNow(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
     }catch(err){ $("#exMsg").textContent="File non valido."; }
   };
 }
@@ -507,11 +508,21 @@ function openSettings(){
     <button class="btn acc wide" id="sSave">Salva</button>
     <div class="card"><h3>Ciclo</h3><p class="muted" style="margin:0 0 8px">Ultimo passaggio completato: <b>${st.cyclePos>=0?CYCLE[st.cyclePos]:"nessuno"}</b>. Correggilo se serve:</p>
       <select class="inp" id="sCycle"><option value="-1">Nessuno (si riparte da PUSH)</option>${CYCLE.map((c,k)=>`<option value="${k}" ${k===st.cyclePos?"selected":""}>${k+1}. ${c}</option>`).join("")}</select></div>
+    <div class="card"><h3>Backup automatico su GitHub</h3>
+      <p class="muted" style="margin:0 0 6px">A fine di ogni esercizio aggiorno <b>master.json</b> e <b>master.md</b> (dati organizzati per esercizio) nel tuo repository privato.</p>
+      <label class="f" for="sGhRepo">Repository (utente/nome)</label>
+      <input class="inp" id="sGhRepo" value="${esc(s.ghRepo)}" autocomplete="off">
+      <label class="f" for="sGhTok">Token GitHub (Contents: read and write)</label>
+      <input class="inp" id="sGhTok" type="password" value="${esc(s.ghToken)}" placeholder="github_pat_…" autocomplete="off">
+      <div class="row" style="margin-top:10px"><button class="btn" id="sGhNow">☁ Backup ora</button><button class="btn" id="sGhRestore">⬇ Ripristina da GitHub</button></div>
+      <p class="muted" id="sGhMsg">${syncStatus()}</p></div>
     <div class="card"><h3>Zona pericolosa</h3><button class="btn danger" id="sWipe">Cancella tutti i dati</button></div>`);
-  const collect=()=>{ s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-flash-latest";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.trim(); s.model=$("#sModel").value.trim()||"gemini-flash-latest";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     st.cyclePos=+$("#sCycle").value; save(); };
-  $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); };
+  $("#sSave").onclick=()=>{ collect(); closeSheet(); render(); if(st.settings.ghToken) syncNow(); };
+  $("#sGhNow").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Backup in corso…"; await syncNow(); $("#sGhMsg").textContent=syncStatus(); };
+  $("#sGhRestore").onclick=async()=>{ collect(); $("#sGhMsg").textContent="Scarico master.json…"; $("#sGhMsg").textContent=await restoreFromGitHub(); };
   $("#sTest").onclick=async()=>{ collect(); $("#sTestMsg").textContent="Provo…";
     try{ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":s.apiKey},body:JSON.stringify({contents:[{role:"user",parts:[{text:"Rispondi solo: ok"}]}]})});
       $("#sTestMsg").textContent = r.ok ? "✓ Funziona" : r.status===404 ? "Modello non trovato: prova gemini-flash-latest" : r.status===429 ? "Limite raggiunto, riprova tra poco" : "Chiave non valida ("+r.status+")";
@@ -540,4 +551,88 @@ if(SR){
 }
 
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* ---------------- master file e backup su GitHub ---------------- */
+function allSessions(){
+  const out=[...st.history];
+  if(st.cur){
+    const list=SESSIONS[st.cur.session];
+    const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(({kg,reps,rir,extra})=>({kg,reps,rir,...(extra?{extra:true}:{})}))})).filter(e=>e.sets.length);
+    if(ex.length) out.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:null,inCorso:true,ex});
+  }
+  return out.sort((a,b)=>a.start-b.start);
+}
+function buildMaster(){
+  const sessions=allSessions(), esercizi={};
+  for(const id of Object.keys(EX)){
+    const storico=[];
+    for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),serie:e.sets.map(s=>({kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})}))}); }
+    const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return {sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
+    let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg){ const e=e1rm(s.kg,s.rip,s.rir); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data}; } }));
+    esercizi[id]={nome:EX[id].n,attrezzo:EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,miglior_serie_stimata:best,storico};
+  }
+  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi,sessioni:sessions};
+}
+function masterMd(m){
+  let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}\n`;
+  for(const [id,e] of Object.entries(m.esercizi)){
+    if(!e.storico.length) continue;
+    t+=`\n## ${e.nome}\n\nSchede: ${e.nelle_schede.map(x=>`${x.sessione} (${x.serie}×${x.range})`).join(", ")} · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}\n\n| Data | Sessione | Serie (kg × rip · RIR) |\n|---|---|---|\n`;
+    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""} | ${r.serie.map(s=>`${kgTxt(s.kg)} × ${s.rip} · RIR ${s.rir}${s.extra?" (extra)":""}`).join(" — ")} |\n`;
+  }
+  return t;
+}
+const b64=str=>{ const bytes=new TextEncoder().encode(str); let bin=""; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin); };
+const unb64=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,"")),c=>c.charCodeAt(0)));
+async function gh(path,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${st.settings.ghRepo}/contents/${path}`,{...opt,headers:{"Authorization":"Bearer "+st.settings.ghToken,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})},cache:"no-store"});
+  return r;
+}
+async function ghPut(path,content,msg){
+  let sha; const g=await gh(path); if(g.ok) sha=(await g.json()).sha; else if(g.status!==404) throw g.status;
+  const r=await gh(path,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})});
+  if(!r.ok) throw r.status;
+}
+function syncStatus(){
+  if(!st.settings.ghToken) return "Backup automatico non attivo: inserisci repository e token.";
+  if(st.sync.pending) return `⚠ Ultimo backup non riuscito${st.sync.err?` (${st.sync.err})`:""}: riprovo da solo.`+(st.sync.last?` Ultimo riuscito: ${new Date(st.sync.last).toLocaleString("it-IT")}.`:"");
+  return st.sync.last?`✓ Ultimo backup: ${new Date(st.sync.last).toLocaleString("it-IT")}.`:"Nessun backup ancora eseguito.";
+}
+let syncing=null, syncAgain=false;
+async function syncNow(quiet){
+  if(!st.settings.ghToken||!st.settings.ghRepo) return;
+  if(syncing){ syncAgain=true; return syncing; }
+  syncing=(async()=>{
+    try{
+      const m=buildMaster(), when=new Date().toLocaleString("it-IT");
+      await ghPut("master.json",JSON.stringify(m,null,1),`Backup ${when}`);
+      await ghPut("master.md",masterMd(m),`Backup ${when}`);
+      st.sync={pending:false,last:Date.now(),err:""}; save();
+      if(st.cur && !quiet) sys("☁ Backup salvato su GitHub");
+      else if(st.cur) sys("☁ Backup salvato");
+    }catch(e){
+      const code=typeof e==="number"?e:0;
+      st.sync.pending=true; st.sync.err= code===401?"token non valido o scaduto": code===403?"il token non ha il permesso Contents: read and write": code===404?"repository non trovato o non accessibile al token": "nessuna connessione"; save();
+      if(st.cur) sys("⚠ Backup non riuscito: "+st.sync.err+". Riprovo più tardi.");
+    }
+  })();
+  await syncing; syncing=null;
+  if(syncAgain){ syncAgain=false; return syncNow(true); }
+}
+async function restoreFromGitHub(){
+  if(!st.settings.ghToken) return "Inserisci prima token e repository.";
+  try{
+    const r=await gh("master.json"); if(r.status===404) return "Nel repository non c'è ancora master.json."; if(!r.ok) return "Errore "+r.status+": controlla token e repository.";
+    const j=JSON.parse(unb64((await r.json()).content));
+    const ids=new Set(st.history.map(h=>h.id)); let added=0;
+    (j.sessioni||[]).filter(h=>!h.inCorso).forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
+    st.history.sort((a,b)=>a.start-b.start);
+    if(j.sugg) st.sugg={...j.sugg,...st.sugg};
+    if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
+    save(); return `✓ Ripristinate ${added} sessioni da GitHub.`;
+  }catch(e){ return "Ripristino non riuscito: nessuna connessione o file non valido."; }
+}
+window.addEventListener("online",()=>{ if(st.sync.pending) syncNow(true); });
+if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
+
 render();
