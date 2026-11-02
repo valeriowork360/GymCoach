@@ -36,7 +36,17 @@ const dateTxt = ts => new Date(ts).toLocaleDateString("it-IT",{day:"2-digit",mon
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 
-function item(){ return st.cur ? SESSIONS[st.cur.session][st.cur.exIdx] : null; }
+/* esercizi personalizzati (creati con "Cambia esercizio") */
+st.custom ||= {};
+Object.entries(st.custom).forEach(([id,e])=>{ if(!EX[id]) EX[id]=e; });
+/* scheda della sessione corrente, con eventuali esercizi sostituiti */
+function mergeCustom(c){ Object.entries(c||{}).forEach(([id,e])=>{ if(!st.custom[id]) st.custom[id]=e; if(!EX[id]) EX[id]=e; }); }
+function curList(){
+  const subs=(st.cur&&st.cur.subs)||{};
+  return SESSIONS[st.cur.session].map((x,k)=>subs[k]&&EX[subs[k]]?[subs[k],...x.slice(1)]:x);
+}
+function origId(k){ return SESSIONS[st.cur.session][k][0]; }
+function item(){ return st.cur ? curList()[st.cur.exIdx] : null; }
 function exOf(it){ return EX[it[0]]; }
 function setsOf(i){ return (st.cur.log[i] ||= []); }
 function workSets(i){ return setsOf(i).filter(s=>!s.extra); }
@@ -160,7 +170,7 @@ function drawMsg(m){
 
 function introExercise(){
   if(isTimeIt(item())) return introTimed();
-  const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=SESSIONS[st.cur.session];
+  const it=item(), e=exOf(it), [id,n,lo,hi,rest]=it, list=curList();
   const p=lastPerf(id), sk=suggestedKg(id), sg=st.sugg[id];
   let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} serie × ${lo}–${hi} rip · RIR ${RIR_MIN}–${RIR_MAX} · recupero ${restTxt(rest)}`;
   if(e.note) t+=`<br><span class="down">⚠ ${esc(e.note)}</span>`;
@@ -175,7 +185,7 @@ function introExercise(){
 }
 
 function introTimed(){
-  const it=item(), e=exOf(it), [id,n,sec,,rest]=it, list=SESSIONS[st.cur.session], done=workSets(st.cur.exIdx).length;
+  const it=item(), e=exOf(it), [id,n,sec,,rest]=it, list=curList(), done=workSets(st.cur.exIdx).length;
   let t=`<b>${st.cur.exIdx+1}/${list.length} · ${esc(e.n)}</b>${e.s?` <span class="muted">(${esc(e.s)})</span>`:""}<br>${n} giri × ${holdTxt(it)} · pausa ${rest} s<br><span class="muted">${esc(e.cue)}</span>`;
   t+= done ? `<br><span class="muted">Già fatti ${done}/${n} giri.</span>` : `<br><span class="muted">Tocca <b>▶ Avvia</b>: il timer conta ${e.sides?"un lato, suona per cambiare lato, poi l'altro":"la durata"} e registra il giro da solo. Oppure scrivi <i>fatto</i>.</span>`;
   bot(t,"intro");
@@ -193,6 +203,7 @@ async function onSend(text){
   if(/^(indietro|precedente)( esercizio)?$/.test(t)) return goEx(st.cur.exIdx-1);
   if(/^(fine|termina|finito|chiudi)( la)?( sessione| allenamento)?$/.test(t)) return finishSession();
   if(/^(storico|progressi)$/.test(t)) return showHistoryEx();
+  { const m=t.match(/^(?:cambia|sostituisci)(?: esercizio)?(?: con)?\s*(.*)$/); if(m) return openSwap(text.slice(text.length-m[1].length).trim()); }
   if(isTimeIt(item())){
     if(/^(avvia|via|start|inizia|parti|timer)\b/.test(t)) return startHold();
     if(/^(fatto|fatta|ok|finito|completato|done|giro fatto)\b/.test(t)) return logTimed();
@@ -243,7 +254,7 @@ function logSet(p){
 }
 function afterExercise(i,rest){
   save(); syncNow(true);
-  const list=SESSIONS[st.cur.session];
+  const list=curList();
   const nextIdx=list.findIndex((x,k)=>k>i && workSets(k).length<x[1]);
   if(nextIdx>=0){ startTimer(rest); goEx(nextIdx,true); }
   else { const pending=list.findIndex((x,k)=>workSets(k).length<x[1]);
@@ -275,7 +286,7 @@ function undoSet(){
     // se l'esercizio corrente è vuoto, annulla l'ultima serie dell'esercizio precedente
     const prev=Object.keys(st.cur.log).map(Number).filter(k=>st.cur.log[k].length).sort((a,b)=>b-a)[0];
     if(prev==null) return bot("Non c'è nessuna serie da annullare.");
-    const s=st.cur.log[prev].pop(); restoreSugg(SESSIONS[st.cur.session][prev][0]); save(); bot(`Annullata: ${esc(EX[SESSIONS[st.cur.session][prev][0]].n)} — ${esc(setTxt(s))}.`);
+    const s=st.cur.log[prev].pop(); restoreSugg(curList()[prev][0]); save(); bot(`Annullata: ${esc(EX[curList()[prev][0]].n)} — ${esc(setTxt(s))}.`);
     return goEx(prev);
   }
   const s=sets.pop(); restoreSugg(item()[0]); st.cur.pending=null; save(); stopTimer();
@@ -288,7 +299,7 @@ function restoreSugg(id){
   if(ps && id in ps){ if(ps[id]==null) delete st.sugg[id]; else st.sugg[id]=ps[id]; delete ps[id]; }
 }
 function goEx(k,auto){
-  const list=SESSIONS[st.cur.session];
+  const list=curList();
   if(k<0) return bot("Sei già al primo esercizio.");
   if(k>=list.length) return bot("Era l'ultimo esercizio. Tocca <b>Fine sessione</b> per archiviare.");
   st.cur.exIdx=k; st.cur.vid=0; st.cur.pending=null; save();
@@ -307,17 +318,18 @@ function showHistoryEx(){
 /* ---------------- AI (Gemini, opzionale) ---------------- */
 function aiContext(){
   const it=item(), [id,n,lo,hi,rest]=it, e=EX[id];
-  const today=SESSIONS[st.cur.session].map((x,k)=>{const s=workSets(k);return `- ${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
+  const today=curList().map((x,k)=>{const s=workSets(k);return `- ${EX[x[0]].n}: ${isTimeIt(x)?`${x[1]} giri × ${holdTxt(x)}`:`${x[1]}×${x[2]}–${x[3]}`}, recupero ${x[4]}s${s.length?` | fatto oggi: ${perfTxt(s)}`:""}`}).join("\n");
   const p=lastPerf(id);
   return `Sei il coach di palestra personale dell'utente, dentro un'app di registro allenamenti. Rispondi SEMPRE in italiano, in modo breve e pratico (massimo 90 parole), da personal trainer esperto e prudente.
 Obiettivo: ipertrofia e progressione tecnica/di forza. Programma PPL + Upper/Lower, 2 serie allenanti per esercizio, RIR target 2–3 (0–1 non è il target), double progression: prima aumentare le ripetizioni nel range, poi il carico quando entrambe le serie raggiungono il limite alto a RIR 2–3. Non convertire unità, fori o kg/lato tra macchine diverse. Se l'utente segnala dolore (non semplice fatica) consiglia di fermarsi o modificare l'esercizio e, se persiste, di sentire un professionista; non fare diagnosi.
 Sessione di oggi: ${st.cur.session}
 ${today}
-Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Indicazioni tecniche: ${e.cue}
+Esercizio corrente: ${e.n}${e.s?` (${e.s})`:""}${id!==origId(st.cur.exIdx)?` (sostituisce ${EX[origId(st.cur.exIdx)].n} della scheda)`:""}, ${isTimeIt(it)?`esercizio a tempo di mobilità/stretching: ${n} giri × ${holdTxt(it)}, niente carichi`:`attrezzo: ${EQ_LABEL[e.eq]}, ${n} serie × ${lo}–${hi} rip, RIR 2–3`}, recupero ${rest}s. Indicazioni tecniche: ${e.cue}
 Serie fatte oggi su questo esercizio: ${perfTxt(setsOf(st.cur.exIdx))||"nessuna"}.
 Ultima volta: ${p?dateTxt(p.date)+" "+perfTxt(p.sets):"nessun dato"}. Carico consigliato oggi: ${suggestedKg(id)??"non definito"}.
 Rispondi SOLO con JSON valido, in uno di questi due formati:
 {"azione":"serie","kg":numero o null,"rip":numero o null,"rir":numero o null}  → se il messaggio dell'utente sta comunicando una serie appena fatta (carico, ripetizioni, RIR);
+{"azione":"cambia","esercizio":"nome dell'esercizio"} → se l'utente vuole sostituire l'esercizio corrente con un altro (es. macchina occupata);
 {"azione":"risposta","testo":"..."} → per qualsiasi altra cosa (domande, dubbi, commenti). Nel testo puoi usare **grassetto**.`;
 }
 async function askAI(text){
@@ -349,6 +361,7 @@ async function askAI(text){
   typing.remove();
   if(!out){ bot(esc(err||"Non sono riuscito a rispondere.")); return; }
   let j=null; try{ j=JSON.parse(out.replace(/^```(json)?|```$/g,"").trim()); }catch(e){}
+  if(j && j.azione==="cambia" && j.esercizio){ bot(md(`Ok, apro il cambio esercizio con **${j.esercizio}**: conferma o scegline un altro.`)); return openSwap(j.esercizio); }
   if(j && j.azione==="serie" && isTimeIt(item())) return logTimed();
   if(j && j.azione==="serie" && (j.rip!=null || j.rir!=null)){ st.cur.pending=null; return logSet({kg:j.kg??null,reps:j.rip??null,rir:j.rir??null}); }
   bot(md(j&&j.testo ? j.testo : out));
@@ -387,12 +400,20 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 /* ---------------- disegno ---------------- */
 function drawTop(){
   if(!st.cur){ $("#topSess").textContent="Gym Coach"; $("#topSub").textContent="Registro allenamenti"; return; }
-  const list=SESSIONS[st.cur.session], done=list.reduce((a,x,k)=>a+Math.min(x[1],workSets(k).length),0), tot=list.reduce((a,x)=>a+x[1],0);
+  const list=curList(), done=list.reduce((a,x,k)=>a+Math.min(x[1],workSets(k).length),0), tot=list.reduce((a,x)=>a+x[1],0);
   $("#topSess").textContent=st.cur.session;
   $("#topSub").textContent=`Esercizio ${st.cur.exIdx+1}/${list.length} · ${done}/${tot} ${isExtraSess(st.cur.session)?"giri":"serie"} · iniziata ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`;
 }
 function drawVideo(){
-  const e=exOf(item()), vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
+  const e=exOf(item());
+  if(!e.v.length){
+    destroyExerciseVideo(); yvWant=null;
+    const q=encodeURIComponent(e.n+" tecnica esecuzione");
+    $("#frame").innerHTML=`<div style="display:grid;place-items:center;text-align:center;color:var(--mut);padding:16px">Nessun video salvato per questo esercizio.<br><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Cerca “${esc(e.n)}” su YouTube ↗</a></div>`;
+    $("#player").classList.remove("collapsed");
+    $("#vchips").innerHTML=`<span class="muted" style="padding:4px 2px">Esercizio personalizzato</span>`; return;
+  }
+  const vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
   if(!st.ui.videoHidden) showExerciseVideo(id); else destroyExerciseVideo();
   $("#vchips").innerHTML = e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">▶ ${esc(ch)}</button>`).join("")
@@ -506,9 +527,10 @@ function drawChips(){
   if(pend && pend.need==="rir") html=[0,1,2,3,4,5].map(v=>`<button class="chip acc" data-say="RIR ${v}">RIR ${v}</button>`).join("");
   else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=Math.max(1,lo-2);v<=hi+2;v++) html+=`<button class="chip acc" data-say="${v} rip">${v}</button>`; }
   else {
-    const list=SESSIONS[st.cur.session], allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
+    const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
     html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
       +`<button class="chip" data-cmd="undo">↶ Annulla</button>`
+      +`<button class="chip" data-cmd="swap">🔁 Cambia esercizio</button>`
       +`<button class="chip" data-cmd="next">Esercizio successivo →</button>`
       +`<button class="chip" data-cmd="hist">📈 Storico</button>`
       +`<button class="chip" data-cmd="list">☰ Elenco</button>`
@@ -517,7 +539,7 @@ function drawChips(){
   c.innerHTML=html;
   $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
-  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
+  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
@@ -561,8 +583,8 @@ function startSession(s){
 }
 function finishSession(){
   if(!st.cur) return;
-  const list=SESSIONS[st.cur.session];
-  const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
+  const list=curList();
+  const ex=list.map((x,k)=>({ex:x[0],...(x[0]!==origId(k)?{al_posto_di:origId(k)}:{}),sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
   if(!ex.length){
     openSheet("Fine sessione",`<p>Non hai registrato nessuna serie. Vuoi chiudere la sessione senza salvarla?</p><div class="row"><button class="btn danger" id="discard">Chiudi senza salvare</button><button class="btn" id="keep">Continua</button></div>`);
@@ -571,7 +593,8 @@ function finishSession(){
   openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>`);
   $("#keep").onclick=closeSheet;
   $("#confirmEnd").onclick=()=>{
-    st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex});
+    st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex,chat:chatPlain(st.cur.chat)});
+    st.history.slice(0,-15).forEach(h=>{ if(h.chat && h.chatSynced) delete h.chat; });   // sul telefono restano le chat delle ultime 15 sessioni
     const pos=CYCLE.indexOf(st.cur.session); if(pos>=0) st.cyclePos=pos;
     st.cur=null; save(); syncNow(); closeSheet(); stopTimer();
     try{ wake && wake.release(); }catch(e){}
@@ -587,16 +610,16 @@ $("#sheet").onclick=e=>{ if(e.target.id==="sheet") closeSheet(); };
 
 function openList(){
   if(!st.cur){ openSheet("Esercizi","<p class='muted'>Inizia una sessione per vedere l'elenco.</p>"); return; }
-  const list=SESSIONS[st.cur.session];
+  const list=curList();
   openSheet(st.cur.session+" · esercizi", list.map((x,k)=>{ const d=workSets(k).length, full=d>=x[1];
-    return `<button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${x[2]}–${x[3]}</span></button>`; }).join("")
+    return `<button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${isTimeIt(x)?holdTxt(x):`${x[2]}–${x[3]}`}${x[0]!==origId(k)?" · 🔁":""}</span></button>`; }).join("")
     +`<button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
   $("#sheetBody").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ closeSheet(); goEx(+b.dataset.k); });
   $("#endFromList").onclick=()=>{ closeSheet(); finishSession(); };
 }
 $("#btnList").onclick=openList;
 
-function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),cyclePos:st.cyclePos,sugg:st.sugg,history:st.history},null,1); }
+function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),cyclePos:st.cyclePos,sugg:st.sugg,custom:st.custom,history:st.history},null,1); }
 function exportText(){
   return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(s=>(s.sec!=null?`${s.sec}s`:`${kgTxt(s.kg)}kg×${s.reps} RIR${s.rir}`)+(s.extra?" (extra)":"")).join(", ")}`).join("\n")).join("\n\n");
 }
@@ -605,12 +628,13 @@ function openArchive(){
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
     return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${dur} min</span></summary>
-      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b><br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
-      <div><button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
+      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}<br><span>${esc(e.sets.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.reps} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join("  |  "))}</span></div>`).join("")}
+      <div class="row"><button class="btn" data-chat="${h.id}">💬 Vedi chat</button><button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
-    <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">I dati sono salvati solo su questo telefono. Fai ogni tanto un backup: il file si può reimportare, il testo si può incollare in una chat con Claude per un'analisi.</p>
+    <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">${st.settings.ghToken?`Backup automatico su GitHub attivo (${esc(st.settings.ghRepo)}): serie, master per esercizio e chat di ogni sessione. ${esc(syncStatus())}`:"I dati sono salvati solo su questo telefono: attiva il backup automatico in ⚙ oppure esporta ogni tanto un file."}</p>
     <div class="row"><button class="btn" id="exFile">⬇ Esporta file</button><button class="btn" id="exCopy">📋 Copia testo</button><label class="btn" style="display:inline-block">⬆ Importa file<input type="file" id="imFile" accept="application/json,.json" hidden></label></div><p class="muted" id="exMsg"></p></div>`);
+  $("#sheetBody").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
   $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(b.dataset.armed){ st.history=st.history.filter(h=>h.id!==b.dataset.del); save(); syncNow(); openArchive(); }
     else { b.dataset.armed=1; b.textContent="Tocca di nuovo per eliminare"; }
@@ -624,6 +648,7 @@ function openArchive(){
       j.history.forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
       st.history.sort((a,b)=>a.start-b.start);
       if(j.sugg) st.sugg={...j.sugg,...st.sugg};
+      mergeCustom(j.custom);
       if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
       save(); syncNow(); openArchive(); $("#exMsg").textContent=`Importate ${added} sessioni.`;
     }catch(err){ $("#exMsg").textContent="File non valido."; }
@@ -688,12 +713,70 @@ if(SR){
 }
 
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* ---------------- chat salvata con la sessione ---------------- */
+function chatPlain(chat){
+  const dec=t=>t.replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&");
+  return (chat||[]).filter(m=>m.cls!=="typing").map(m=>({who:m.who,t:m.t||null,text:m.who==="user"?m.text:dec(m.text)}));
+}
+function asciiSess(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function chatPath(h){ return `chat/${new Date(h.start).toISOString().slice(0,10)}_${asciiSess(h.session)}_${h.id}.md`; }
+function chatMd(h){
+  const hm=t=>t?new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):"";
+  let t=`# ${h.session} — ${new Date(h.start).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}\n\nInizio ${hm(h.start)}${h.end?` · fine ${hm(h.end)}`:" · in corso"}\n\n`;
+  for(const m of h.chat||[]){
+    if(m.who==="sys"){ t+=`*${hm(m.t)} · ${m.text}*\n\n`; continue; }
+    t+=`**${hm(m.t)} · ${m.who==="user"?"Tu":"Coach"}:** ${m.text.replace(/\n/g,"  \n")}\n\n`;
+  }
+  return t;
+}
+function openChat(id){
+  const h=st.history.find(x=>x.id===id); if(!h) return;
+  const body=h.chat&&h.chat.length ? h.chat.map(m=>`<div class="msg ${m.who}" style="max-width:100%;margin-bottom:6px">${esc(m.text).replace(/\n/g,"<br>")}</div>`).join("")
+    : `<p class="muted">La chat di questa sessione non è più sul telefono${st.settings.ghToken?": la trovi su GitHub nella cartella chat del repository dei dati.":"."}</p>`;
+  openSheet(`Chat ${h.session} · ${dateTxt(h.start)}`,`<div style="display:flex;flex-direction:column">${body}</div>`);
+}
+
+/* ---------------- cambio esercizio ---------------- */
+function openSwap(prefill=""){
+  if(!st.cur) return;
+  const k=st.cur.exIdx, orig=origId(k), cur=item()[0], timed=isTimeIt(item());
+  const groups={}; Object.entries(EX).forEach(([id,e])=>{ if(id===cur || (e.kind==="time")!==timed) return;
+    const where=Object.keys(SESSIONS).filter(s=>SESSIONS[s].some(x=>x[0]===id)); const g=st.custom[id]?"I tuoi esercizi":(where[0]||"Altri"); (groups[g] ||= []).push([id,e,where]); });
+  openSheet("Cambia esercizio",`
+    <p class="muted" style="margin-top:0">Al posto di <b>${esc(EX[orig].n)}</b>${cur!==orig?` (ora: ${esc(EX[cur].n)})`:""}. Serie, ripetizioni e recupero restano quelli della scheda; lo storico e i carichi seguono il nuovo esercizio.</p>
+    ${cur!==orig?`<button class="btn wide" id="swBack" style="margin:0 0 12px">↩ Torna a ${esc(EX[orig].n)}</button>`:""}
+    <form id="swForm" class="m-form" style="margin-bottom:12px"><input class="inp" id="swName" placeholder="Nuovo esercizio (es. Chest press macchina)" value="${esc(prefill)}"><button class="btn acc">Usa</button></form>
+    ${Object.entries(groups).map(([g,arr])=>`<h3 class="sec" style="margin:14px 2px 6px">${esc(g)}</h3>`+arr.map(([id,e,where])=>`<button class="li" data-sw="${id}"><span class="nm">${esc(e.n)}</span><span class="rx">${esc(where.join(" · "))}</span></button>`).join("")).join("")}`);
+  $("#sheetBody").querySelectorAll("[data-sw]").forEach(b=>b.onclick=()=>{ closeSheet(); swapTo(b.dataset.sw); });
+  const back=$("#swBack"); if(back) back.onclick=()=>{ closeSheet(); swapTo(orig); };
+  $("#swForm").onsubmit=e=>{ e.preventDefault(); const n=$("#swName").value.trim(); if(!n) return; closeSheet(); swapTo(findOrCreateEx(n,timed)); };
+}
+function findOrCreateEx(name,timed){
+  const low=name.toLowerCase().trim();
+  const hit=Object.entries(EX).find(([,e])=>e.n.toLowerCase()===low) || Object.entries(EX).find(([,e])=>e.n.toLowerCase().includes(low)&&low.length>=5);
+  if(hit) return hit[0];
+  const id="cx_"+low.normalize("NFD").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,30);
+  const e={n:name.charAt(0).toUpperCase()+name.slice(1),s:"Esercizio personalizzato",eq:/manubr/i.test(name)?"db":/bilancier|smith|multipower/i.test(name)?"bb":/cav|carrucol|corda/i.test(name)?"cable":"machine",cue:"Esecuzione controllata, range di movimento completo.",v:[],...(timed?{kind:"time",sec:item()[2]}:{})};
+  st.custom[id]=e; EX[id]=e; save(); return id;
+}
+function swapTo(id){
+  const k=st.cur.exIdx, orig=origId(k), prev=item()[0];
+  if(prev===id) return;
+  st.cur.subs ||= {};
+  if(id===orig) delete st.cur.subs[k]; else st.cur.subs[k]=id;
+  const moved=(st.cur.log[k]||[]).length;
+  st.cur.vid=0; st.cur.pending=null; save();
+  sys(`Cambio esercizio: ${EX[prev].n} → ${EX[id].n}`);
+  if(moved) bot(`Le ${moved} serie già registrate restano in questo slot e verranno salvate come <b>${esc(EX[id].n)}</b>. Se non va bene, usa <b>Annulla</b>.`);
+  drawVideo(); drawExbar(); introExercise(); drawChips();
+}
+
 /* ---------------- master file e backup su GitHub ---------------- */
 function allSessions(){
   const out=[...st.history];
   if(st.cur){
-    const list=SESSIONS[st.cur.session];
-    const ex=list.map((x,k)=>({ex:x[0],sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
+    const list=curList();
+    const ex=list.map((x,k)=>({ex:x[0],...(x[0]!==origId(k)?{al_posto_di:origId(k)}:{}),sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
     if(ex.length) out.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:null,inCorso:true,ex});
   }
   return out.sort((a,b)=>a.start-b.start);
@@ -703,19 +786,21 @@ function buildMaster(){
   for(const id of Object.keys(EX)){
     const storico=[];
     for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
-      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,rip:s.reps,rir:s.rir,...(s.extra?{extra:true}:{})})}); }
     const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return isTimeIt(x)?{sessione:k,giri:x[1],durata:holdTxt(x),pausa_s:x[4]}:{sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
     let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg){ const e=e1rm(s.kg,s.rip,s.rir); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data}; } }));
     esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":EQ_LABEL[EX[id].eq],nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,miglior_serie_stimata:best,storico};
   }
-  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi,sessioni:sessions};
+  const sessioni=sessions.map(({chat,chatSynced,...h})=>({...h,chat_file:chatPath(h)}));
+  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,sugg:st.sugg,esercizi_personalizzati:st.custom,esercizi,sessioni};
 }
 function masterMd(m){
-  let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}\n`;
+  let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}  \nLe conversazioni di ogni sessione sono nella cartella [chat](chat/).\n`;
   for(const [id,e] of Object.entries(m.esercizi)){
     if(!e.storico.length) continue;
-    t+=`\n## ${e.nome}\n\nSchede: ${e.nelle_schede.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${e.nelle_schede[0]&&e.nelle_schede[0].giri?"":` · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
-    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
+    const sch=e.nelle_schede;
+    t+=`\n## ${e.nome}\n\nSchede: ${!sch.length?"esercizio personalizzato":sch.map(x=>x.giri?`${x.sessione} (${x.giri} giri × ${x.durata})`:`${x.sessione} (${x.serie}×${x.range})`).join(", ")}${sch[0]&&sch[0].giri?"":` · Prossimo carico: ${e.prossimo_carico!=null?kgTxt(e.prossimo_carico)+" kg":"—"}`}\n\n| Data | Sessione | Serie |\n|---|---|---|\n`;
+    for(const r of e.storico) t+=`| ${r.data.split("-").reverse().join("/")} | ${r.sessione}${r.in_corso?" (in corso)":""}${r.al_posto_di?` · al posto di ${r.al_posto_di}`:""} | ${r.serie.map(s=>(s.sec!=null?`${s.sec} s ✓`:`${kgTxt(s.kg)} kg × ${s.rip} · RIR ${s.rir}`)+(s.extra?" (extra)":"")).join(" — ")} |\n`;
   }
   return t;
 }
@@ -744,6 +829,8 @@ async function syncNow(quiet){
       const m=buildMaster(), when=new Date().toLocaleString("it-IT");
       await ghPut("master.json",JSON.stringify(m,null,1),`Backup ${when}`);
       await ghPut("master.md",masterMd(m),`Backup ${when}`);
+      if(st.cur && st.cur.chat.length) await ghPut(chatPath(st.cur),chatMd({...st.cur,chat:chatPlain(st.cur.chat)}),`Chat ${when}`);
+      for(const h of st.history){ if(h.chat && !h.chatSynced){ await ghPut(chatPath(h),chatMd(h),`Chat ${when}`); h.chatSynced=true; save(); } }
       st.sync={pending:false,last:Date.now(),err:""}; save();
       if(st.cur && !quiet) sys("☁ Backup salvato su GitHub");
       else if(st.cur) sys("☁ Backup salvato");
@@ -765,6 +852,7 @@ async function restoreFromGitHub(){
     (j.sessioni||[]).filter(h=>!h.inCorso).forEach(h=>{ if(!ids.has(h.id)){ st.history.push(h); added++; } });
     st.history.sort((a,b)=>a.start-b.start);
     if(j.sugg) st.sugg={...j.sugg,...st.sugg};
+    mergeCustom(j.esercizi_personalizzati);
     if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
     save(); return `✓ Ripristinate ${added} sessioni da GitHub.`;
   }catch(e){ return "Ripristino non riuscito: nessuna connessione o file non valido."; }
