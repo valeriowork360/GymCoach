@@ -151,3 +151,6 @@ details.adv .card{margin-top:8px}
 .li.alt .nm b{font-weight:600}
 .li.alt .rx{font-size:12px}
 .inc.inc3 > span{font-size:13.5px}
+.msg.photo{padding:4px;background:var(--acc)}
+.msg.photo img{display:block;max-width:180px;max-height:220px;border-radius:10px}
+.composer .icon-btn{height:46px}

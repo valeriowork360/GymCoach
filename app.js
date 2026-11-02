@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "18";
+const APP_VERSION = "19";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -441,7 +441,7 @@ FORMATO DELLA RISPOSTA:
 - Se l'utente vuole sostituire l'esercizio corrente (es. macchina occupata), rispondi SOLO con: #CAMBIA <nome dell'esercizio>
 - In tutti gli altri casi rispondi direttamente in testo semplice (puoi usare **grassetto** e andare a capo), senza JSON e senza preamboli.`;
 }
-async function callGemini(sys,prompt,onDelta){
+async function callGemini(sys,prompt,onDelta,img){
   const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
   const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
   let err="", retried=false, noThink=false;
@@ -453,7 +453,7 @@ async function callGemini(sys,prompt,onDelta){
       const gc = think ? {thinkingConfig:{thinkingLevel: st.settings.think==="medium"?"medium":"low"}} : {};
       const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,{
         method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
-        body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:gc})});
+        body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[...(img?[{inlineData:{mimeType:img.mime,data:img.data}}]:[]),{text:prompt}]}],generationConfig:gc})});
       if(r.status===404){ clearTimeout(to); err="modello Gemini non trovato"; continue; }
       if(r.status===429){ clearTimeout(to); return {err:"limite gratuito di Gemini raggiunto per ora"}; }
       if(r.status===400||r.status===401||r.status===403){ clearTimeout(to); const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||"";
@@ -490,13 +490,13 @@ async function callGemini(sys,prompt,onDelta){
   }
   return {err};
 }
-async function callOpenRouter(sys,prompt){
+async function callOpenRouter(sys,prompt,onDelta,img){
   const key=st.settings.orKey; if(!key) return {err:"manca la chiave OpenRouter"};
   const models=[...new Set([st.settings.orModel||"moonshotai/kimi-k2.6:free","moonshotai/kimi-k2.6:free","moonshotai/kimi-k2:free","openrouter/free"])];
   try{
     const r=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+key,"HTTP-Referer":location.origin,"X-Title":"Gym Coach"},
-      body:JSON.stringify({model:models[0],models,messages:[{role:"system",content:sys},{role:"user",content:prompt}]})});
+      body:JSON.stringify({model:models[0],models,messages:[{role:"system",content:sys},{role:"user",content:img?[{type:"text",text:prompt},{type:"image_url",image_url:{url:`data:${img.mime};base64,${img.data}`}}]:prompt}]})});
     if(r.status===401) return {err:"chiave OpenRouter non valida"};
     if(r.status===402) return {err:"credito OpenRouter esaurito"};
     if(r.status===429) return {err:"limite gratuito di OpenRouter raggiunto (50 domande al giorno senza credito)"};
@@ -506,18 +506,19 @@ async function callOpenRouter(sys,prompt){
   }catch(e){ return navigator.onLine===false?{err:"nessuna connessione",offline:true}:{err:`errore di rete con OpenRouter (${e.message||e.name})`}; }
 }
 function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey); }
-let wentHidden=false;
+let wentHidden=false, retryImg=null;
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="hidden") wentHidden=true;
-  else if(st.cur && st.cur.aiRetry){ const t=st.cur.aiRetry; st.cur.aiRetry=null; save(); sys("Riprovo la domanda rimasta in sospeso…"); askAI(t); }
+  else if(st.cur && st.cur.aiRetry){ const t=st.cur.aiRetry; st.cur.aiRetry=null; save(); sys("Riprovo la domanda rimasta in sospeso…"); askAI(t,retryImg); retryImg=null; }
 });
-async function askAI(text){
+async function askAI(text,img){
   if(!aiReady()){
     bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
     return;
   }
   const recent=st.cur.chat.slice(-15,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
-  const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}`;
+  const photoNote = img ? `\nL'utente ha allegato una FOTO (di solito un macchinario o un attrezzo di una palestra nuova). Identifica l'attrezzo; dì chiaramente se va bene per l'esercizio corrente oppure a quale alternativa mirata corrisponde (se è meglio cambiare esercizio, rispondi con #CAMBIA <nome>); spiega in breve come regolarlo (sedile, appoggi, perno, impugnatura) e come si legge il carico secondo la convenzione dell'app (per lato o totale, kg o lb in base a ciò che si vede su pacco o dischi). Se la foto non è chiara chiedi un'altra inquadratura.` : "";
+  const prompt=(recent?`Conversazione recente:\n${recent}\n\n`:"")+`Nuovo messaggio dell'utente: ${text}${photoNote}`;
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
   wentHidden=document.visibilityState==="hidden";
   const sysTxt=aiContext();
@@ -525,12 +526,12 @@ async function askAI(text){
   let res=null; const errs=[];
   for(const f of order){
     if(f===callGemini&&!st.settings.apiKey || f===callOpenRouter&&!st.settings.orKey) continue;
-    res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } }); if(res.out) break; errs.push(res.err); if(res.offline) break;
+    res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } },img); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
   if((!res||!res.out) && wentHidden && !errs.every(e=>e==="nessuna connessione")){
-    st.cur.aiRetry=text; save();
-    if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text); }
+    st.cur.aiRetry=text; retryImg=img||null; save();
+    if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text,img); }
     sys("Richiesta interrotta perché sei uscito dall'app: la ripeto appena torni qui.");
     return;
   }
@@ -915,6 +916,33 @@ function openSettings(){
   $("#sWipe").onclick=()=>{ if($("#sWipeTxt").value.trim().toUpperCase()!=="CANCELLA") return; localStorage.removeItem(LS); st=defState(); closeSheet(); render(); };
 }
 $("#btnSettings").onclick=openSettings;
+
+/* ---------------- foto di un macchinario ---------------- */
+async function shrinkImage(file,max=1024){
+  const url=URL.createObjectURL(file);
+  try{
+    const im=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=url; });
+    const k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)), c=document.createElement("canvas");
+    c.width=Math.round(im.naturalWidth*k); c.height=Math.round(im.naturalHeight*k);
+    c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    const dataUrl=c.toDataURL("image/jpeg",0.8);
+    return {mime:"image/jpeg",data:dataUrl.split(",")[1],dataUrl};
+  } finally { URL.revokeObjectURL(url); }
+}
+$("#btnPhoto").onclick=()=>{
+  if(!st.cur) return;
+  if(!aiReady()){ bot("Per riconoscere i macchinari dalle foto serve la chiave Gemini (gratuita) in ⚙ Impostazioni."); return; }
+  unlockAudio(); $("#photoIn").value=""; $("#photoIn").click();
+};
+$("#photoIn").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let img; try{ img=await shrinkImage(f); }catch(err){ bot("Non riesco a leggere questa foto: prova a scattarne un'altra."); return; }
+  const q=$("#msg").value.trim() || `Questo macchinario va bene per ${EX[item()[0]].n}? Come lo regolo e come leggo il carico?`;
+  $("#msg").value="";
+  addMsg("user","📷 "+q);
+  const d=document.createElement("div"); d.className="msg user photo"; d.innerHTML=`<img src="${img.dataUrl}" alt="Foto inviata">`; $("#chat").appendChild(d); $("#chat").scrollTop=1e9;
+  askAI(q,{mime:img.mime,data:img.data});
+};
 
 /* ---------------- composer e dettatura ---------------- */
 $("#msg").addEventListener("focus",()=>document.body.classList.add("kbd"));
