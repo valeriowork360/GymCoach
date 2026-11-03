@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "46";
+const APP_VERSION = "47";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -74,6 +74,8 @@ function curList(){
 }
 function origId(k){ return SESSIONS[st.cur.session][k][0]; }
 function item(){ return st.cur ? curList()[st.cur.exIdx] : null; }
+(function fixCur(){ if(!st.cur) return; if(!SESSIONS[st.cur.session]){ st.cur=null; return; }
+  const n=SESSIONS[st.cur.session].length; if(!(st.cur.exIdx<n)) st.cur.exIdx=Math.max(0,n-1); })();
 function exOf(it){ return EX[it[0]]; }
 function setsOf(i){ return (st.cur.log[i] ||= []); }
 function workSets(i){ return setsOf(i).filter(s=>!s.extra); }
@@ -128,7 +130,7 @@ function targetLoad(it,set){
 function judge(it,set){
   const [,,lo,hi]=it;
   if(set.rir>RIR_MAX) return "light";
-  if(set.rir<RIR_MIN) return "heavy";
+  if(set.rir<RIR_MIN) return set.reps>=lo ? "near" : "heavy";
   if(set.reps>hi) return "light";
   if(set.reps<lo) return "heavy";
   return "ok";
@@ -139,10 +141,11 @@ function coachSet(it,set){
   if(w0 && w!=null){
     if(v==="heavy" && w>=w0) w=Math.max(inc,w0-inc);
     if(v==="light" && w<=w0) w=w0+inc;
-    if(v==="ok") w=w0;
+    if(v==="ok"||v==="near") w=w0;
   }
   let why;
   if(v==="ok") why=`<span class="ok">✔ Carico giusto</span>: ${set.reps} rip nel range ${lo}–${hi} a RIR ${set.rir}.`;
+  else if(v==="near") why=`<span class="down">⚠ Vicino al cedimento</span>: RIR ${set.rir}, ma ${set.reps} rip sono ${set.reps>hi?"sopra":"nel"} range ${lo}–${hi}, quindi il carico va bene: la prossima fermati a 2–3 rip dal cedimento.`;
   else if(v==="heavy") why=`<span class="down">⬇ Troppo pesante</span>: ${set.rir<RIR_MIN?`RIR ${set.rir} è troppo vicino al cedimento`:`${set.reps} rip sono sotto il minimo di ${lo}`}.`;
   else why=`<span class="up">⬆ Troppo leggero</span>: ${set.rir>RIR_MAX?`RIR ${set.rir}, ti restavano troppe ripetizioni`:`${set.reps} rip superano il massimo di ${hi}`}.`;
   return {v,w,u,why};
@@ -174,7 +177,9 @@ function ruleSugg(id,curSets){
 function nextTime(it,sets,prevSets){
   const [id,,lo,hi]=it;
   const ws=sets.filter(s=>!s.extra); if(!ws.length) return null;
-  const last=ws[ws.length-1], u=unitOf(last), inc=incFor(id,u), w0=valOf(last);
+  // serie di riferimento: la più pesante che ha raggiunto il minimo del range (altrimenti l'ultima)
+  const okR=ws.filter(x=>x.kg!=null&&(x.reps??0)>=lo), last=okR.length?okR.reduce((a,b)=>b.kg>=a.kg?b:a):ws[ws.length-1];
+  const u=unitOf(last), inc=incFor(id,u), w0=valOf(last);
   const mk=(v,txt)=>({v,u,kg:v==null?null:toKg(v,u),txt});
   if(!w0) return mk(null,"Prossima volta punta ad aggiungere ripetizioni mantenendo RIR 2–3.");
   if(ws.every(s=>s.reps>=hi && s.rir>=RIR_MIN)){
@@ -183,6 +188,7 @@ function nextTime(it,sets,prevSets){
     return mk(w0,`Al massimo del range (${hi} rip) con RIR ≥ ${RIR_MIN}: **la prossima volta resta a ${wTxt(w0,u)}** e conferma; se lo rifai, poi si sale a ${wTxt(w0+inc,u)}.`);
   }
   const v=judge(it,last);
+  if(v==="near") return mk(w0,`Carico giusto ma serie al cedimento: **la prossima volta resta a ${wTxt(w0,u)}** e fermati a RIR 2–3.`);
   if(v==="heavy"){ const w=Math.max(inc,Math.min(targetLoad(it,last)??w0, w0-inc)); return mk(w,`La prossima volta parti da **${wTxt(w,u)}** per restare nel range a RIR 2–3.`); }
   if(v==="light"){ const w=Math.max(targetLoad(it,last)??w0, w0+inc); return mk(w,`La prossima volta prova **${wTxt(w,u)}**.`); }
   return mk(w0,`La prossima volta **resta a ${wTxt(w0,u)}** e prova ad aggiungere ripetizioni fino a ${hi} in entrambe le serie.`);
@@ -427,7 +433,7 @@ function logSet(p){
                   : `Serie ${num}/${n}: <b>${setW(set)} × ${set.reps}</b> <span class="muted">${modeOf(id)}</span>${conv}, RIR ${set.rir}.<br>${c.why}`;
   const lastOfEx = !extra && num>=n;
   if(!extra && !lastOfEx){
-    if(c.v==="ok") txt+=` Serie ${num+1}: <b>resta a ${wTxt(val,u)}</b>.`;
+    if(c.v==="ok"||c.v==="near") txt+=` Serie ${num+1}: <b>resta a ${wTxt(val,u)}</b>${c.v==="near"?" e fermati prima":""}.`;
     else if(c.w!=null) txt+=` Serie ${num+1}: <b>${c.v==="heavy"?"scendi":"sali"} a ${wTxt(c.w,u)}</b>.`;
     txt+=`<br>Recupero ${restTxt(rest)}.`;
     txt+=quickWeights(id, c.v==="ok"||c.w==null?val:c.w, u);
@@ -1273,7 +1279,7 @@ if(SR){
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 /* ---------------- chat salvata con la sessione ---------------- */
 function chatPlain(chat){
-  const dec=t=>t.replace(/<br\s*\/?>/g,"\n").replace(/<[^>]+>/g,"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&");
+  const dec=t=>t.replace(/<div class="qw"[\s\S]*?<\/div>/g,"").replace(/<br\s*\/?>/g,"\n").replace(/<\/t[dh]>\s*<t[dh][^>]*>/g," | ").replace(/<tr[^>]*>/g,"\n| ").replace(/<\/tr>/g," |").replace(/<li[^>]*>/g,"\n- ").replace(/<\/(div|table|ul|ol)>/g,"\n").replace(/<div class="(ih|is[^"]*|iw)"[^>]*>/g,"\n### ").replace(/<[^>]+>/g,"").replace(/\n{3,}/g,"\n\n").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&");
   return (chat||[]).filter(m=>m.cls!=="typing").map(m=>({who:m.who,t:m.t||null,text:m.who==="user"?m.text:dec(m.text)}));
 }
 function asciiSess(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
@@ -1598,4 +1604,5 @@ render();
   window.showChatFull=()=>{ W.scrollTo({top:top.offsetHeight,behavior:"smooth"}); };
   $("#msg").addEventListener("focus",()=>setTimeout(()=>showChatFull(),60));
 })();
+if(!st.ui.fixNear1){ const h=st.history[st.history.length-1]; if(h&&!h.imported) h.ex.forEach(e=>{ if(EX[e.ex]&&EX[e.ex].kind!=="time") recomputeSugg(e.ex); }); st.ui.fixNear1=true; save(); }
 window.__appOk=true;
