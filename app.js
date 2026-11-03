@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "42";
+const APP_VERSION = "43";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -233,11 +233,17 @@ function parseSet(raw){
     if(kg==null && reps==null){ kg=n; continue; }
     if(rir==null && n<=6){ rir=n; continue; }
   }
-  if(kg!=null && reps==null && rir==null && left.length===1){ reps=kg; kg=null; } // "9" da solo = ripetizioni
+  let wOnly=false;
+  if(kg!=null && reps==null && rir==null && left.length===1){
+    // un numero da solo: piccolo = ripetizioni ("9"), grande o con decimali = carico ("165", "22.5")
+    const hi=st.cur&&item()?item()[3]:15;
+    if(Number.isInteger(kg) && kg<=hi+8){ reps=kg; kg=null; } else wOnly=true;
+  }
+  if(kg!=null && unit!=null && reps==null && rir==null) wOnly=true;   // "165 lb" da solo = carico
   if(reps!=null && (reps<1||reps>60)) reps=null;
   if(rir!=null && rir>10) rir=null;
   if(unit==null){ if(/\b(lbs?|libbr[ae]|pounds?)\b/.test(t)) unit="lb"; else if(/\b(kg|chili|kili)\b/.test(t)) unit="kg"; }
-  return {kg,unit,reps,rir,found:reps!=null||rir!=null&&kg!=null};
+  return {kg,unit,reps,rir,found:reps!=null||rir!=null&&kg!=null||wOnly&&kg!=null};
 }
 const isQuestion = t => /\?/.test(t) || /^\s*(come|perch|cosa|qual|quant[oie]? |quando|posso|devo|dovrei|meglio|ho (dolore|male)|mi fa|che |dove|spiega|consigli|è normale|e se|va bene)/i.test(t);
 
@@ -666,7 +672,7 @@ async function askAI(text,img,viaAll){
     res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } },img); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
-  if((!res||!res.out) && viaAll && localFallback(text)) return;
+  if((!res||!res.out) && localFallback(text)) return;
   if((!res||!res.out) && wentHidden && !errs.every(e=>e==="nessuna connessione")){
     st.cur.aiRetry=text; retryImg=img||null; save();
     if(document.visibilityState==="visible"){ st.cur.aiRetry=null; save(); sys("La richiesta si era interrotta mentre eri in un'altra app: riprovo…"); return askAI(text,img,viaAll); }
