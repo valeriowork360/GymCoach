@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "49";
+const APP_VERSION = "50";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -13,7 +13,7 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:1.25,plate:1.25,cable:2.5,machine:2.5},incLb:{db:5,bb:2.5,plate:2.5,cable:5,machine:10},defUnit:"kg",think:"low",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:1.25,plate:1.25,cable:2.5,machine:2.5,bw:2.5},incLb:{db:5,bb:2.5,plate:2.5,cable:5,machine:10,bw:5},defUnit:"kg",think:"low",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
@@ -290,10 +290,10 @@ function quickWeights(id,focusV,focusU){
   const inU=(v,vu)=>vu===u?v:snap(fromKg(toKg(v,vu),u));
   let c = focusV!=null ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
   if(c==null && p){ const ls=p.sets.filter(x=>x.kg!=null&&!x.extra); if(ls.length) c=inU(valOf(ls[ls.length-1]),unitOf(ls[ls.length-1])); }
-  if(c==null) c=u==="lb"?45:20;
+  if(c==null) c=e.eq==="bw"?0:u==="lb"?45:20;
   c=R(c);
   const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
-  const arr=[]; for(let k=-12;k<=12;k++){ const v=R(c+k*step); if(v>0) arr.push(v); }
+  const arr=[]; for(let k=-12;k<=12;k++){ const v=R(c+k*step); if(v>0||(e.eq==="bw"&&v===0)) arr.push(v); }
   return `<div class="qw" data-qex="${st.cur.exIdx}|${id}"><button type="button" class="qu" data-qunit="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
 }
 /* scorre la riga dei pesi in modo che il consigliato sia al centro */
@@ -1026,7 +1026,7 @@ function drawProgram(keepScroll){
   if(pwPick) return drawPicker();
   const names=Object.keys(pw.sessions);
   const row=(n,x,k)=>{ const e=EX[x[0]]; return `<div class="pr"><div class="pn">${esc(e?e.n:x[0])}<span class="muted"> · ${esc(exGroup(x[0]))}</span></div>
-    <div class="pf"><label>Serie<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|1" value="${x[1]}"></label><label>Rip min<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|2" value="${x[2]}"></label><label>Rip max<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|3" value="${x[3]}"></label><label>Rec. s<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|4" value="${x[4]}"></label>
+    <div class="pf">${e&&e.kind==="time"?`<label>Giri<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|1" value="${x[1]}"></label><label>Secondi<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|2" value="${x[2]}"></label>`:`<label>Serie<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|1" value="${x[1]}"></label><label>Rip min<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|2" value="${x[2]}"></label><label>Rip max<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|3" value="${x[3]}"></label>`}<label>Rec. s<input class="inp" inputmode="numeric" data-f="${esc(n)}|${k}|4" value="${x[4]}"></label>
     <span class="pb"><button type="button" class="mini" data-mv="${esc(n)}|${k}|-1" aria-label="Sposta su">↑</button><button type="button" class="mini" data-mv="${esc(n)}|${k}|1" aria-label="Sposta giù">↓</button><button type="button" class="mini" data-rm="${esc(n)}|${k}" aria-label="Togli">✕</button></span></div></div>`; };
   openSheet("Il tuo programma",`
     <p class="muted" style="margin:0 0 10px">Il programma resta salvato su questo telefono (e nel backup, se attivo). ${st.program?"Stai modificando il tuo programma personalizzato.":"Parti dal programma di base: le modifiche valgono solo per te."}</p>
@@ -1043,7 +1043,7 @@ function drawProgram(keepScroll){
   const B=$("#sheetBody"); if(keepScroll) B.scrollTop=sc;
   const num=(v,d)=>{ const n=parseInt(v,10); return isNaN(n)?d:n; };
   B.querySelectorAll("[data-f]").forEach(i=>i.onchange=()=>{ const [n,k,f]=i.dataset.f.split("|"), x=pw.sessions[n][+k];
-    x[+f]=Math.max(f==="4"?0:1,num(i.value,x[+f])); if(f==="2"&&x[2]>x[3]) x[3]=x[2]; if(f==="3"&&x[3]<x[2]) x[2]=x[3]; drawProgram(true); });
+    x[+f]=Math.max(f==="4"?0:1,num(i.value,x[+f])); if(x[3]!=null){ if(f==="2"&&x[2]>x[3]) x[3]=x[2]; if(f==="3"&&x[3]<x[2]) x[2]=x[3]; } drawProgram(true); });
   B.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{ const [n,k,d]=b.dataset.mv.split("|"), a=pw.sessions[n], i=+k, j=i+(+d); if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; drawProgram(true); });
   B.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ const [n,k]=b.dataset.rm.split("|"); pw.sessions[n].splice(+k,1); drawProgram(true); });
   B.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{ const [k,d]=b.dataset.cm.split("|"), a=pw.cycle, i=+k, j=i+(+d); if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; drawProgram(true); });
@@ -1071,7 +1071,7 @@ function drawProgram(keepScroll){
   };
 }
 function drawPicker(){
-  const pk=pwPick, ids=Object.keys(EX).filter(id=>EX[id].kind!=="time");
+  const pk=pwPick, ids=Object.keys(EX).filter(id=>EX[id].kind!=="time"||MUSCLE[id]);
   const groups=[...MUSCLE_ORDER, ...new Set(ids.map(exGroup).filter(g=>!MUSCLE_ORDER.includes(g)))];
   const q=pk.q.toLowerCase();
   const list=ids.filter(id=>(!pk.g||exGroup(id)===pk.g)&&(!q||EX[id].n.toLowerCase().includes(q))).sort((a,b)=>groups.indexOf(exGroup(a))-groups.indexOf(exGroup(b))||EX[a].n.localeCompare(EX[b].n));
@@ -1086,7 +1086,7 @@ function drawPicker(){
       <button type="button" class="btn acc wide" id="pkMake" style="margin-top:6px">Crea e aggiungi</button></div>
     <button type="button" class="btn wide" id="pkBack">← Torna al programma</button>`);
   const B=$("#sheetBody");
-  const add=id=>{ const sl=slotOf(id); pw.sessions[pk.sess].push([id,2,sl[2]||8,sl[3]||12,sl[4]||120]); pwPick=null; drawProgram(); setTimeout(()=>{ const c=[...B.querySelectorAll(".ps")].find(x=>x.querySelector(`[data-rn="${pk.sess}"]`)); if(c) c.scrollIntoView({block:"end"}); },50); };
+  const add=id=>{ const sl=slotOf(id), tm=EX[id].kind==="time"; pw.sessions[pk.sess].push(tm?[id,2,EX[id].sec||45,null,60]:[id,2,sl[2]||8,sl[3]||12,sl[4]||120]); pwPick=null; drawProgram(); setTimeout(()=>{ const c=[...B.querySelectorAll(".ps")].find(x=>x.querySelector(`[data-rn="${pk.sess}"]`)); if(c) c.scrollIntoView({block:"end"}); },50); };
   const qi=$("#pkQ"); qi.oninput=()=>{ pk.q=qi.value; const pos=qi.selectionStart; drawPicker(); const n=$("#pkQ"); n.focus(); n.setSelectionRange(pos,pos); };
   B.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ pk.g=b.dataset.g==="Tutti"?null:b.dataset.g; drawPicker(); });
   B.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>add(b.dataset.id));

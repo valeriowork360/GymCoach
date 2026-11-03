@@ -39,9 +39,9 @@ const SESSIONS = {
 
 const CYCLE = ["PUSH","PULL","LEGS","REST","UPPER","REST","LOWER"];
 const RIR_MIN = 2, RIR_MAX = 3;
-const EQ_LABEL = {db:"manubri",bb:"bilanciere / Smith",plate:"macchina a dischi",cable:"cavo",machine:"macchina a pacco pesi"};
+const EQ_LABEL = {db:"manubri",bb:"bilanciere / Smith",plate:"macchina a dischi",cable:"cavo",machine:"macchina a pacco pesi",bw:"corpo libero"};
 // come si intende il carico: per manubrio, per lato (dischi su bilanciere, Smith e macchine a dischi), totale (pacco pesi e cavi)
-const LOAD_MODE = {db:"per manubrio",bb:"per lato",plate:"per lato",cable:"totale",machine:"totale"};
+const LOAD_MODE = {db:"per manubrio",bb:"per lato",plate:"per lato",cable:"totale",machine:"totale",bw:"zavorra (0 = solo corpo)"};
 
 /* Alternative mirate per il cambio esercizio: stesso muscolo e stesso tipo di stimolo.
    [id esistente o nome nuovo, motivo] */
@@ -73,6 +73,59 @@ const ALT = {
 /* ---------- Recupero attivo: mobilità e stretching (a tempo, senza carichi) ----------
    kind:"time" → sec = durata di un giro (per lato se sides), niente kg/RIR */
 Object.assign(EX,{
+  // --- archivio esteso (v50): esercizi comuni per gruppo muscolare ---
+  bw_calf:{n:"Calf su gradino a corpo libero",s:"",eq:"bw",cue:"Avampiedi sul bordo del gradino, discesa lenta fino all'allungamento, pausa in alto.",v:[["ey9a2M71-vU","DeltaBolic"],["wdOkFomQNp8","DeltaBolic"]]},
+  bb_incl:{n:"Panca inclinata bilanciere",s:"Schienale 30°",eq:"bb",cue:"Scapole retratte, bilanciere verso la parte alta del petto, gomiti a ~45°, discesa controllata.",v:[["kQtx01Qz6s8", "Davis Diley"], ["98HWfiRonkE", "DeltaBolic"]]},
+  chest_press:{n:"Chest press alla macchina",s:"",eq:"machine",cue:"Schiena appoggiata, maniglie all'altezza del petto, spingi senza staccare le scapole.",v:[["VHIlmOPMWWs", "DeltaBolic"], ["O-wYDpsJR3E", "DeltaBolic · varianti"]]},
+  pec_deck:{n:"Pec deck (butterfly)",s:"",eq:"machine",cue:"Gomiti leggermente flessi, petto alto, chiudi stringendo il petto senza alzare le spalle.",v:[["g3T7LsEeDWQ", "Davis Diley"], ["Dy4Bl-ituTo", "DeltaBolic · errori"]]},
+  cable_fly_low:{n:"Croci ai cavi",s:"Cavi alti o bassi",eq:"cable",cue:"Passo avanti, gomiti morbidi, mani che si incontrano davanti al petto con controllo.",v:[["x4JX_T5QAMM", "Davis Diley"], ["J2h--eoHK_U", "DeltaBolic"], ["qbkUN2zsgIc", "Davis Diley · petto alto"]]},
+  dips:{n:"Dip alle parallele",s:"Busto inclinato in avanti",eq:"bw",cue:"Busto leggermente in avanti, scendi fino a sentire il petto in allungamento senza dolore alle spalle.",v:[["133lrcsQKC8", "DeltaBolic"], ["ci5tcFgIntI", "Davis Diley"], ["eicOUO9WaJc", "DeltaBolic · differenze"]]},
+  pushup:{n:"Piegamenti (push-up)",s:"",eq:"bw",cue:"Corpo in linea, mani poco più larghe delle spalle, petto fino quasi a terra.",v:[["c-lBErfxszs", "Davis Diley"], ["EGShi0FcidE", "DeltaBolic"], ["-LExF0--6_A", "DeltaBolic · mani"]]},
+  pullup:{n:"Trazioni alla sbarra",s:"",eq:"bw",cue:"Parti a braccia distese, porta il petto verso la sbarra guidando con i gomiti, niente slancio.",v:[["8Y7HfoamOJg", "Davis Diley"], ["g_cCyYK8my4", "DeltaBolic"]]},
+  bb_row:{n:"Rematore con bilanciere",s:"",eq:"bb",cue:"Busto inclinato e fermo, schiena neutra, tira il bilanciere verso l'ombelico.",v:[["phVtqawIgbk", "DeltaBolic"], ["sKuZvLYMPFM", "DeltaBolic · angolo del busto"], ["-1ye_NmuzS0", "DeltaBolic · varianti"]]},
+  db_row:{n:"Rematore manubrio a un braccio",s:"",eq:"db",cue:"Mano e ginocchio sulla panca, tira il gomito verso il fianco, allunga bene in basso.",v:[["OL8yGrkXyiQ", "Davis Diley"], ["hTgYHkUjtAw", "Davis Diley · tutorial"], ["K1SPOiwe6FU", "DeltaBolic"]]},
+  tbar_row:{n:"T-bar row",s:"",eq:"plate",cue:"Petto sul supporto se c'è, tira con i gomiti, scapole avanti nell'allungamento.",v:[["xCsQpfQgTdg", "DeltaBolic"], ["TJFpjnb5cIY", "DeltaBolic · alternative"]]},
+  cable_row:{n:"Pulley basso (seated cable row)",s:"",eq:"cable",cue:"Busto fermo, tira verso l'ombelico, lascia avanzare le scapole nell'allungamento.",v:[["G18ysBYu5Mw", "Davis Diley"], ["IwHmAZ0s8W4", "DeltaBolic · varianti"], ["bCd7Xil89F8", "DeltaBolic · errori"]]},
+  bb_ohp:{n:"Military press con bilanciere",s:"In piedi",eq:"bb",cue:"Glutei e addome contratti, bilanciere in linea con la testa, niente iperestensione della schiena.",v:[["4LBVP2Oe7fg", "DeltaBolic"], ["zoN5EH50Dro", "DeltaBolic"]]},
+  mach_ohp:{n:"Shoulder press alla macchina",s:"",eq:"machine",cue:"Schiena appoggiata, maniglie poco sotto il mento, spingi senza bloccare i gomiti.",v:[["Gkk-6q7Rq-s", "DeltaBolic"], ["58VrYLydDPE", "DeltaBolic · presa"], ["k6zaPZbB8yI", "DeltaBolic · errore"]]},
+  cable_lat:{n:"Alzate laterali al cavo",s:"",eq:"cable",cue:"Cavo dal basso, gomito leggermente flesso, sali fino all'altezza della spalla.",v:[["JlT2xB92lY8", "DeltaBolic"], ["AYihy_OdZHQ", "DeltaBolic"], ["64w2gzsLpDA", "Samuel Johnston"]]},
+  face_pull:{n:"Face pull al cavo",s:"Deltoidi posteriori",eq:"cable",cue:"Corda all'altezza del viso, tira verso la fronte aprendo i gomiti e ruotando le mani indietro.",v:[["ywQsaOTRjzM", "DeltaBolic"], ["IeOqdw9WI90", "DeltaBolic · errori"]]},
+  rear_fly_db:{n:"Alzate posteriori con manubri",s:"Deltoidi posteriori",eq:"db",cue:"Busto inclinato o petto su panca, apri le braccia di lato senza stringere le scapole.",v:[["9WpNWAM782Y", "DeltaBolic"], ["sIQNCJ6Xwsk", "DeltaBolic · su panca"], ["FRBBoesyZ_U", "Davis Diley"]]},
+  skull:{n:"French press (skull crusher)",s:"Bilanciere EZ",eq:"bb",cue:"Gomiti fermi verso il soffitto, scendi dietro la fronte, risali senza aprire i gomiti.",v:[["RetiLFQobXU", "DeltaBolic"], ["-qtz5ysUzMM", "DeltaBolic · errori"]]},
+  cg_bench:{n:"Panca presa stretta",s:"",eq:"bb",cue:"Mani alla larghezza delle spalle, gomiti vicini al busto, bilanciere sulla parte bassa del petto.",v:[["xXd7sddHGa0", "DeltaBolic"], ["TD73yeKxXYc", "Samuel Johnston"]]},
+  bar_pd:{n:"Pushdown con barra al cavo",s:"",eq:"cable",cue:"Gomiti fermi ai fianchi, spingi fino all'estensione completa, risali controllato.",v:[["jMIMHK_L6cg", "DeltaBolic"], ["1FoWlRS2Edc", "DeltaBolic"], ["SHwE-MszKN8", "DeltaBolic · errori"]]},
+  db_oh_ext:{n:"Estensioni sopra la testa con manubrio",s:"",eq:"db",cue:"Gomiti stretti e puntati in alto, scendi dietro la testa in allungamento completo.",v:[["J565P8FzJXA", "DeltaBolic"], ["YpQansy246A", "DeltaBolic · guida"]]},
+  kickback:{n:"Kickback con manubrio",s:"",eq:"db",cue:"Busto inclinato, gomito alto e fermo, estendi fino in fondo senza oscillare.",v:[["WhBxKbe1-NU", "DeltaBolic"], ["SLDF8kqH0MY", "DeltaBolic · errore"]]},
+  bench_dip:{n:"Dip su panca",s:"",eq:"bw",cue:"Mani sulla panca dietro di te, gomiti indietro, scendi senza far salire le spalle verso le orecchie.",v:[["jkTKsIME3Go", "DeltaBolic"], ["O5esIqFBoRU", "DeltaBolic · guida"]]},
+  bb_curl:{n:"Curl con bilanciere",s:"",eq:"bb",cue:"Gomiti fermi ai fianchi, niente slancio con la schiena, discesa controllata.",v:[["2LpuygMBn4Q", "DeltaBolic · prese"], ["ez3YoWf62Eg", "DeltaBolic"]]},
+  preacher:{n:"Curl alla panca Scott",s:"",eq:"machine",cue:"Braccio ben appoggiato, scendi fino quasi alla distensione completa, risali senza staccare il gomito.",v:[["WyAVZn6_PIY", "DeltaBolic"], ["S4dDLfp3e8w", "DeltaBolic · macchina"], ["7ixqAPO6JvU", "DeltaBolic · errori"]]},
+  incl_curl:{n:"Curl su panca inclinata",s:"",eq:"db",cue:"Schiena appoggiata, braccia lasciate cadere dietro il busto: massimo allungamento del bicipite.",v:[["TPV3SU8tA0k", "Samuel Johnston"], ["26-gHfVzKjM", "DeltaBolic"]]},
+  cable_curl:{n:"Curl al cavo",s:"",eq:"cable",cue:"Gomiti fermi, tensione costante del cavo, chiudi stringendo il bicipite.",v:[["xLEpXce3-SA", "DeltaBolic"], ["uxVVMsHi1no", "Samuel Johnston"]]},
+  bayes_curl:{n:"Bayesian curl al cavo",s:"",eq:"cable",cue:"Di spalle al cavo, braccio dietro il busto, curl mantenendo il gomito fermo.",v:[["Q3rF30Wqp6s", "Davis Diley"], ["w3sXATQzGvc", "DeltaBolic"], ["oAlhGm6_Qh4", "DeltaBolic · guida"]]},
+  conc_curl:{n:"Curl concentrato",s:"",eq:"db",cue:"Gomito appoggiato all'interno della coscia, risali ruotando il palmo, niente slancio.",v:[["I_bKCYL2nL8", "DeltaBolic"], ["FFEIPcF0hHM", "Samuel Johnston"], ["r4YGqDn8_5w", "Fit With elmira"]]},
+  bb_squat:{n:"Squat con bilanciere",s:"",eq:"bb",cue:"Piedi a larghezza spalle, petto alto, scendi controllato con le ginocchia in linea con le punte.",v:[["tNUq6b5t11Q", "DeltaBolic · passo passo"], ["dW3zj79xfrc", "DeltaBolic"]]},
+  goblet:{n:"Goblet squat",s:"",eq:"db",cue:"Manubrio al petto, gomiti tra le ginocchia, busto alto e discesa profonda.",v:[["ZBAd1g1z6qs", "DeltaBolic · varianti"], ["-M4ht1MuAP0", "Samuel Johnston · talloni rialzati"]]},
+  bulgarian:{n:"Bulgarian split squat",s:"",eq:"db",cue:"Piede dietro sulla panca, scendi in verticale; busto più dritto = più quadricipiti.",v:[["uODWo4YqbT8", "Davis Diley"], ["kCgo8uNF_cU", "Davis Diley · tutorial"], ["Cow3ESXmrTU", "DeltaBolic"]]},
+  bb_rdl:{n:"Stacco rumeno con bilanciere",s:"",eq:"bb",cue:"Ginocchia morbide, spingi le anche indietro con schiena neutra, bilanciere vicino alle gambe.",v:[["5rIqP63yWFg", "Davis Diley"], ["Wou9zVQrAfs", "DeltaBolic · rumeno vs gambe tese"], ["uTA4GWNwUEo", "DeltaBolic · errore"]]},
+  sl_dl:{n:"Stacco a gambe tese",s:"",eq:"bb",cue:"Gambe quasi tese, schiena neutra, scendi finché senti l'allungamento dei femorali.",v:[["e6cO7kZE-Co", "DeltaBolic"], ["Wou9zVQrAfs", "DeltaBolic"]]},
+  seat_curl:{n:"Leg curl seduto",s:"",eq:"machine",cue:"Cuscinetto sopra le ginocchia ben stretto, busto leggermente in avanti per allungare di più.",v:[["xdbEG3xGLI8", "DeltaBolic"], ["slTDwyzubXY", "DeltaBolic · varianti"]]},
+  hip_thrust:{n:"Hip thrust con bilanciere",s:"",eq:"bb",cue:"Scapole sulla panca, mento basso, spingi coi talloni e chiudi i glutei in alto senza inarcare.",v:[["KBEF9XsiJ-w", "DeltaBolic · posizione piedi"], ["CvuVYMFd11g", "DeltaBolic · errore"], ["96uDbymTaHM", "DeltaBolic · varianti"]]},
+  mach_thrust:{n:"Hip thrust alla macchina",s:"",eq:"machine",cue:"Bacino in retroversione in alto, pausa di un secondo con i glutei contratti.",v:[["sxOrVuCvWq4", "DeltaBolic"]]},
+  glute_kick:{n:"Kickback glutei al cavo",s:"",eq:"cable",cue:"Busto fermo, spingi la gamba indietro col gluteo senza inarcare la schiena.",v:[["H5-zZ4zwios", "DeltaBolic · varianti"], ["UbOcViik3hk", "DeltaBolic"], ["labBFZcEb74", "João Pedro"]]},
+  hip_abd:{n:"Abductor machine",s:"Glutei medi",eq:"machine",cue:"Busto leggermente in avanti per più glutei, apri controllato e torna lento.",v:[["tu4o4quPv2k", "DeltaBolic"], ["ZFtEgDkVAPE", "DeltaBolic"], ["xxnZKtchgS8", "João Pedro"]]},
+  sumo_sq:{n:"Sumo squat con manubrio",s:"",eq:"db",cue:"Piedi larghi e punte in fuori, manubrio tra le gambe, scendi con il busto alto.",v:[["bRCjBCtBGIo", "DeltaBolic"], ["lQLy8unq9L8", "DeltaBolic · goblet vs sumo"]]},
+  glute_bridge:{n:"Glute bridge monopodalico",s:"",eq:"bw",cue:"Spingi col tallone, bacino in linea, gluteo contratto in alto.",v:[["cB_702Vy-WE", "Samuel Johnston"], ["2_axYmo-mS4", "Marcello Chiapponi · ITA"]]},
+  step_up:{n:"Step-up sul box",s:"",eq:"db",cue:"Sali spingendo con la gamba sul box, senza spinta dalla gamba a terra.",v:[["q5l7KoSU-QI", "João Pedro"]]},
+  seat_calf:{n:"Calf seduto",s:"Soleo",eq:"machine",cue:"Allungamento completo in basso con pausa, sali fino in punta.",v:[["a-x_NR-ibos", "DeltaBolic · varianti"], ["ZoVJ81wmba8", "DeltaBolic · posizione piedi"]]},
+  calf_lp:{n:"Calf alla leg press",s:"",eq:"plate",cue:"Solo l'avampiede sulla pedana, ginocchia quasi tese, movimento lento in tutto il range.",v:[["wdOkFomQNp8", "DeltaBolic"], ["ey9a2M71-vU", "DeltaBolic"]]},
+  single_calf:{n:"Calf monopodalico con manubrio",s:"",eq:"db",cue:"Su un gradino, discesa lenta fino all'allungamento, sali in punta.",v:[["1_B7pkicFk8", "Davis Diley"]]},
+  smith_calf:{n:"Calf al Smith",s:"",eq:"bb",cue:"Avampiedi su un rialzo, ginocchia tese, pausa in basso e in alto.",v:[["a-x_NR-ibos", "DeltaBolic"], ["ZoVJ81wmba8", "DeltaBolic"]]},
+  cable_crunch:{n:"Crunch al cavo in ginocchio",s:"",eq:"cable",cue:"Fletti la colonna portando i gomiti verso le ginocchia, le anche restano ferme.",v:[["CDO29I7PCoc", "Davis Diley"], ["RQjrmGTbxjI", "DeltaBolic · errori"], ["K2m0jj6RfYg", "DeltaBolic"]]},
+  leg_raise:{n:"Leg raise a terra",s:"",eq:"bw",cue:"Schiena bassa a terra, solleva le gambe senza inarcare, discesa lenta.",v:[["5uB0KaoCF9w", "DeltaBolic · errore"], ["BhJG7ji4dC8", "Fit With elmira"]]},
+  ab_wheel:{n:"Ab wheel (rollout)",s:"",eq:"bw",cue:"Addome contratto e bacino in retroversione, avanza solo finché la schiena resta neutra.",v:[["P9GEc3IaBCc", "Samuel Johnston"]]},
+  crunch:{n:"Crunch a terra",s:"",eq:"bw",cue:"Arrotola la parte alta della schiena, mento lontano dal petto, niente strappi col collo.",v:[["BhJG7ji4dC8", "Fit With elmira"]]},
+  russian_twist:{n:"Russian twist",s:"",eq:"bw",cue:"Busto inclinato indietro, ruota dalle costole e non solo dalle braccia.",v:[["BhJG7ji4dC8", "Fit With elmira"]]},
+  plank:{kind:"time",sec:45,n:"Plank",s:"Addome · a tempo",cue:"Corpo in linea, glutei e addome contratti, non far cadere il bacino.",v:[["xe2MXatLTUw", "DeltaBolic"], ["y3sxQUJ3Qsk", "DeltaBolic · errori"], ["v3V6iyQfKzY", "DeltaBolic · progressioni"]]},
   mob_post:{kind:"time",sec:60,n:"Postura e colonna",s:"Mobilità",cue:"Segui il video con calma, movimento lento e respirazione regolare.",v:[["MIFQK7cllo8","Markour"],["zs5oDFJ7ieU","Low Back Ability"]]},
   mob_back:{kind:"time",sec:60,n:"Sblocco schiena e spalle",s:"Mobilità",cue:"Ampiezza progressiva, senza forzare il fine corsa.",v:[["9NokgyI76ak","Rash Elagin"],["m7dOrLxxXVs","Flow with Mira · pilates schiena"]]},
   mob_hip:{kind:"time",sec:75,n:"Flow mobilità anche",s:"Mobilità · 4 movimenti",cue:"Esegui i 4 movimenti in sequenza controllando bacino e schiena.",v:[["ttKfbFqocY8","Limitless Sapiens"],["t7rOppk6y3w","João Pedro"],["xOAZ-uqq3yA","Sam Johnston · 5 drill"]]},
@@ -110,5 +163,6 @@ const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
 const MUSCLE = {db_flat:"Petto",db_incl:"Petto",cable_fly:"Petto",bb_bench:"Petto",db_ohp:"Spalle",lat_raise:"Spalle",rev_pec:"Spalle",
   rope_pd:"Tricipiti",oh_ext:"Tricipiti",lat_pd:"Schiena",cs_row:"Schiena",sa_pd:"Schiena",db_curl:"Bicipiti",hammer:"Bicipiti",
   smith_sq:"Quadricipiti",leg_press:"Quadricipiti",hack_sq:"Quadricipiti",leg_ext:"Quadricipiti",lunge_db:"Quadricipiti",
-  db_rdl:"Femorali",back_ext:"Femorali",leg_curl:"Femorali",calf:"Polpacci"};
-const MUSCLE_ORDER = ["Petto","Schiena","Spalle","Tricipiti","Bicipiti","Quadricipiti","Femorali","Polpacci"];
+  db_rdl:"Femorali",back_ext:"Femorali",leg_curl:"Femorali",calf:"Polpacci",
+  bb_incl:"Petto",chest_press:"Petto",pec_deck:"Petto",cable_fly_low:"Petto",dips:"Petto",pushup:"Petto",pullup:"Schiena",bb_row:"Schiena",db_row:"Schiena",tbar_row:"Schiena",cable_row:"Schiena",bb_ohp:"Spalle",mach_ohp:"Spalle",cable_lat:"Spalle",face_pull:"Spalle",rear_fly_db:"Spalle",skull:"Tricipiti",cg_bench:"Tricipiti",bar_pd:"Tricipiti",db_oh_ext:"Tricipiti",kickback:"Tricipiti",bench_dip:"Tricipiti",bb_curl:"Bicipiti",preacher:"Bicipiti",incl_curl:"Bicipiti",cable_curl:"Bicipiti",bayes_curl:"Bicipiti",conc_curl:"Bicipiti",bb_squat:"Quadricipiti",goblet:"Quadricipiti",bulgarian:"Quadricipiti",bb_rdl:"Femorali",sl_dl:"Femorali",seat_curl:"Femorali",hip_thrust:"Glutei",mach_thrust:"Glutei",glute_kick:"Glutei",hip_abd:"Glutei",sumo_sq:"Glutei",glute_bridge:"Glutei",step_up:"Glutei",seat_calf:"Polpacci",calf_lp:"Polpacci",single_calf:"Polpacci",smith_calf:"Polpacci",cable_crunch:"Addome",bw_calf:"Polpacci",leg_raise:"Addome",ab_wheel:"Addome",crunch:"Addome",russian_twist:"Addome",plank:"Addome"};
+const MUSCLE_ORDER = ["Petto","Schiena","Spalle","Tricipiti","Bicipiti","Quadricipiti","Femorali","Glutei","Polpacci","Addome"];
