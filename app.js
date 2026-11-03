@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "41";
+const APP_VERSION = "42";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -886,6 +886,19 @@ function drawMusic(msg){
   $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadMusic(m.recent[+b.dataset.r].raw,true); $("#mPanel").hidden=true; drawMusic(); });
 }
 $("#mPlay").onclick=toggleMusic;
+/* avanti/indietro nella musica (il riquadro non accetta tocchi, quindi comandi nostri) */
+let seekDrag=false;
+const hms=t=>{ t=Math.max(0,Math.floor(t||0)); const h=Math.floor(t/3600), m=Math.floor(t%3600/60), x=String(t%60).padStart(2,"0"); return h?`${h}:${String(m).padStart(2,"0")}:${x}`:`${m}:${x}`; };
+function drawSeek(){
+  const ok=!!(ym&&ymReady&&st.ui.music.src); $("#mSeek").hidden=!ok; if(!ok) return;
+  let d=0,c=0; try{ d=ym.getDuration()||0; c=ym.getCurrentTime()||0; }catch(e){}
+  if(!seekDrag){ $("#mPos").max=Math.max(1,Math.round(d)); $("#mPos").value=Math.round(c); }
+  $("#mTime").textContent=`${hms(seekDrag?+$("#mPos").value:c)} / ${hms(d)}`;
+}
+setInterval(()=>{ if(!document.hidden) drawSeek(); },1000);
+document.querySelectorAll("[data-sk]").forEach(b=>b.onclick=()=>{ if(!ym||!ymReady) return; try{ const t=Math.max(0,(ym.getCurrentTime()||0)+(+b.dataset.sk)); ym.seekTo(t,true); }catch(e){} setTimeout(drawSeek,200); });
+$("#mPos").addEventListener("input",()=>{ seekDrag=true; drawSeek(); });
+$("#mPos").addEventListener("change",()=>{ seekDrag=false; try{ ym.seekTo(+$("#mPos").value,true); }catch(e){} setTimeout(drawSeek,200); });
 $("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); if(!$("#mPanel").hidden) loadDuetto(); };
 /* libreria di Duetto: gli stessi autori YouTube, con i video più recenti (aggiornati da Duetto ogni 8 ore) */
 const DUETTO_URL="https://valeriowork360.github.io/duetto/videos.json";

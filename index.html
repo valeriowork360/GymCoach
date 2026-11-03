@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="41">
+<meta name="app-version" content="42">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=42">
 </head>
 <body>
 <div id="app">
@@ -45,6 +45,11 @@
         <div class="vol"><button type="button" class="vbtn" id="muteV" aria-label="Audio video esercizio acceso/spento">🔇</button><input type="range" id="volV" min="0" max="100" step="5" aria-label="Volume video esercizio"><output id="oV">0</output></div>
         <div class="vol"><button type="button" class="vbtn" id="muteM" aria-label="Musica acceso/spento">🎵</button><input type="range" id="volM" min="0" max="100" step="5" aria-label="Volume musica"><output id="oM">35</output></div>
         <button class="vbtn" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
+      </div>
+      <div class="m-seek" id="mSeek" hidden>
+        <button type="button" class="vbtn" data-sk="-30" aria-label="Indietro 30 secondi">−30</button><button type="button" class="vbtn" data-sk="-10" aria-label="Indietro 10 secondi">−10</button>
+        <input type="range" id="mPos" min="0" max="100" step="1" value="0" aria-label="Posizione nel video musica"><output id="mTime">0:00</output>
+        <button type="button" class="vbtn" data-sk="10" aria-label="Avanti 10 secondi">+10</button><button type="button" class="vbtn" data-sk="30" aria-label="Avanti 30 secondi">+30</button>
       </div>
       <div class="m-more" id="mPanel" hidden>
         <div class="m-info"><b id="mTitle">Musica</b> <span id="mSub">Aggiungi un link YouTube</span></div>
@@ -109,7 +114,7 @@
   };
 })();
 </script>
-<script src="data.js?v=41"></script>
-<script src="app.js?v=41"></script>
+<script src="data.js?v=42"></script>
+<script src="app.js?v=42"></script>
 </body>
 </html>
