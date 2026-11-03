@@ -82,24 +82,25 @@ Object.assign(EX,{
   mob_quad:{kind:"time",sec:60,n:"Quadrupedia e primal movement",s:"Mobilità attiva",cue:"Ginocchia vicine al pavimento, schiena neutra, movimenti fluidi.",v:[["iQttn4K-D7w","Markour"],["98wCs3eHVBY","LeoMoves"],["9gZBGwqpmEM","LeoMoves"],["ma8b9eZsXEA","LeoMoves"],["lJqSnVyeWFw","LeoMoves"]]},
   mob_bridge:{kind:"time",sec:60,n:"Ponte glutei fatto bene",s:"Attivazione",cue:"Spingi coi talloni, glutei contratti in alto, senza iperestendere la schiena.",v:[["2_axYmo-mS4","Marcello Chiapponi · ITA"]]},
 
-  st_pec:{kind:"time",sec:30,sides:true,n:"Allungamento pettorali alla porta",s:"Stretching parte alta · per lato",cue:"Avambraccio sullo stipite, gomito all'altezza della spalla, ruota il busto lontano.",v:[["M850sCj9LHQ","MedBridge"],["CEQMx4zFwYs","MidwestOrtho"]]},
-  st_lat:{kind:"time",sec:30,sides:true,n:"Allungamento dorsali",s:"Stretching parte alta · per lato",cue:"Spingi i fianchi indietro e allunga il fianco, respira nell'allungamento.",v:[["wzyB34izUNI","NASM"],["SAZDip5crww","Cumberland Chiropractic"],["6V5tSn9oEJg","ATHLEAN-X"]]},
-  st_rdelt:{kind:"time",sec:30,sides:true,n:"Spalla posteriore (cross-body)",s:"Stretching parte alta · per lato",cue:"Porta il braccio davanti al petto tenendo la scapola bassa, senza ruotare il busto.",v:[["swvXpKN832E","[P]rehab"],["WaR_T0aUoew","Mike Reinold"]]},
-  st_tri:{kind:"time",sec:30,sides:true,n:"Tricipiti sopra la testa",s:"Stretching parte alta · per lato",cue:"Gomito verso il soffitto, mano dietro la testa, aiutati con l'altra mano.",v:[["3_eaPeNRpzk","UCSF Orthopaedics"],["MWzR-WE_nhU","Hinge Health"]]},
-  st_trap:{kind:"time",sec:30,sides:true,n:"Trapezio superiore e collo",s:"Stretching parte alta · per lato",cue:"Orecchio verso la spalla, spalla opposta bassa, trazione leggera.",v:[["-r0eoFS7_5Q","Ask Doctor Jo"],["UIQud2Uak-g","LSM Chiropractic"]]},
-  st_tspine:{kind:"time",sec:45,sides:true,n:"Toracica \"open book\"",s:"Stretching parte alta · per lato",cue:"Sul fianco, ginocchia unite, apri il braccio seguendolo con lo sguardo.",v:[["93C-PRmMra0","Bij & Gab"],["peeW19ofFUg","Elite Performance Institute"]]},
-  st_hipflex:{kind:"time",sec:45,sides:true,n:"Flessori dell'anca (couch stretch)",s:"Stretching gambe · per lato",cue:"Gluteo contratto e bacino in retroversione; avvicinati al muro gradualmente.",v:[["QiKl5UoiG5c","Movement Enhanced"],["d9pOjXCKGN8","Tom Morrison"]]},
-  st_quad:{kind:"time",sec:30,sides:true,n:"Quadricipiti in piedi",s:"Stretching gambe · per lato",cue:"Ginocchia vicine, bacino in retroversione, tallone verso il gluteo.",v:[["R7g1POiEoZs","E3 Rehab"],["j-KreYRNOCc","MGH Orthopaedics"]]},
-  st_ham:{kind:"time",sec:30,sides:true,n:"Femorali",s:"Stretching gambe · per lato",cue:"Schiena dritta, piegati dalle anche; contrai il femorale qualche secondo prima di allungare.",v:[["5f5aHVj-f9Q","Hinge Health"],["adPJxmVzaGM","fitness-facts · contrai prima"]]},
-  st_glute:{kind:"time",sec:30,sides:true,n:"Glutei (figura 4)",s:"Stretching gambe · per lato",cue:"Caviglia sul ginocchio opposto, avvicina la gamba al petto mantenendo la schiena a terra.",v:[["2VE_NLcNMvQ","Ask Doctor Jo"],["oaHvY7NOvHk","Tom Morrison"]]},
-  st_add:{kind:"time",sec:45,n:"Adduttori (frog stretch)",s:"Stretching gambe",cue:"Ginocchia larghe a 90°, spingi lentamente i fianchi indietro.",v:[["XnRu_yJbMpE","Iordan Krouchev"],["qtU_WSx2wvw","MVMT Performance"]]},
-  st_calf:{kind:"time",sec:30,sides:true,n:"Polpacci al muro",s:"Stretching gambe · per lato",cue:"Gamba dietro tesa e tallone a terra; poi piega il ginocchio per il soleo.",v:[["mafo7o7OnFo","HSS"],["kTnS4Sxnt0E","OrthoIndy · soleo"]]}
+  st_follow:{kind:"time",sec:300,n:"Stretching parte alta — 5 min",s:"Stretching · segui il video",cue:"Segui il video dall'inizio alla fine: movimenti lenti, respirazione profonda, allungamento senza dolore.",v:[["bgMNXt88RQ8","Vitality · 5 min upper body"]]},
+  st_pec:{kind:"time",sec:30,sides:true,n:"Allungamento pettorali alla porta",s:"Stretching parte alta · per lato",cue:"Avambraccio sullo stipite, gomito all'altezza della spalla, ruota il busto lontano.",v:[]},
+  st_lat:{kind:"time",sec:30,sides:true,n:"Allungamento dorsali",s:"Stretching parte alta · per lato",cue:"Spingi i fianchi indietro e allunga il fianco, respira nell'allungamento.",v:[]},
+  st_rdelt:{kind:"time",sec:30,sides:true,n:"Spalla posteriore (cross-body)",s:"Stretching parte alta · per lato",cue:"Porta il braccio davanti al petto tenendo la scapola bassa, senza ruotare il busto.",v:[]},
+  st_tri:{kind:"time",sec:30,sides:true,n:"Tricipiti sopra la testa",s:"Stretching parte alta · per lato",cue:"Gomito verso il soffitto, mano dietro la testa, aiutati con l'altra mano.",v:[]},
+  st_trap:{kind:"time",sec:30,sides:true,n:"Trapezio superiore e collo",s:"Stretching parte alta · per lato",cue:"Orecchio verso la spalla, spalla opposta bassa, trazione leggera.",v:[]},
+  st_tspine:{kind:"time",sec:45,sides:true,n:"Toracica \"open book\"",s:"Stretching parte alta · per lato",cue:"Sul fianco, ginocchia unite, apri il braccio seguendolo con lo sguardo.",v:[]},
+  st_hipflex:{kind:"time",sec:45,sides:true,n:"Flessori dell'anca (couch stretch)",s:"Stretching gambe · per lato",cue:"Gluteo contratto e bacino in retroversione; avvicinati al muro gradualmente.",v:[]},
+  st_quad:{kind:"time",sec:30,sides:true,n:"Quadricipiti in piedi",s:"Stretching gambe · per lato",cue:"Ginocchia vicine, bacino in retroversione, tallone verso il gluteo.",v:[]},
+  st_ham:{kind:"time",sec:30,sides:true,n:"Femorali",s:"Stretching gambe · per lato",cue:"Schiena dritta, piegati dalle anche; contrai il femorale qualche secondo prima di allungare.",v:[]},
+  st_glute:{kind:"time",sec:30,sides:true,n:"Glutei (figura 4)",s:"Stretching gambe · per lato",cue:"Caviglia sul ginocchio opposto, avvicina la gamba al petto mantenendo la schiena a terra.",v:[]},
+  st_add:{kind:"time",sec:45,n:"Adduttori (frog stretch)",s:"Stretching gambe",cue:"Ginocchia larghe a 90°, spingi lentamente i fianchi indietro.",v:[]},
+  st_calf:{kind:"time",sec:30,sides:true,n:"Polpacci al muro",s:"Stretching gambe · per lato",cue:"Gamba dietro tesa e tallone a terra; poi piega il ginocchio per il soleo.",v:[]}
 });
 
 // [esercizio, giri, secondi per giro (per lato), -, pausa in secondi]
 Object.assign(SESSIONS,{
   "MOBILITÀ":[["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20]],
-  "STRETCHING":[["st_pec",2,30,null,10],["st_lat",2,30,null,10],["st_rdelt",2,30,null,10],["st_tri",2,30,null,10],["st_trap",2,30,null,10],["st_tspine",2,45,null,10],["st_hipflex",2,45,null,10],["st_quad",2,30,null,10],["st_ham",2,30,null,10],["st_glute",2,30,null,10],["st_add",2,45,null,10],["st_calf",2,30,null,10]]
+  "STRETCHING":[["st_follow",1,300,null,0]]
 });
 const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
 
