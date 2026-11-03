@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "44";
+const APP_VERSION = "45";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -966,8 +966,8 @@ function drawChips(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
   if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
-  else if(pend && pend.need==="rir") html=[0,1,2,3,4,5].map(v=>`<button class="chip acc" data-say="RIR ${v}">RIR ${v}</button>`).join("");
-  else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=Math.max(1,lo-2);v<=hi+2;v++) html+=`<button class="chip acc" data-say="${v} rip">${v}</button>`; }
+  else if(pend && pend.need==="rir") html=[0,1,2,3,4,5,6].map(v=>`<button class="chip ${v>=RIR_MIN&&v<=RIR_MAX?"acc":""}" data-say="RIR ${v}">RIR ${v}</button>`).join("");
+  else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=1;v<=Math.max(30,hi+10);v++) html+=`<button class="chip ${v>=lo&&v<=hi?"acc":""}" data-say="${v} rip">${v}</button>`; }
   else {
     const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
     html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
@@ -980,6 +980,7 @@ function drawChips(){
       +`<button class="chip ${allDone?"acc":""}" data-cmd="end">🏁 Fine sessione</button>`;
   }
   c.innerHTML=html;
+  if(pend && pend.need==="reps"){ const [, ,lo]=item(), b=c.querySelector(`[data-say="${Math.max(1,lo-3)} rip"]`); c.scrollLeft=b?b.offsetLeft-c.offsetLeft-6:0; } else c.scrollLeft=0;
   $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
   c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
