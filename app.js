@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "50";
+const APP_VERSION = "51";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -74,6 +74,23 @@ function applyProgram(p){
   if(!CYCLE.length) BASE_PROGRAM.cycle.forEach(c=>CYCLE.push(c));
 }
 if(st.program) applyProgram(st.program);
+/* video aggiunti dall'utente (link YouTube incollati): vanno in testa ai video dell'esercizio */
+st.myVid ||= {};
+function applyMyVid(id){ const e=EX[id]; if(!e) return; const mine=st.myVid[id]||[]; e.v=[...mine,...(e.v||[]).filter(([v])=>!mine.some(([m])=>m===v))]; }
+Object.keys(st.myVid).forEach(applyMyVid);
+function addMyVid(id,raw){ const r=parseYT(raw); if(!r||!r.id) return false; (st.myVid[id] ||= []); if(!st.myVid[id].some(([v])=>v===r.id)) st.myVid[id].unshift([r.id,"Il tuo video"]); applyMyVid(id); save(); return true; }
+function delMyVid(id,vid){ st.myVid[id]=(st.myVid[id]||[]).filter(([v])=>v!==vid); EX[id].v=(EX[id].v||[]).filter(([v])=>v!==vid); if(!st.myVid[id].length) delete st.myVid[id]; applyMyVid(id); save(); }
+function openVideoAdd(id){
+  const e=EX[id], q=encodeURIComponent(e.n+" tecnica esecuzione"), mine=st.myVid[id]||[];
+  openSheet("Video per "+e.n,`
+    <p class="muted" style="margin:0 0 8px">Cerca un video su YouTube, tocca <b>Condividi → Copia link</b> e incollalo qui. Lo vedrai insieme agli altri video dell'esercizio, solo tu.</p>
+    <a class="btn wide" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;display:block">🔎 Cerca “${esc(e.n)}” su YouTube ↗</a>
+    <form class="m-form" id="vaF" style="margin-top:10px"><input class="inp" id="vaIn" placeholder="Incolla il link YouTube" inputmode="url" autocomplete="off"><button class="btn acc" type="submit">Aggiungi</button></form>
+    <p class="muted" id="vaMsg" style="min-height:1.2em"></p>
+    ${mine.length?`<div class="card"><h3>I tuoi video</h3>${mine.map(([v])=>`<div class="row" style="align-items:center;margin:4px 0"><img src="https://i.ytimg.com/vi/${v}/mqdefault.jpg" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:6px"><a href="https://www.youtube.com/watch?v=${v}" target="_blank" rel="noopener" style="flex:1">youtu.be/${v}</a><button type="button" class="mini" data-vdel="${v}">✕ Togli</button></div>`).join("")}</div>`:""}`);
+  $("#vaF").onsubmit=ev=>{ ev.preventDefault(); if(addMyVid(id,$("#vaIn").value)){ if(st.cur&&item()[0]===id){ st.cur.vid=0; save(); drawVideo(); } openVideoAdd(id); $("#vaMsg").textContent="Video aggiunto ✓"; } else $("#vaMsg").textContent="Link non valido: copialo da YouTube (Condividi → Copia link)."; };
+  $("#sheetBody").querySelectorAll("[data-vdel]").forEach(b=>b.onclick=()=>{ delMyVid(id,b.dataset.vdel); if(st.cur&&item()[0]===id){ st.cur.vid=0; save(); drawVideo(); } openVideoAdd(id); });
+}
 /* scheda della sessione corrente, con eventuali esercizi sostituiti */
 function mergeSugg(g){ Object.entries(g||{}).forEach(([id,x])=>{ const o=st.sugg[id]; if(!o || (x.date||0)>(o.date||0)) st.sugg[id]=x; }); }
 function mergeNotes(n){ if(!n) return; st.exNotes={...(st.exNotes||{}),...n}; }
@@ -762,9 +779,10 @@ function drawVideo(){
     destroyGrid(); destroyExerciseVideo(); yvWant=null;
     const q=encodeURIComponent(e.n+" tecnica esecuzione");
     $("#frame").classList.remove("multi"); $("#player").classList.remove("multi");
-    $("#frame").innerHTML=`<div style="display:grid;place-items:center;text-align:center;color:var(--mut);padding:16px">Nessun video salvato per questo esercizio.<br><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Cerca “${esc(e.n)}” su YouTube ↗</a></div>`;
+    $("#frame").innerHTML=`<div style="display:grid;place-items:center;text-align:center;color:var(--mut);padding:16px;gap:8px">Nessun video per questo esercizio.<button type="button" class="btn acc" id="vAdd0">＋ Aggiungi un video</button></div>`;
     $("#player").classList.remove("collapsed");
-    $("#vchips").innerHTML=`<span class="muted" style="padding:4px 2px">Esercizio personalizzato</span>`; return;
+    $("#vchips").innerHTML=`<a class="vchip ghost" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--mut)">🔎 Cerca su YouTube ↗</a>`;
+    $("#vAdd0").onclick=()=>openVideoAdd(item()[0]); return;
   }
   const vi=clamp(st.cur.vid||0,0,e.v.length-1), [id]=e.v[vi];
   const multi = st.ui.vidLayout!=="single" && e.v.length>1;
@@ -780,7 +798,9 @@ function drawVideo(){
   $("#vchips").innerHTML = `<button class="vchip ghost size" id="vSize">${sizeLbl}</button>` + e.v.map(([vid,ch],k)=>`<button class="vchip ${k===vi&&!st.ui.videoHidden?"on":""}" data-k="${k}">${multi?"":"▶ "}${esc(ch)}</button>`).join("")
     + (e.v.length>1?`<button class="vchip ghost" id="vLayout">${multi?"▢ Uno alla volta":"▦ Affiancati"}</button>`:"")
     + (st.ui.videoHidden||st.ui.vsize==="l"?"":`<button class="vchip ghost" id="vBig">▢ Video grande</button>`)
+    + `<button class="vchip ghost" id="vAdd">＋ Video</button>`
     + `<a class="vchip ghost" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--mut)">Apri in YouTube ↗</a>`;
+  $("#vAdd").onclick=()=>openVideoAdd(item()[0]);
   $("#vchips").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ st.cur.vid=+b.dataset.k; st.ui.videoHidden=false; save(); if(multi&&grid){ setGridActive(+b.dataset.k,true); drawVideoChips(); } else drawVideo(); });
   const lay=$("#vLayout"); if(lay) lay.onclick=()=>{ st.ui.vidLayout = multi?"single":"multi"; save(); drawVideo(); };
   // dimensione: piccolo (predefinito) → solo chat → piccolo; "grande" a parte
@@ -1013,6 +1033,42 @@ function render(){
   } else { $("#workout").hidden=true; $("#home").hidden=false; stopTimer(); drawTop(); drawHome(); }
 }
 
+/* ---------------- split preimpostate (con gli esercizi delle tue schede) ---------------- */
+const PRESETS = [
+ {k:"mine", n:"PPL + Upper/Lower (il tuo programma)", d:"5 sedute su 7 giorni", p:()=>clone(BASE_PROGRAM)},
+ {k:"fbab", n:"Full Body A/B (la tua scheda precedente)", d:"2–3 sedute a settimana, alternando A e B", p:()=>({sessions:{
+   "FULL BODY A":[["leg_press",2,9,12,180],["bb_bench",2,6,10,180],["lat_pd",2,8,12,150],["db_rdl",2,8,12,180],["lat_raise",2,12,20,90],["cable_crunch",2,10,15,90]],
+   "FULL BODY B":[["smith_sq",2,8,12,180],["db_incl",2,8,12,150],["cs_row",2,8,12,150],["leg_curl",2,10,15,120],["db_ohp",2,8,12,150],["db_curl",2,10,15,90],["rope_pd",2,10,15,90]]},
+   cycle:["FULL BODY A","REST","FULL BODY B","REST"]})},
+ {k:"fbabc", n:"Full Body A / B / C", d:"3 sedute a settimana", p:()=>({sessions:{
+   "FULL BODY A":[["leg_press",2,9,12,180],["bb_bench",2,6,10,180],["lat_pd",2,8,12,150],["db_rdl",2,8,12,180],["lat_raise",2,12,20,90],["cable_crunch",2,10,15,90]],
+   "FULL BODY B":[["smith_sq",2,8,12,180],["db_incl",2,8,12,150],["cs_row",2,8,12,150],["leg_curl",2,10,15,120],["db_ohp",2,8,12,150],["db_curl",2,10,15,90],["rope_pd",2,10,15,90]],
+   "FULL BODY C":[["hack_sq",2,9,12,180],["db_flat",2,6,10,180],["cable_row",2,8,12,150],["back_ext",2,10,15,120],["rev_pec",2,12,20,90],["hammer",2,10,15,90],["oh_ext",2,10,15,90]]},
+   cycle:["FULL BODY A","REST","FULL BODY B","REST","FULL BODY C","REST","REST"]})},
+ {k:"ulfb", n:"Upper / Lower / Full Body", d:"3 sedute a settimana", p:()=>({sessions:{
+   "UPPER":clone(BASE_PROGRAM.sessions.UPPER||[]),
+   "LOWER":clone(BASE_PROGRAM.sessions.LOWER||[]),
+   "FULL BODY":[["hack_sq",2,9,12,180],["db_flat",2,6,10,180],["cable_row",2,8,12,150],["db_ohp",2,8,12,150],["leg_curl",2,10,15,120],["hammer",2,10,15,90]]},
+   cycle:["UPPER","REST","LOWER","REST","FULL BODY","REST","REST"]})},
+ {k:"pplfb", n:"Push / Pull / Legs / Full Body", d:"4 sedute a settimana", p:()=>({sessions:{
+   "PUSH":clone(BASE_PROGRAM.sessions.PUSH||[]),"PULL":clone(BASE_PROGRAM.sessions.PULL||[]),"LEGS":clone(BASE_PROGRAM.sessions.LEGS||[]),
+   "FULL BODY":[["hack_sq",2,9,12,180],["bb_bench",2,6,10,180],["cable_row",2,8,12,150],["back_ext",2,10,15,120],["rev_pec",2,12,20,90],["cable_crunch",2,10,15,90]]},
+   cycle:["PUSH","PULL","REST","LEGS","FULL BODY","REST","REST"]})},
+ {k:"ul4", n:"Upper / Lower (4 giorni)", d:"4 sedute a settimana, due versioni A e B", p:()=>({sessions:{
+   "UPPER A":clone(BASE_PROGRAM.sessions.UPPER||[]),
+   "LOWER A":clone(BASE_PROGRAM.sessions.LOWER||[]),
+   "UPPER B":[["db_flat",2,6,10,180],["cable_row",2,8,12,150],["db_ohp",2,8,12,150],["sa_pd",2,10,15,90],["lat_raise",2,12,20,90],["hammer",2,10,15,90],["oh_ext",2,10,15,90]],
+   "LOWER B":[["smith_sq",2,8,12,180],["back_ext",2,10,15,120],["lunge_db",2,8,12,150],["seat_curl",2,10,15,120],["calf",2,10,20,90],["cable_crunch",2,10,15,90]]},
+   cycle:["UPPER A","LOWER A","REST","UPPER B","LOWER B","REST","REST"]})},
+ {k:"ppl6", n:"Push / Pull / Legs × 2 (6 giorni)", d:"6 sedute a settimana", p:()=>({sessions:{
+   "PUSH":clone(BASE_PROGRAM.sessions.PUSH||[]),"PULL":clone(BASE_PROGRAM.sessions.PULL||[]),"LEGS":clone(BASE_PROGRAM.sessions.LEGS||[])},
+   cycle:["PUSH","PULL","LEGS","PUSH","PULL","LEGS","REST"]})},
+];
+function presetHtml(){
+  return `<div class="card"><h3>Split pronte</h3><p class="muted" style="margin:0 0 8px">Scegline una come punto di partenza: la carico qui sotto e poi puoi modificarla prima di salvare. Usano gli esercizi delle tue schede.</p>
+    ${PRESETS.map(x=>{ const pp=x.p(); return `<div class="pset"><div><b>${esc(x.n)}</b><span class="muted">${esc(x.d)} · ${Object.keys(pp.sessions).map(esc).join(" · ")}</span></div><button type="button" class="mini" data-preset="${x.k}">Usa</button></div>`; }).join("")}</div>`;
+}
+
 /* ---------------- editor del programma ---------------- */
 let pw=null, pwPick=null;
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -1030,6 +1086,7 @@ function drawProgram(keepScroll){
     <span class="pb"><button type="button" class="mini" data-mv="${esc(n)}|${k}|-1" aria-label="Sposta su">↑</button><button type="button" class="mini" data-mv="${esc(n)}|${k}|1" aria-label="Sposta giù">↓</button><button type="button" class="mini" data-rm="${esc(n)}|${k}" aria-label="Togli">✕</button></span></div></div>`; };
   openSheet("Il tuo programma",`
     <p class="muted" style="margin:0 0 10px">Il programma resta salvato su questo telefono (e nel backup, se attivo). ${st.program?"Stai modificando il tuo programma personalizzato.":"Parti dal programma di base: le modifiche valgono solo per te."}</p>
+    ${presetHtml()}
     <div class="card"><h3>Divisione della settimana</h3><p class="muted" style="margin:0 0 8px">L'ordine con cui si ripetono le sedute. REST = giorno di riposo.</p>
       <div class="pcyc">${pw.cycle.map((c,k)=>`<span class="pc ${c==="REST"?"rest":""}"><b>${k+1}.</b> ${esc(c)}<button type="button" data-cm="${k}|-1" aria-label="Prima">‹</button><button type="button" data-cm="${k}|1" aria-label="Dopo">›</button><button type="button" data-cx="${k}" aria-label="Togli">✕</button></span>`).join("")}</div>
       <div class="row" style="margin-top:8px"><select class="inp" id="pcAdd">${[...names,"REST"].map(n=>`<option>${esc(n)}</option>`).join("")}</select><button type="button" class="btn" id="pcAddB">+ Aggiungi</button></div></div>
@@ -1057,6 +1114,7 @@ function drawProgram(keepScroll){
     if(!b.dataset.armed){ b.dataset.armed=1; b.textContent="Tocca ancora per eliminare"; return; }
     delete pw.sessions[n]; pw.cycle=pw.cycle.filter(c=>c!==n); drawProgram(true); });
   B.querySelectorAll("[data-addex]").forEach(b=>b.onclick=()=>{ pwPick={sess:b.dataset.addex,g:null,q:""}; drawProgram(); });
+  B.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{ const x=PRESETS.find(y=>y.k===b.dataset.preset); pw=x.p(); drawProgram(); $("#pMsg").textContent=`Caricata «${x.n}». Controlla e tocca Salva programma.`; setTimeout(()=>{ const m=$("#pMsg"); if(m) m.scrollIntoView({block:"center"}); },50); });
   $("#pNewS").onclick=()=>{ let k=1; while(pw.sessions["SEDUTA "+k]) k++; const n="SEDUTA "+k; pw.sessions[n]=[]; pw.cycle.push(n); drawProgram(true); setTimeout(()=>{ const i=B.querySelector(`[data-rn="${n}"]`); if(i){ i.scrollIntoView({block:"center"}); i.select(); } },50); };
   $("#pCancel").onclick=()=>{ pw=null; closeSheet(); };
   $("#pReset").onclick=e=>{ const b=e.target; if(!b.dataset.armed){ b.dataset.armed=1; b.textContent="Tocca ancora: torni al programma di base"; return; }
@@ -1083,6 +1141,8 @@ function drawPicker(){
       <input class="inp" id="pkNew" placeholder="Nome (es. Pullover ai cavi)" value="${esc(pk.q)}" autocomplete="off">
       <div class="row" style="margin-top:6px"><select class="inp" id="pkG">${MUSCLE_ORDER.map(g=>`<option ${g===pk.g?"selected":""}>${g}</option>`).join("")}</select>
       <select class="inp" id="pkE">${Object.entries(EQ_LABEL).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></div>
+      <input class="inp" id="pkVid" placeholder="Link video YouTube (facoltativo)" inputmode="url" autocomplete="off" style="margin-top:6px">
+      <a href="https://www.youtube.com/results?search_query=${encodeURIComponent((pk.q||"esercizio")+" tecnica esecuzione")}" target="_blank" rel="noopener" class="muted" style="font-size:12.5px">🔎 Cerca il video su YouTube ↗</a>
       <button type="button" class="btn acc wide" id="pkMake" style="margin-top:6px">Crea e aggiungi</button></div>
     <button type="button" class="btn wide" id="pkBack">← Torna al programma</button>`);
   const B=$("#sheetBody");
@@ -1092,6 +1152,7 @@ function drawPicker(){
   B.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>add(b.dataset.id));
   $("#pkMake").onclick=()=>{ const n=$("#pkNew").value.trim(); if(!n) return $("#pkNew").focus();
     const id=findOrCreateEx(n); const e=EX[id]; if(st.custom[id]){ st.custom[id].mg=$("#pkG").value; st.custom[id].eq=$("#pkE").value; e.mg=st.custom[id].mg; e.eq=st.custom[id].eq; e.s=e.mg; MUSCLE[id]=e.mg; save(); }
+    const lv=$("#pkVid").value.trim(); if(lv) addMyVid(id,lv);
     add(id); };
   $("#pkBack").onclick=()=>{ pwPick=null; drawProgram(); };
 }
@@ -1167,7 +1228,7 @@ function openList(){
 }
 $("#btnList").onclick=openList;
 
-function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),...(st.program?{program:st.program}:{}),cyclePos:st.cyclePos,sugg:st.sugg,custom:st.custom,history:st.history},null,1); }
+function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported:new Date().toISOString(),...(st.program?{program:st.program}:{}),...(Object.keys(st.myVid).length?{myVid:st.myVid}:{}),cyclePos:st.cyclePos,sugg:st.sugg,custom:st.custom,history:st.history},null,1); }
 function exportText(){
   return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(setLine).join(", ")}`).join("\n")).join("\n\n");
 }
@@ -1198,6 +1259,7 @@ function openArchive(){
       mergeSugg(j.sugg);
       mergeCustom(j.custom); mergeNotes(j.exNotes);
       if(j.program && !st.program && !st.cur){ st.program=j.program; applyProgram(st.program); }
+      if(j.myVid) Object.entries(j.myVid).forEach(([k,v])=>{ if(!st.myVid[k]){ st.myVid[k]=v; applyMyVid(k); } });
       const last=st.history[st.history.length-1];
       if(added && last && last.imported && j.history.some(h=>h.id===last.id)) recomputeCycle();
       else if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
@@ -1611,7 +1673,7 @@ function buildMaster(){
     esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":`${EQ_LABEL[EX[id].eq]||"macchina"} · carico ${modeOf(id)}`,nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,prossimo_carico_testo:suggTxt(id),miglior_serie_stimata:best,...((st.exNotes||{})[id]?{note_storico:st.exNotes[id]}:{}),storico};
   }
   const sessioni=sessions.map(({chat,chatSynced,...h})=>({...h,chat_file:chatPath(h)}));
-  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,...(st.program?{programma:st.program}:{}),sugg:st.sugg,esercizi_personalizzati:st.custom,note_esercizi:st.exNotes||{},esercizi,sessioni};
+  return {app:"gym-coach",version:1,aggiornato:new Date().toISOString(),ciclo_ultimo_passaggio:st.cyclePos>=0?CYCLE[st.cyclePos]:null,cyclePos:st.cyclePos,...(st.program?{programma:st.program}:{}),...(Object.keys(st.myVid).length?{video_personali:st.myVid}:{}),sugg:st.sugg,esercizi_personalizzati:st.custom,note_esercizi:st.exNotes||{},esercizi,sessioni};
 }
 function masterMd(m){
   let t=`# Gym Coach — master per esercizio\n\nAggiornato: ${new Date(m.aggiornato).toLocaleString("it-IT")}  \nUltimo passaggio del ciclo: ${m.ciclo_ultimo_passaggio||"—"}  \nLe conversazioni di ogni sessione sono nella cartella [chat](chat/).\n`;
@@ -1673,6 +1735,7 @@ async function restoreFromGitHub(){
     mergeSugg(j.sugg);
     mergeCustom(j.esercizi_personalizzati); mergeNotes(j.note_esercizi);
     if(j.programma && !st.program && !st.cur){ st.program=j.programma; applyProgram(st.program); }
+    if(j.video_personali) Object.entries(j.video_personali).forEach(([k,v])=>{ if(!st.myVid[k]){ st.myVid[k]=v; applyMyVid(k); } });
     if(typeof j.cyclePos==="number" && st.cyclePos<0) st.cyclePos=j.cyclePos;
     save(); return `✓ Ripristinate ${added} sessioni da GitHub.`;
   }catch(e){ return "Ripristino non riuscito: nessuna connessione o file non valido."; }
