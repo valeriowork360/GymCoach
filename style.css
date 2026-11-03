@@ -347,3 +347,27 @@ body.resizing iframe{pointer-events:none}
 .m-seek .vbtn{width:auto;min-width:38px;padding:0 6px;height:28px;font-size:12px;font-weight:700;border-radius:8px}
 .m-seek input[type=range]{flex:1;min-width:0;height:24px;accent-color:var(--acc);margin:0 4px}
 .m-seek output{font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* v48: editor del programma */
+.pcyc{display:flex;flex-wrap:wrap;gap:6px}
+.pc{display:inline-flex;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.pc.rest{color:var(--mut)}
+.pc b{color:var(--mut);margin-right:3px;font-weight:600}
+.pc button{appearance:none;border:0;background:none;color:var(--mut);font-size:14px;width:24px;height:26px;cursor:pointer}
+.ps-h{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.ps-n{font:800 17px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.pr{border-top:1px solid var(--line);padding:8px 0}
+.pn{font-weight:600;font-size:14px;margin-bottom:4px}
+.pf{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end}
+.pf label{display:flex;flex-direction:column;font-size:10.5px;color:var(--mut);gap:2px}
+.pf .inp{width:56px;padding:6px 6px;font-size:15px;text-align:center}
+.pb{display:flex;gap:4px;margin-left:auto}
+.pb .mini{padding:6px 9px}
+.pk{display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow-y:auto;margin-bottom:10px}
+.pk-it{appearance:none;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.pk-it span{font-size:12px}
+.btn.ghost{background:transparent}
+#pcAdd,#pkG,#pkE{flex:1;width:auto;min-width:0}
+.row:has(#pcAdd){flex-wrap:nowrap}
+.ps-h .mini{white-space:nowrap}
+.pb{margin-left:auto;align-self:flex-end}
