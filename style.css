@@ -329,3 +329,14 @@ body.resizing iframe{pointer-events:none}
 .qw .qu{font-size:12px;color:var(--mut);padding-right:2px}
 
 .msg .mt tr.xr td{color:var(--mut);font-size:12.5px}
+
+/* v41: libreria Duetto nella musica */
+.m-lib{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.m-libh{font:700 13px Inter,sans-serif;margin-bottom:2px}
+.dl-list{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:8px;overscroll-behavior:contain}
+.dl-it{appearance:none;display:flex;gap:10px;align-items:center;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px;cursor:pointer;color:var(--text)}
+.dl-it.on{border-color:var(--acc)}
+.dl-it img{width:96px;height:54px;object-fit:cover;border-radius:6px;flex:none;background:#000}
+.dl-it span{min-width:0;display:flex;flex-direction:column;gap:2px}
+.dl-it b{font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dl-it i{font-style:normal;font-size:11.5px;color:var(--mut)}

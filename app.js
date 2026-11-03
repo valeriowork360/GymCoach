@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "40";
+const APP_VERSION = "41";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -886,7 +886,33 @@ function drawMusic(msg){
   $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadMusic(m.recent[+b.dataset.r].raw,true); $("#mPanel").hidden=true; drawMusic(); });
 }
 $("#mPlay").onclick=toggleMusic;
-$("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); };
+$("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); if(!$("#mPanel").hidden) loadDuetto(); };
+/* libreria di Duetto: gli stessi autori YouTube, con i video più recenti (aggiornati da Duetto ogni 8 ore) */
+const DUETTO_URL="https://valeriowork360.github.io/duetto/videos.json";
+let duetto=null, dlTab="new";
+function dlCache(){ try{ return JSON.parse(localStorage.getItem("gc_duetto")||"null"); }catch(e){ return null; } }
+async function loadDuetto(){
+  if(!duetto) duetto=dlCache(); drawDuetto();
+  if(duetto && duetto._t && Date.now()-duetto._t<30*60e3) return;
+  try{ const r=await fetch(DUETTO_URL+"?t="+Date.now(),{cache:"no-store"}); if(!r.ok) throw 0; const j=await r.json(); j._t=Date.now(); duetto=j;
+    try{ localStorage.setItem("gc_duetto",JSON.stringify(j)); }catch(e){} drawDuetto(); }
+  catch(e){ if(!duetto) $("#dlList").innerHTML=`<p class="muted">Libreria non raggiungibile ora (serve internet).</p>`; }
+}
+const durTxt=s=>!s?"":s>=3600?`${Math.floor(s/3600)} h ${Math.round(s%3600/60)} min`:`${Math.round(s/60)} min`;
+function drawDuetto(){
+  if(!duetto) return;
+  const ch=duetto.channels||[], pl=(duetto.playlists||[]).filter(p=>p.videos&&p.videos.length);
+  $("#dlUpd").textContent=duetto.updated?`· agg. ${new Date(duetto.updated).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`:"";
+  const tabs=[["new","🆕 Più recenti"],...pl.map((p,k)=>["p"+k,"☰ "+p.title]),...ch.map((c,k)=>["c"+k,c.name])];
+  $("#dlTabs").innerHTML=tabs.map(([k,l])=>`<button class="vchip ${k===dlTab?"on":""}" data-dl="${k}">${esc(l.length>26?l.slice(0,25)+"…":l)}</button>`).join("");
+  $("#dlTabs").querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>{ dlTab=b.dataset.dl; drawDuetto(); });
+  let vids=[];
+  if(dlTab==="new") vids=ch.flatMap(c=>c.videos.map(v=>({...v,ch:c.name}))).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,30);
+  else if(dlTab[0]==="p") vids=(pl[+dlTab.slice(1)]||{videos:[]}).videos.map(v=>({...v,ch:pl[+dlTab.slice(1)].title}));
+  else { const c=ch[+dlTab.slice(1)]; vids=c?c.videos.map(v=>({...v,ch:c.name})):[]; }
+  $("#dlList").innerHTML=vids.map(v=>`<button class="dl-it ${st.ui.music.src&&st.ui.music.src.id===v.id?"on":""}" data-v="${v.id}" data-t="${esc(v.title)}"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt=""><span><b>${esc(v.title)}</b><i>${esc(v.ch)}${v.dur?" · "+durTxt(v.dur):""}${v.date?" · "+dateTxt(Date.parse(v.date)):""}</i></span></button>`).join("")||`<p class="muted">Nessun video.</p>`;
+  $("#dlList").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ if(loadMusic("https://www.youtube.com/watch?v="+b.dataset.v,true)){ st.ui.music.title=b.dataset.t; save(); $("#mPanel").hidden=true; drawMusic(); } });
+}
 $("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
 function setVolV(v){ st.ui.volV=v; if(v>0) st.ui.lastVolV=v; save(); applyVolV(); if(grid) setGridActive(grid.active,false); drawMusic(); }
