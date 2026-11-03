@@ -253,7 +253,8 @@ body.kbd .player.small .stage{--fh:max(12dvh,80px)}
 .chips{padding:4px 10px 2px}
 .chip{padding:6px 11px}
 /* tasti rapidi per il carico nel messaggio del coach */
-.qw{display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;margin-top:8px;align-items:center}
+.qw{display:flex;gap:5px;margin-top:8px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;overscroll-behavior-x:contain}
+.qw::-webkit-scrollbar{display:none}
 .qw button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;padding:7px 11px;font:600 14px Inter,sans-serif;cursor:pointer}
 .qw button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .player.collapsed .m-ph{display:none}
@@ -325,8 +326,8 @@ body.resizing iframe{pointer-events:none}
 .msg.bot .note{background:var(--panel);border-radius:10px;padding:8px 10px}
 .msg.typing{padding:4px 2px}
 
-.qw button{padding:8px 0;white-space:nowrap;font-size:13.5px;min-width:0;border-radius:9px}
-.qw .qu{font-size:12px;color:var(--mut);padding-right:2px}
+.qw button{flex:none;min-width:46px;padding:8px 8px;white-space:nowrap;font-size:13.5px;border-radius:9px}
+.qw .qu{position:sticky;left:0;z-index:1;background:var(--bg);border-color:var(--acc);color:var(--acc);font-size:12.5px;min-width:0;box-shadow:6px 0 6px var(--bg)}
 
 .msg .mt tr.xr td{color:var(--mut);font-size:12.5px}
 

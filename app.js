@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "43";
+const APP_VERSION = "44";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -259,7 +259,7 @@ function drawMsg(m){
   const d=document.createElement("div");
   d.className=`msg ${m.who} ${m.cls||""}`;
   d.innerHTML = m.who==="bot" ? m.text : esc(m.text);   // i testi del bot sono generati dall'app già sicuri
-  $("#chat").appendChild(d); $("#chat").scrollTop=1e9;
+  $("#chat").appendChild(d); d.querySelectorAll(".qw").forEach(centerQW); $("#chat").scrollTop=1e9;
   return d;
 }
 
@@ -267,19 +267,27 @@ function drawMsg(m){
 function quickWeights(id,focusV,focusU){
   const e=EX[id]; if(!e||e.kind==="time") return "";
   const p=lastPerf(id), g=suggested(id), cur=setsOf(st.cur.exIdx).filter(x=>x.kg!=null&&!x.extra);
-  const u=focusU || (cur.length?unitOf(cur[cur.length-1]):g?g.u:p&&p.sets.some(x=>x.kg!=null)?unitOf(p.sets.filter(x=>x.kg!=null).pop()):prefUnit());
+  const ov=(st.cur.unitPref||{})[st.cur.exIdx];
+  const u=focusU || ov || (cur.length?unitOf(cur[cur.length-1]):g?g.u:p&&p.sets.some(x=>x.kg!=null)?unitOf(p.sets.filter(x=>x.kg!=null).pop()):prefUnit());
   const inc=(u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"] || (u==="lb"?5:2.5);
-  const R=v=>Math.round(v*100)/100;
-  let c = focusV!=null ? focusV : g ? (g.u===u?g.v:R(Math.round(fromKg(toKg(g.v,g.u),u)/inc)*inc)) : cur.length ? valOf(cur[cur.length-1]) : null;
-  if(c==null){ const ls=p&&p.sets.filter(x=>x.kg!=null&&!x.extra&&unitOf(x)===u); if(ls&&ls.length) c=valOf(ls[ls.length-1]); }
-  if(c==null) return "";
+  const R=v=>Math.round(v*100)/100, snap=v=>R(Math.max(inc,Math.round(v/inc)*inc));
+  const inU=(v,vu)=>vu===u?v:snap(fromKg(toKg(v,vu),u));
+  let c = focusV!=null ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
+  if(c==null && p){ const ls=p.sets.filter(x=>x.kg!=null&&!x.extra); if(ls.length) c=inU(valOf(ls[ls.length-1]),unitOf(ls[ls.length-1])); }
+  if(c==null) c=u==="lb"?45:20;
   c=R(c);
   const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
-  const arr=[]; for(let k=-3;k<=3;k++){ const v=R(c+k*step); if(v>0) arr.push(v); }
-  while(arr.length<7) arr.push(R(arr[arr.length-1]+step));
-  return `<div class="qw"><span class="qu">${u}</span>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
+  const arr=[]; for(let k=-12;k<=12;k++){ const v=R(c+k*step); if(v>0) arr.push(v); }
+  return `<div class="qw" data-qex="${st.cur.exIdx}|${id}"><button type="button" class="qu" data-qunit="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
 }
+/* scorre la riga dei pesi in modo che il consigliato sia al centro */
+function centerQW(row){ const a=row.querySelector(".acc"); if(!a) return; const ra=a.getBoundingClientRect(), rr=row.getBoundingClientRect(); row.scrollLeft+=ra.left-rr.left-rr.width/2+ra.width/2; }
 $("#chat").addEventListener("click",ev=>{
+  const qu=ev.target.closest("[data-qunit]");
+  if(qu && st.cur){ const row=qu.closest(".qw"), [k,id]=row.dataset.qex.split("|");
+    if(+k!==st.cur.exIdx || item()[0]!==id) return sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio.");
+    (st.cur.unitPref ||= {})[st.cur.exIdx]=qu.dataset.qunit; save(); drawChips(); drawExbar();
+    row.outerHTML=quickWeights(id); document.querySelectorAll('#chat .qw').forEach(r=>{ if(r.dataset.qex===`${k}|${id}`) centerQW(r); }); return; }
   const b=ev.target.closest("[data-qw]"); if(!b||!st.cur) return;
   const [v,u,k,id]=b.dataset.qw.split("|");
   if(+k!==st.cur.exIdx || item()[0]!==id){ sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio."); return; }
@@ -435,7 +443,7 @@ function logSet(p){
 function toggleUnit(){
   const nu=prefUnit()==="lb"?"kg":"lb"; (st.cur.unitPref ||= {})[st.cur.exIdx]=nu; save();
   const r=refKg(item()[0]);
-  bot(`Da ora su questo esercizio uso le <b>${nu==="lb"?"libbre":"chili"}</b>${r?` (l'ultimo carico equivale a circa <b>${kgTxt(Math.round(fromKg(r,nu)*2)/2)} ${nu}</b>)`:""}. Puoi sempre scrivere l'unità nel messaggio.`);
+  bot(`Da ora su questo esercizio uso le <b>${nu==="lb"?"libbre":"chili"}</b>${r?` (l'ultimo carico equivale a circa <b>${kgTxt(Math.round(fromKg(r,nu)*2)/2)} ${nu}</b>)`:""}. Puoi sempre scrivere l'unità nel messaggio.${quickWeights(item()[0])}`);
   drawChips();
 }
 function afterExercise(i,rest){
