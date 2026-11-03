@@ -83,6 +83,8 @@ Object.assign(EX,{
   mob_bridge:{kind:"time",sec:60,n:"Ponte glutei fatto bene",s:"Attivazione",cue:"Spingi coi talloni, glutei contratti in alto, senza iperestendere la schiena.",v:[["2_axYmo-mS4","Marcello Chiapponi · ITA"]]},
 
   st_follow:{kind:"time",sec:300,n:"Stretching parte alta — 5 min",s:"Stretching · segui il video",cue:"Segui il video dall'inizio alla fine: movimenti lenti, respirazione profonda, allungamento senza dolore.",v:[["bgMNXt88RQ8","Vitality · 5 min upper body"]]},
+  st_legs:{kind:"time",sec:60,n:"Stretching gambe dopo l'allenamento",s:"Stretching · segui il video (short)",cue:"Segui le posizioni del video per ridurre l'indolenzimento dopo le gambe: allungamento dolce, respirazione lenta.",v:[["AfBdxBqRc0g","Lean Physique Lab · gambe"]]},
+  st_total:{kind:"time",sec:600,n:"Stretching total body — 10 min",s:"Stretching · segui il video",cue:"Routine completa per tutto il corpo: segui il video dall'inizio alla fine senza forzare.",v:[["COO2S7lPBzA","Tone and Tighten · 10 min"]]},
   st_pec:{kind:"time",sec:30,sides:true,n:"Allungamento pettorali alla porta",s:"Stretching parte alta · per lato",cue:"Avambraccio sullo stipite, gomito all'altezza della spalla, ruota il busto lontano.",v:[]},
   st_lat:{kind:"time",sec:30,sides:true,n:"Allungamento dorsali",s:"Stretching parte alta · per lato",cue:"Spingi i fianchi indietro e allunga il fianco, respira nell'allungamento.",v:[]},
   st_rdelt:{kind:"time",sec:30,sides:true,n:"Spalla posteriore (cross-body)",s:"Stretching parte alta · per lato",cue:"Porta il braccio davanti al petto tenendo la scapola bassa, senza ruotare il busto.",v:[]},
@@ -100,7 +102,7 @@ Object.assign(EX,{
 // [esercizio, giri, secondi per giro (per lato), -, pausa in secondi]
 Object.assign(SESSIONS,{
   "MOBILITÀ":[["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20]],
-  "STRETCHING":[["st_follow",1,300,null,0]]
+  "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0]]
 });
 const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
 
