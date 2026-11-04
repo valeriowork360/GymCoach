@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "73";
+const APP_VERSION = "74";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -137,6 +137,8 @@ function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0]
 function cleanSet({kg,reps,rir,extra,sec,u,v}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
 const rirTxt = r => r==null ? "?" : r%1 ? `${Math.floor(r)}–${Math.ceil(r)}` : String(r);
+/* serie che contano nei grafici: allenanti + extra vere (non riscaldamento, avvicinamento o prove) */
+const countsInStats = s => s.sec==null && (!s.extra || !s.tipo || s.tipo==="extra");
 const isExtraSess = s => typeof EXTRA_SESSIONS!=="undefined" && EXTRA_SESSIONS.includes(s);
 const holdTxt = it => `${it[2]} s${EX[it[0]].sides?" per lato":""}`;
 
@@ -1733,7 +1735,7 @@ const mondayOf = ts => { const d=new Date(ts); d.setHours(0,0,0,0); const k=(d.g
 function statsData(){
   const hs=allSessions().filter(h=>!isExtraSess(h.session));
   const work=[]; // una riga per serie allenante
-  hs.forEach(h=>h.ex.forEach(e=>e.sets.forEach(s=>{ if(!s.extra && s.sec==null) work.push({h,ex:e.ex,s}); })));
+  hs.forEach(h=>h.ex.forEach(e=>e.sets.forEach(s=>{ if(countsInStats(s)) work.push({h,ex:e.ex,s}); })));
   return {hs,work};
 }
 function openStats(sel){
@@ -1754,7 +1756,7 @@ function openStats(sel){
   openSheet("Progressi",`
     <div class="tiles">
       <div class="tile"><b>${hs.length}</b><span>sessioni</span></div>
-      <div class="tile"><b>${work.length}</b><span>serie allenanti</span></div>
+      <div class="tile"><b>${work.length}</b><span>serie (extra incluse)</span></div>
       <div class="tile"><b>${w4}</b><span>sessioni ultime 4 sett.</span></div>
     </div>
     <p class="muted" style="margin:6px 2px 0">Dal ${new Date(first).toLocaleDateString("it-IT")} al ${new Date(last).toLocaleDateString("it-IT")}</p>
@@ -1763,7 +1765,7 @@ function openStats(sel){
       <div id="stChart"></div>
     </div>
     <div class="card"><h3>Serie allenanti a settimana per muscolo</h3><div class="heatwrap">${heat}</div>
-      <p class="muted" style="margin:8px 0 0">Conta le serie allenanti (non riscaldamento, prova o extra) di ogni settimana, da lunedì. Più scuro = più serie.</p></div>`);
+      <p class="muted" style="margin:8px 0 0">Conta le serie allenanti e le serie extra (non riscaldamento o prove) di ogni settimana, da lunedì. Più scuro = più serie.</p></div>`);
   $("#stEx").onchange=e=>drawExStats(e.target.value);
   drawExStats(cur);
 }
@@ -1772,7 +1774,7 @@ function drawExStats(id){
   // miglior serie per seduta, separata per macchina/variante
   const split=!!st.ui.statsSplit, mode=st.ui.statsTot?"tot":"mano";
   const pts=[]; hs.forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(!e) return;
-    const by={}; e.sets.filter(s=>!s.extra&&s.sec==null).forEach(s=>{ const v=e1n(id,s,mode); const m=split?(s.m||"—"):"all"; if(v!=null && (!by[m]||v>by[m].v)) by[m]={v,s}; });
+    const by={}; e.sets.filter(countsInStats).forEach(s=>{ const v=e1n(id,s,mode); const m=split?(s.m||"—"):"all"; if(v!=null && (!by[m]||v>by[m].v)) by[m]={v,s}; });
     Object.entries(by).forEach(([m,b])=>pts.push({t:h.start,m,v:b.v,s:b.s,h,w:normKg(id,b.s,mode)})); });
   const hasBar=hs.some(h=>{ const e=h.ex.find(x=>x.ex===id); return e&&e.sets.some(s=>["bb","smith"].includes(eqOfSet(id,s))); });
   const modeTxt = mode==="tot" ? "carico totale" : "per manubrio / per lato";
@@ -1805,7 +1807,7 @@ function drawExStats(id){
   const legend=`<div class="legend">${machines.slice(0,3).map(m=>`<span><i style="background:${colOf(m)}"></i>${esc(labOf(m))}</span>`).join("")}${machines.length>3?`<span><i style="background:${OTHER_COL}"></i>Altre ${machines.length-3} macchine</span>`:""}</div>`;
   const best={}; pts.forEach(p=>{ if(!best[p.m]||p.v>best[p.m].v) best[p.m]=p; });
   const lastP=pts.slice().sort((a,b)=>b.t-a.t)[0];
-  const expl = `Forza stimata (e1RM, kg, ${modeTxt}) della serie migliore di ogni seduta.`
+  const expl = `Forza stimata (e1RM, kg, ${modeTxt}) della serie migliore di ogni seduta (extra comprese).`
     + (hasBar ? ` Bilanciere: (barra ${kgTxt(st.settings.barKg??20)} kg + dischi dei due lati)${mode==="tot"?"":" ÷ 2, per confrontarlo coi manubri"}${id==="smith_sq"||hs.some(h=>{const e=h.ex.find(x=>x.ex===id);return e&&e.sets.some(s=>eqOfSet(id,s)==="smith");})?`; Smith con barra ${kgTxt(st.settings.smithKg??15)} kg`:""} (modificabile in ⚙).` : "")
     + (split ? " Confronta solo punti dello stesso colore." : " Le libbre sono convertite in kg; macchine diverse possono dare valori diversi.");
   box.innerHTML=`${ctrls}<p class="muted" style="margin:8px 0 2px">${expl}</p>${legend}<div class="chartwrap">${svg}<div class="tip" id="stTip" hidden></div></div>
