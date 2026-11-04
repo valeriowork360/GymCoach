@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "60";
+const APP_VERSION = "61";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -319,12 +319,14 @@ function centerQW(row){ const a=row.querySelector(".acc"); if(!a) return; const 
 $("#chat").addEventListener("click",ev=>{
   const qu=ev.target.closest("[data-qunit]");
   if(qu && st.cur){ const row=qu.closest(".qw"), [k,id]=row.dataset.qex.split("|");
-    if(+k!==st.cur.exIdx || item()[0]!==id) return sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio.");
-    (st.cur.unitPref ||= {})[st.cur.exIdx]=qu.dataset.qunit; save(); drawChips(); drawExbar();
-    row.outerHTML=quickWeights(id); document.querySelectorAll('#chat .qw').forEach(r=>{ if(r.dataset.qex===`${k}|${id}`) centerQW(r); }); return; }
+    const okEx = (+k===st.cur.exIdx && item()[0]===id) || (extraIdx()===+k && curList()[+k] && curList()[+k][0]===id);
+    if(!okEx) return sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio.");
+    (st.cur.unitPref ||= {})[+k]=qu.dataset.qunit; save(); drawChips(); drawExbar();
+    row.outerHTML=withEx(+k,()=>quickWeights(id)); document.querySelectorAll('#chat .qw').forEach(r=>{ if(r.dataset.qex===`${k}|${id}`) centerQW(r); }); return; }
   const b=ev.target.closest("[data-qw]"); if(!b||!st.cur) return;
   const [v,u,k,id]=b.dataset.qw.split("|");
-  if(+k!==st.cur.exIdx || item()[0]!==id){ sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio."); return; }
+  const okEx = (+k===st.cur.exIdx && item()[0]===id) || (extraIdx()===+k && curList()[+k] && curList()[+k][0]===id);
+  if(!okEx){ sys("Quei tasti erano per un altro esercizio: usa quelli dell'ultimo messaggio."); return; }
   unlockAudio(); user(`${kgTxt(+v)} ${u}`); st.cur.pending=null;
   logSet({kg:+v,unit:u,unitOk:true,reps:null,rir:null});
 });
@@ -429,7 +431,11 @@ function localFallback(text){
   return false;
 }
 
+/* esegue fn come se l'esercizio corrente fosse quello in posizione i (serve per le serie extra sull'esercizio precedente) */
+function withEx(i,fn){ if(i==null||i===st.cur.exIdx) return fn(); const keep=st.cur.exIdx; st.cur.exIdx=i; try{ return fn(); } finally{ st.cur.exIdx=keep; } }
+const extraIdx = () => st.cur && st.cur.nextExtra && typeof st.cur.nextExtra==="object" ? st.cur.nextExtra.i : null;
 function logSet(p){
+  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && !p.__in){ withEx(ei,()=>logSet({...p,__in:true})); save(); drawExbar(); drawTop(); drawChips(); return; } }
   const it=item(), [id,n,lo,hi,rest]=it, i=st.cur.exIdx, sets=setsOf(i), ws=workSets(i);
   let val=p.kg, u=p.unit||null;
   if(val==null){
@@ -457,7 +463,7 @@ function logSet(p){
   const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,t:Date.now(),...(extra?{extra:true}:{})};
   sets.push(set); save();
   const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
-  let txt = extra ? `Serie extra registrata: ${setW(set)} × ${set.reps}, RIR ${set.rir} <span class="muted">(non conta nelle serie allenanti)</span>.`
+  let txt = extra ? `Serie extra su <b>${esc(EX[id].n)}</b> registrata: ${setW(set)} × ${set.reps}, RIR ${set.rir} <span class="muted">(non conta nelle serie allenanti)</span>.`
                   : `Serie ${num}/${n}: <b>${setW(set)} × ${set.reps}</b> <span class="muted">${modeOf(id)}</span>${conv}, RIR ${set.rir}.<br>${c.why}`;
   const lastOfEx = !extra && num>=n;
   if(!extra && !lastOfEx){
@@ -497,7 +503,8 @@ function startHold(){
   startTimer(sec*(e.sides?2:1),{label:e.sides?"Lato 1":"Tenuta",sideAt:e.sides?sec:null,hold:true});
   drawChips();
 }
-function logTimed(){
+function logTimed(inner){
+  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); return; } }
   const it=item(), e=exOf(it), [id,n,sec,,rest]=it, i=st.cur.exIdx, ws=workSets(i);
   stopTimer();
   const extra=ws.length>=n || !!st.cur.nextExtra, num=ws.length+1; st.cur.nextExtra=false;
@@ -1033,10 +1040,10 @@ let pickW=false;
 function drawChips(){
   const pend0=st.cur&&st.cur.pending;
   if(pickW && st.cur && !isTimeIt(item()) && !(pend0&&pend0.need)){
-    const id=item()[0], {u,c,arr}=quickWeights(id,"__vals"), ch=$("#chips");
+    const ei=extraIdx()??st.cur.exIdx, id=curList()[ei][0], {u,c,arr}=withEx(ei,()=>quickWeights(id,"__vals")), ch=$("#chips");
     ch.innerHTML=`<button class="chip unitsw" data-wu="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("");
     ch.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ setPickW(false); unlockAudio(); user(`${kgTxt(+b.dataset.w)} ${u}`); st.cur.pending=null; logSet({kg:+b.dataset.w,unit:u,unitOk:true,reps:null,rir:null}); });
-    ch.querySelector("[data-wu]").onclick=()=>{ (st.cur.unitPref ||= {})[st.cur.exIdx]=ch.querySelector("[data-wu]").dataset.wu; save(); drawExbar(); drawChips(); };
+    ch.querySelector("[data-wu]").onclick=()=>{ (st.cur.unitPref ||= {})[ei]=ch.querySelector("[data-wu]").dataset.wu; save(); drawExbar(); drawChips(); };
     const a=ch.querySelector(".acc"); if(a) ch.scrollLeft=a.offsetLeft-ch.offsetLeft-ch.clientWidth/2+a.offsetWidth/2;
     return;
   }
@@ -1055,7 +1062,7 @@ function drawChips0(){
     const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
     html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
       +`<button class="chip" data-cmd="undo">↶ Annulla</button>`
-      +`<button class="chip ${st.cur.nextExtra?"acc":""}" data-cmd="extra">${st.cur.nextExtra?"⭐ Prossima = extra ✕":"＋ Serie extra"}</button>`
+      +`<button class="chip ${st.cur.nextExtra?"acc":""}" data-cmd="extra">${st.cur.nextExtra?`⭐ Extra su ${esc((EX[curList()[extraIdx()??st.cur.exIdx][0]]||{n:""}).n.split(" ").slice(0,2).join(" "))} ✕`:"＋ Serie extra"}</button>`
       +(isTimeIt(it)?"":`<button class="chip" data-cmd="unit">⚖ ${prefUnit()==="lb"?"Libbre (lb)":"Chili (kg)"} ⇄</button>`)
       +`<button class="chip" data-cmd="swap">🔁 Cambia esercizio</button>`
       +`<button class="chip" data-cmd="next">Esercizio successivo →</button>`
@@ -1067,7 +1074,14 @@ function drawChips0(){
   if(pend && pend.need==="reps"){ const [, ,lo]=item(), b=c.querySelector(`[data-say="${Math.max(1,lo-3)} rip"]`); c.scrollLeft=b?b.offsetLeft-c.offsetLeft-6:0; } else c.scrollLeft=0;
   $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
-  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,extra:()=>{ st.cur.nextExtra=!st.cur.nextExtra; save(); if(st.cur.nextExtra) sys(`La prossima ${isTimeIt(item())?"giro":"serie"} di ${EX[item()[0]].n} la registro come extra (non conta nelle serie allenanti).`); drawChips(); },next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
+  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,extra:()=>{
+        if(st.cur.nextExtra){ st.cur.nextExtra=false; save(); return drawChips(); }
+        const i=st.cur.exIdx, t=(!setsOf(i).length && i>0) ? i-1 : i;   // esercizio appena iniziato: l'extra va su quello precedente
+        st.cur.nextExtra={i:t}; st.cur.pending=null; save();
+        const it=curList()[t], nm=EX[it[0]].n, tm=isTimeIt(it);
+        if(t!==i) bot(`<b>Serie extra su ${esc(nm)}</b> (esercizio precedente). ${tm?"Scrivi «fatto» quando hai finito.":"Tocca il carico usato, poi ripetizioni e RIR:"}${tm?"":withEx(t,()=>quickWeights(it[0]))}`);
+        else sys(`La prossima ${tm?"giro":"serie"} di ${nm} la registro come extra (non conta nelle serie allenanti).`);
+        drawChips(); },next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
