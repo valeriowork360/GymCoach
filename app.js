@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1085,6 +1085,15 @@ function drawChips0(){
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
+/* aggiornamento dell'app: svuota la cache e ricarica (dati e chiavi restano) */
+async function doUpdate(){
+  document.querySelectorAll("#updBtn,#btnUpd").forEach(b=>{ b.classList.add("spin"); b.disabled=true; });
+  try{ saveMusicPos(true); }catch(e){}
+  try{ const rs=await navigator.serviceWorker?.getRegistrations?.()||[]; await Promise.all(rs.map(r=>r.unregister())); }catch(e){}
+  try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
+  location.replace(location.pathname+"?u="+Date.now());
+}
+$("#updBtn").onclick=doUpdate; $("#btnUpd").onclick=doUpdate;
 /* barra in alto a scomparsa durante l'allenamento: una linguetta sottile la fa riapparire */
 let topTimer=null;
 function setTop(show,auto){
@@ -1412,10 +1421,7 @@ function openSettings(){
     }
     $("#sTestMsg").textContent=msg;
   };
-  $("#sUpdate").onclick=async()=>{ collect(); $("#sUpdate").textContent="Aggiorno…";
-    try{ const rs=await navigator.serviceWorker?.getRegistrations?.()||[]; await Promise.all(rs.map(r=>r.unregister())); }catch(e){}
-    try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
-    location.replace(location.pathname+"?u="+Date.now()); };
+  $("#sUpdate").onclick=()=>{ collect(); $("#sUpdate").textContent="Aggiorno…"; doUpdate(); };
   $("#sOrTest").onclick=async()=>{ collect(); $("#sOrMsg").textContent="Provo…"; const r=await callOpenRouter("Rispondi in JSON {\"ok\":true}","test"); $("#sOrMsg").textContent=r.out?`✓ Funziona (${r.by})`:r.err; };
   $("#sWipeTxt").oninput=e=>{ $("#sWipe").disabled = e.target.value.trim().toUpperCase()!=="CANCELLA"; };
   $("#sWipe").onclick=()=>{ if($("#sWipeTxt").value.trim().toUpperCase()!=="CANCELLA") return; localStorage.removeItem(LS); st=defState(); closeSheet(); render(); };

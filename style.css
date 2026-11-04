@@ -419,3 +419,8 @@ body.tophid .topgrip{display:grid}
 
 /* v60: il tasto ✕ resta visibile anche in verticale finché i pesi sono aperti */
 .wbtn.on{display:inline-block}
+
+/* v62: tasto aggiorna fluttuante a destra (opposto al ☰) */
+.topgrip.updbtn{left:auto;right:calc(8px + env(safe-area-inset-right))}
+.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
