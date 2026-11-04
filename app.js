@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "51";
+const APP_VERSION = "52";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
