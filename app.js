@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "57";
+const APP_VERSION = "58";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -453,7 +453,7 @@ function logSet(p){
   if(p.reps==null){ st.cur.pending={need:"reps",kg:val,unit:u,unitOk:true,rir:p.rir}; save(); bot(`Quante ripetizioni con ${wTxt(val,u)}?`); return drawChips(); }
   if(p.rir==null){ st.cur.pending={need:"rir",kg:val,unit:u,unitOk:true,reps:p.reps}; save(); bot(`${wTxt(val,u)} × ${p.reps}: quante <b>RIR</b> ti sentivi (ripetizioni rimaste in canna)?`); return drawChips(); }
   st.cur.pending=null;
-  const extra = ws.length>=n;
+  const extra = ws.length>=n || !!st.cur.nextExtra; st.cur.nextExtra=false;
   const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,t:Date.now(),...(extra?{extra:true}:{})};
   sets.push(set); save();
   const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
@@ -500,7 +500,7 @@ function startHold(){
 function logTimed(){
   const it=item(), e=exOf(it), [id,n,sec,,rest]=it, i=st.cur.exIdx, ws=workSets(i);
   stopTimer();
-  const extra=ws.length>=n, num=ws.length+1;
+  const extra=ws.length>=n || !!st.cur.nextExtra, num=ws.length+1; st.cur.nextExtra=false;
   setsOf(i).push({sec,t:Date.now(),...(extra?{extra:true}:{})}); save();
   if(extra) bot("Giro extra registrato ✓");
   else if(num<n){ bot(`Giro ${num}/${n} fatto ✓ Pausa ${rest} s, poi giro ${num+1}.`); startTimer(rest,{label:"Pausa"}); }
@@ -1055,6 +1055,7 @@ function drawChips0(){
     const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
     html=(isTimeIt(it)?`<button class="chip acc" data-cmd="hold">▶ Avvia ${holdTxt(it)}</button><button class="chip acc" data-cmd="done">✓ Fatto</button>`:"")
       +`<button class="chip" data-cmd="undo">↶ Annulla</button>`
+      +`<button class="chip ${st.cur.nextExtra?"acc":""}" data-cmd="extra">${st.cur.nextExtra?"⭐ Prossima = extra ✕":"＋ Serie extra"}</button>`
       +(isTimeIt(it)?"":`<button class="chip" data-cmd="unit">⚖ ${prefUnit()==="lb"?"Libbre (lb)":"Chili (kg)"} ⇄</button>`)
       +`<button class="chip" data-cmd="swap">🔁 Cambia esercizio</button>`
       +`<button class="chip" data-cmd="next">Esercizio successivo →</button>`
@@ -1066,7 +1067,7 @@ function drawChips0(){
   if(pend && pend.need==="reps"){ const [, ,lo]=item(), b=c.querySelector(`[data-say="${Math.max(1,lo-3)} rip"]`); c.scrollLeft=b?b.offsetLeft-c.offsetLeft-6:0; } else c.scrollLeft=0;
   $("#msg").placeholder = st.cur && isTimeIt(item()) ? "Scrivi «fatto» o fai una domanda" : "Es. 24 kg 9 rip RIR 2 — o fai una domanda";
   c.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>onSend(b.dataset.say));
-  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
+  c.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{ unlockAudio(); ({unit:toggleUnit,swap:()=>openSwap(),hold:startHold,done:logTimed,undo:undoSet,extra:()=>{ st.cur.nextExtra=!st.cur.nextExtra; save(); if(st.cur.nextExtra) sys(`La prossima ${isTimeIt(item())?"giro":"serie"} di ${EX[item()[0]].n} la registro come extra (non conta nelle serie allenanti).`); drawChips(); },next:()=>goEx(st.cur.exIdx+1),hist:showHistoryEx,list:openList,end:finishSession})[b.dataset.cmd](); });
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 

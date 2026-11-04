@@ -408,3 +408,8 @@ body.resizing iframe{pointer-events:none}
 body.tophid header.top{display:none}
 body.tophid .topgrip{display:grid}
 body:has(#workout:not([hidden])) .tophide{display:grid}
+
+/* v58: la linguetta diventa un tasto ☰ fluttuante a sinistra */
+body.tophid .topgrip{display:grid}
+.topgrip{position:fixed;left:calc(8px + env(safe-area-inset-left));top:calc(8px + env(safe-area-inset-top));width:38px;height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.18);background:rgba(14,15,17,.72);color:#fff;font-size:18px;z-index:30;place-items:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.topgrip i{display:none}
