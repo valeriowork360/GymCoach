@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "68";
+const APP_VERSION = "69";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -368,7 +368,7 @@ function introExercise(){
   if(parts.length) t+=`<div class="is">Tecnica</div><ul>${parts.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
   // azione
   const qw=quickWeights(id);
-  if(done.length) t+=`<div style="margin-top:6px"><b>Già fatte ${done.length}/${n} serie.</b></div>`;
+  if(setsOf(st.cur.exIdx).length) t+=exSummary(st.cur.exIdx,id).replace("Riepilogo —","Già registrate —")+`<div style="margin-top:6px"><b>${done.length>=n?`Tutte le ${n} serie sono registrate.`:`Ora: serie ${done.length+1} di ${n}.`}</b>${done.length<n&&qw?" Tocca il carico usato:":""}</div>`;
   else t+=`<div style="margin-top:6px"><b>Prima serie: ${g?wTxt(g.v,g.u)+", ":""}${lo}–${hi} rip, RIR ${RIR_MIN}–${RIR_MAX}.</b> ${qw?"Tocca il carico usato oppure dimmi il risultato:":"Dimmi il risultato (es. <i>20 kg 11 rip RIR 2</i>)."}</div>`;
   if(qw) t+=qw;
   bot(t,"intro");
@@ -531,12 +531,23 @@ function undoSet(){
     // se l'esercizio corrente è vuoto, annulla l'ultima serie dell'esercizio precedente
     const prev=Object.keys(st.cur.log).map(Number).filter(k=>st.cur.log[k].length).sort((a,b)=>b-a)[0];
     if(prev==null) return bot("Non c'è nessuna serie da annullare.");
-    const s=st.cur.log[prev].pop(); restoreSugg(curList()[prev][0]); save(); bot(`Annullata: ${esc(EX[curList()[prev][0]].n)} — ${esc(setTxt(s))}.`);
+    const s=st.cur.log[prev].pop(); restoreSugg(curList()[prev][0]); save();
+    bot(`↶ <b>Tolta</b> da ${esc(EX[curList()[prev][0]].n)}: ${esc(setTxt(s))}${s.extra?" (extra)":""}. Torno a quell'esercizio:`);
     return goEx(prev);
   }
-  const s=sets.pop(); restoreSugg(item()[0]); st.cur.pending=null; save(); stopTimer();
-  bot(`Annullata l'ultima ${s.sec!=null?"registrazione":"serie"} (${esc(setTxt(s))}).`);
+  const s=sets.pop(); restoreSugg(item()[0]); st.cur.pending=null; st.cur.nextExtra=false; save(); stopTimer();
+  bot(undoStatus(s));
   drawExbar(); drawChips();
+}
+/* dopo "Annulla": cosa è stato tolto, cosa resta registrato e cosa fare adesso */
+function undoStatus(s){
+  const it=item(), [id,n]=it, i=st.cur.exIdx, ws=workSets(i), tm=isTimeIt(it);
+  let t=`↶ <b>Tolta</b> l'ultima ${tm?"registrazione":"serie"}: ${esc(setTxt(s))}${s.extra?" (extra)":""}.`;
+  t+=`<div class="is">Stato attuale — ${esc(EX[id].n)}</div>`;
+  t+= setsOf(i).length ? exSummary(i,id).replace(/^<div class="is"[^>]*>[^<]*<\/div>/,"") : `<div class="muted">Nessuna serie registrata per questo esercizio.</div>`;
+  t+= ws.length<n ? `<div style="margin-top:6px"><b>Ora: ${tm?"giro":"serie"} ${ws.length+1} di ${n}.</b> ${tm?"Tocca ▶ Avvia o scrivi «fatto».":"Tocca il carico usato, poi ripetizioni e RIR:"}</div>${tm?"":quickWeights(id)}`
+                  : `<div style="margin-top:6px"><b>Tutte le ${n} serie sono registrate.</b> Puoi aggiungere una serie extra o passare al prossimo esercizio.</div>`;
+  return t;
 }
 
 function restoreSugg(id){
