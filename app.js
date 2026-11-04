@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "56";
+const APP_VERSION = "57";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1070,7 +1070,17 @@ function drawChips0(){
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
+/* barra in alto a scomparsa durante l'allenamento: una linguetta sottile la fa riapparire */
+let topTimer=null;
+function setTop(show,auto){
+  document.body.classList.toggle("tophid",!!st.cur && !show);
+  clearTimeout(topTimer); if(show && st.cur && auto) topTimer=setTimeout(()=>setTop(false),6000);
+}
+$("#topGrip").onclick=()=>{ st.ui.topShown=false; save(); setTop(true,true); };
+$("#btnTopHide").onclick=()=>{ st.ui.topShown=false; save(); setTop(false); };
+document.querySelector("header.top").addEventListener("click",ev=>{ if(document.body.classList.contains("tophid")) return; if(ev.target.closest("button")&&ev.target.id!=="btnTopHide") clearTimeout(topTimer); });
 function render(){
+  setTop(!st.cur || !!st.ui.topShown);
   if(st.cur){
     $("#home").hidden=true; $("#workout").hidden=false;
     drawTop(); drawVideo(); drawExbar(); drawChat(); drawChips(); drawMusic();

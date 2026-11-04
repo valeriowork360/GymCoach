@@ -400,3 +400,11 @@ body.resizing iframe{pointer-events:none}
 .m-tile{overflow:visible}
 .m-tile .m-screen{border-radius:10px;overflow:hidden}
 .player.collapsed .mresize{display:none}
+
+/* v57: barra in alto a scomparsa */
+.topgrip{display:none;appearance:none;border:0;background:var(--bg);width:100%;height:14px;padding:0;cursor:pointer;flex:none;place-items:center;border-bottom:1px solid var(--line)}
+.topgrip i{display:block;width:44px;height:4px;border-radius:2px;background:#5a6070}
+.tophide{display:none}
+body.tophid header.top{display:none}
+body.tophid .topgrip{display:grid}
+body:has(#workout:not([hidden])) .tophide{display:grid}
