@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "74";
+const APP_VERSION = "75";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1764,10 +1764,81 @@ function openStats(sel){
       <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+EX[id].n)}</option>`).join("")}</select>
       <div id="stChart"></div>
     </div>
+    <div class="card" id="foodCard"><h3>Alimentazione</h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>
     <div class="card"><h3>Serie allenanti a settimana per muscolo</h3><div class="heatwrap">${heat}</div>
       <p class="muted" style="margin:8px 0 0">Conta le serie allenanti e le serie extra (non riscaldamento o prove) di ogni settimana, da lunedì. Più scuro = più serie.</p></div>`);
   $("#stEx").onchange=e=>drawExStats(e.target.value);
   drawExStats(cur);
+  drawFood();
+}
+/* ---------------- alimentazione: letta dal repository privato dei dati (cartella alimentazione/) ---------------- */
+let food=null;
+function parseCSV(t){
+  const rows=[]; let row=[], f="", q=false;
+  for(let i=0;i<t.length;i++){ const c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){ f+='"'; i++; } else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===","){ row.push(f); f=""; } else if(c==="\n"){ row.push(f); rows.push(row); row=[]; f=""; } else if(c!=="\r") f+=c; }
+  if(f||row.length){ row.push(f); rows.push(row); }
+  const h=rows.shift()||[]; return rows.filter(r=>r.length>1).map(r=>Object.fromEntries(h.map((k,i)=>[k.trim(),(r[i]??"").trim()])));
+}
+async function loadFood(force){
+  if(!food){ try{ food=JSON.parse(localStorage.getItem("gc_food")||"null"); }catch(e){} }
+  if(!st.settings.ghToken||!st.settings.ghRepo) return food;
+  if(!force && food && !food.err && Date.now()-(food._t||0)<10*60e3) return food;
+  const get=async f=>{ const r=await fetch(`https://api.github.com/repos/${st.settings.ghRepo}/contents/alimentazione/${f}`,{headers:{"Authorization":"Bearer "+st.settings.ghToken,"Accept":"application/vnd.github.raw","X-GitHub-Api-Version":"2022-11-28"},cache:"no-store"}); if(r.status===404) return null; if(!r.ok) throw new Error("GitHub "+r.status); return r.text(); };
+  try{ const [g,pp]=await Promise.all([get("giorni.csv"),get("pasti.csv")]);
+    food={_t:Date.now(),giorni:g?parseCSV(g):[],pasti:pp?parseCSV(pp):[],none:!g};
+    try{ localStorage.setItem("gc_food",JSON.stringify(food)); }catch(e){} }
+  catch(e){ food=food?{...food,err:String(e.message||e)}:{giorni:[],pasti:[],err:String(e.message||e)}; }
+  return food;
+}
+async function drawFood(force){
+  const B=$("#foodBody"); if(!B) return;
+  if(!st.settings.ghToken){ B.innerHTML=`<p class="muted">Per vedere i dati dell'alimentazione collega il backup GitHub in ⚙ Impostazioni (gli stessi dati della cartella <b>alimentazione/</b> del tuo repository privato).</p>`; return; }
+  const f=await loadFood(force); if(!$("#foodBody")) return;
+  if(!f||!f.giorni||!f.giorni.length){ B.innerHTML=`<p class="muted">${f&&f.err?"Non riesco a leggere i dati ("+esc(f.err)+").":"Nessun dato nella cartella alimentazione/ del repository."}</p>`; return; }
+  const N=v=>v===""||v==null?null:+String(v).replace(",",".");
+  const all=f.giorni.map(r=>({g:+r.giorno,d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),c:N(r.carboidrati_g),f:N(r.grassi_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
+  const rng=st.ui.foodRange??30, met=st.ui.foodMetric||"k";
+  const days=rng?all.slice(-rng):all, comp=days.filter(x=>x.ok);
+  const avg=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null;
+  const inK=comp.filter(x=>x.k!=null&&x.kmin!=null&&x.k>=x.kmin&&x.k<=x.kmax).length, inP=comp.filter(x=>x.p!=null&&x.pmin!=null&&x.p>=x.pmin).length;
+  const pc=n=>comp.length?Math.round(100*n/comp.length)+"%":"—";
+  const last=all[all.length-1];
+  let h=`<div class="seg"><button type="button" data-fr="14" class="${rng===14?"on":""}">14 giorni</button><button type="button" data-fr="30" class="${rng===30?"on":""}">30 giorni</button><button type="button" data-fr="0" class="${!rng?"on":""}">Tutto</button></div>
+    <div class="seg"><button type="button" data-fm="k" class="${met==="k"?"on":""}">Calorie</button><button type="button" data-fm="p" class="${met==="p"?"on":""}">Proteine</button></div>
+    <div class="tiles" style="margin-top:8px"><div class="tile"><b>${avg(comp.map(x=>x.k).filter(v=>v!=null))??"—"}</b><span>kcal medie</span></div><div class="tile"><b>${avg(comp.map(x=>x.p).filter(v=>v!=null))??"—"} g</b><span>proteine medie</span></div><div class="tile"><b>${met==="k"?pc(inK):pc(inP)}</b><span>giorni ${met==="k"?"nel target kcal":"con proteine ≥ minimo"}</span></div></div>
+    <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: cerchio vuoto, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
+  // grafico: una serie + fascia del target
+  const val=x=>met==="k"?x.k:x.p, lo=x=>met==="k"?x.kmin:x.pmin, hi=x=>met==="k"?x.kmax:x.pmax;
+  const pts=days.filter(x=>val(x)!=null);
+  const W=340,H=180,L=38,R=10,T=10,B2=24, t0=days[0].t, t1=last.t>t0?days[days.length-1].t:t0+864e5;
+  const vs=[...pts.map(val),...days.map(lo).filter(v=>v!=null),...days.map(hi).filter(v=>v!=null)];
+  let vmin=Math.min(...vs), vmax=Math.max(...vs); const pad=(vmax-vmin)*0.08||10; vmin=Math.max(0,vmin-pad); vmax+=pad;
+  const X=t=>L+(W-L-R)*((t-t0)/((t1-t0)||1)), Y=v=>T+(H-T-B2)*(1-(v-vmin)/(vmax-vmin));
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${met==="k"?"Calorie":"Proteine"} giornaliere con la fascia del target">`;
+  [0,1,2,3].map(i=>vmin+(vmax-vmin)*i/3).forEach(v=>svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-6}" y="${Y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`);
+  const band=days.filter(x=>lo(x)!=null&&hi(x)!=null);
+  if(band.length){ const step=(t1-t0)/Math.max(1,days.length-1)/2; const top=band.map(x=>`${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(hi(x)).toFixed(1)} ${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(hi(x)).toFixed(1)}`).join(" "), bot=band.slice().reverse().map(x=>`${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(lo(x)).toFixed(1)} ${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(lo(x)).toFixed(1)}`).join(" ");
+    svg+=`<polygon points="${top} ${bot}" fill="#199e70" fill-opacity=".16" stroke="none"/>`; }
+  [t0,t0+(t1-t0)/2,t1].forEach((t,i)=>svg+=`<text x="${X(t)}" y="${H-7}" class="ax" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateTxt(t)}</text>`);
+  svg+=`<polyline fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" points="${pts.map(x=>`${X(x.t).toFixed(1)},${Y(val(x)).toFixed(1)}`).join(" ")}"/>`;
+  pts.forEach((x,k)=>{ svg+=`<circle cx="${X(x.t)}" cy="${Y(val(x))}" r="${pts.length>40?3:4}" fill="${x.ok?"#3987e5":"#17191c"}" stroke="${x.ok?"#17191c":"#3987e5"}" stroke-width="2"/><circle cx="${X(x.t)}" cy="${Y(val(x))}" r="10" fill="transparent" class="hit" data-fd="${k}"/>`; });
+  svg+=`</svg>`;
+  h+=`<div class="chartwrap">${svg}<div class="tip" id="fdTip" hidden></div></div>`;
+  // elenco dei giorni con i pasti
+  const meals=g=>f.pasti.filter(m=>+m.giorno===g);
+  h+=`<details class="tbl"><summary>Giorni e pasti (${days.length})</summary>${days.slice().reverse().map(x=>`<details class="fday"><summary><b>${dateTxt(x.t)}</b> · ${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?` · C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}${x.ok?"":` <span class="xs">· parziale</span>`}</summary>${meals(x.g).map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(N(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(N(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")||`<p class="muted">Nessun pasto dettagliato.</p>`}<div class="xs">Target: ${esc(x.tg||"—")}</div></details>`).join("")}</details>`;
+  h+=`<p class="muted" style="margin:8px 0 0">Dati fino al ${new Date(last.t).toLocaleDateString("it-IT")} · <a href="#" id="fdReload">aggiorna</a></p>`;
+  B.innerHTML=h;
+  B.querySelectorAll("[data-fr]").forEach(b=>b.onclick=()=>{ st.ui.foodRange=+b.dataset.fr; save(); drawFood(); });
+  B.querySelectorAll("[data-fm]").forEach(b=>b.onclick=()=>{ st.ui.foodMetric=b.dataset.fm; save(); drawFood(); });
+  $("#fdReload").onclick=e=>{ e.preventDefault(); B.innerHTML=`<p class="muted">Aggiorno…</p>`; drawFood(true); };
+  B.querySelectorAll("[data-fd]").forEach(c=>c.onclick=()=>{ const x=pts[+c.dataset.fd], tip=$("#fdTip");
+    tip.innerHTML=`<b>${new Date(x.t).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit"})}</b>${x.ok?"":" · parziale"}<br>${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?`<br>C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}<br><span class="muted">Target ${esc(x.tg||"")}</span>`;
+    tip.hidden=false; const r=B.querySelector(".chartwrap").getBoundingClientRect(), cr=c.getBoundingClientRect();
+    tip.style.left=Math.min(r.width-170,Math.max(0,cr.left-r.left-80))+"px"; tip.style.top=Math.max(0,cr.top-r.top-86)+"px"; });
+  B.querySelector(".chartwrap").addEventListener("click",ev=>{ if(!ev.target.classList.contains("hit")) $("#fdTip").hidden=true; });
 }
 function drawExStats(id){
   const {hs}=statsData();

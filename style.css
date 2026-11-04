@@ -469,3 +469,9 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .sl-knob{position:absolute;left:4px;top:4px;width:42px;height:40px;border-radius:11px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font-size:18px;touch-action:none;cursor:grab}
 .slide.danger .sl-knob{background:var(--red);color:#fff}
 .slide.ok .sl-lab{color:var(--text)}
+
+/* v75: alimentazione */
+.fday{border-top:1px solid var(--line);padding:6px 0}
+.fday summary{cursor:pointer;font-size:13.5px}
+.fmeal{font-size:13px;margin:6px 0 0 10px;line-height:1.35}
+.fday .xs{margin:6px 0 0 10px}
