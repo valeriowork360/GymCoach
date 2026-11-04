@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "65";
+const APP_VERSION = "66";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -479,7 +479,7 @@ function logSet(p){
     const nt=nextTime(it,setsOf(i),(perfsOf(id)[0]||{}).sets);
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
     afterExercise(i,rest);
-  } else if(!extra) startTimer(rest);
+  } else startTimer(rest);   // recupero anche dopo una serie extra
   drawExbar(); drawChips();
 }
 function toggleUnit(){
