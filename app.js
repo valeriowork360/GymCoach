@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "62";
+const APP_VERSION = "63";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1085,6 +1085,26 @@ function drawChips0(){
 }
 function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg); }
 
+/* altezza reale dello schermo visibile (barre del browser, tastiera, rotazione): la barra dei comandi resta sempre in vista */
+function fitApp(){
+  const vv=window.visualViewport, h=Math.round(vv?vv.height:innerHeight);
+  document.documentElement.style.setProperty("--appH",h+"px");
+  if(window.scrollY||document.documentElement.scrollTop) window.scrollTo(0,0);
+  checkCbar();
+}
+function checkCbar(){
+  const bar=document.querySelector(".cbar"), btn=$("#cbtn"); if(!bar||!btn) return;
+  const on=!!st.cur && !$("#workout").hidden; if(!on){ btn.classList.remove("show"); return; }
+  const r=bar.getBoundingClientRect(), vh=window.visualViewport?visualViewport.height:innerHeight;
+  btn.classList.toggle("show", r.height<4 || r.top>vh-8 || r.bottom<0);
+}
+["resize","orientationchange","scroll"].forEach(ev=>window.addEventListener(ev,()=>setTimeout(fitApp,60),{passive:true}));
+if(window.visualViewport){ visualViewport.addEventListener("resize",()=>setTimeout(fitApp,60)); visualViewport.addEventListener("scroll",()=>setTimeout(checkCbar,60)); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) setTimeout(fitApp,150); });
+$("#msg").addEventListener("blur",()=>setTimeout(fitApp,300));
+setInterval(checkCbar,1500);
+$("#cbtn").onclick=()=>{ window.scrollTo(0,0); if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); fitApp(); const bar=document.querySelector(".cbar"); if(bar) bar.scrollIntoView({block:"end"}); window.scrollTo(0,0); setTimeout(checkCbar,200); };
+fitApp();
 /* aggiornamento dell'app: svuota la cache e ricarica (dati e chiavi restano) */
 async function doUpdate(){
   document.querySelectorAll("#updBtn,#btnUpd").forEach(b=>{ b.classList.add("spin"); b.disabled=true; });
