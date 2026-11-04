@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "72";
+const APP_VERSION = "73";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -352,9 +352,10 @@ function introExercise(){
     return d ? `<tr class="done"><td>${k+1} ✓</td><td>${esc(setW(d))}</td><td>${d.reps??"?"}</td><td>${d.rir??"?"}</td><td>${restTxt(rest)}</td></tr>`
              : `<tr><td>${k+1}</td><td>${g?(k===0?wTxt(g.v,g.u):"da confermare"):"—"}</td><td>${lo}–${hi}</td><td>${RIR_MIN}–${RIR_MAX}</td><td>${restTxt(rest)}</td></tr>`; }).join("")}</table>`;
   // storico
-  if(p){ const ws=p.sets.filter(x=>!x.extra);
+  if(p){ const ws=p.sets.filter(x=>x.sec==null); let nn=0;   // tutte le serie, anche extra / riscaldamento (in grigio)
     t+=`<div class="is warn">Storico — ${dateTxt(p.date)}${p.session?` · ${esc(p.session)}`:""}</div>`;
-    t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ws.map((x,k)=>`<tr><td>${k+1}</td><td class="wv">${esc(setWB(x))}</td><td class="wv">${x.rr?esc(x.rr):x.reps??"?"}</td><td class="wv">${x.rt?esc(x.rt):x.rir??"?"}</td></tr>`).join("")}</table>`;
+    t+=`<table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ws.map(x=>{ const ex=!!x.extra, c=ex?"":"wv";
+      return `<tr class="${ex?"xr":""}"><td>${ex?esc(x.tipo&&x.tipo!=="extra"?x.tipo.slice(0,6)+".":"extra"):++nn}</td><td class="${c}">${esc(setWB(x))}</td><td class="${c}">${x.rr?esc(x.rr):x.reps??"?"}</td><td class="${c}">${x.rt?esc(x.rt):rirTxt(x.rir)}</td></tr>`; }).join("")}</table>`;
     const ms=[...new Set(ws.map(x=>x.m).filter(Boolean))]; if(ms.length) t+=`<div class="muted">${esc(ms.join(" · "))}</div>`;
   }
   if(xn && xn.ref) t+=`<div class="note">📌 ${esc(xn.ref)} <span class="muted">(${esc(xn.agg||"")})</span></div>`;
@@ -1778,8 +1779,8 @@ function drawExStats(id){
   const ctrls=`<div class="seg"><button type="button" data-split="0" class="${split?"":"on"}">Linea unica</button><button type="button" data-split="1" class="${split?"on":""}">Per macchina</button></div>
     <div class="seg"><button type="button" data-tot="0" class="${mode==="tot"?"":"on"}">Per mano/lato</button><button type="button" data-tot="1" class="${mode==="tot"?"on":""}">Totale</button></div>`;
   const box=$("#stChart");
-  const rows=[]; hs.slice().reverse().forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(e) rows.push(`<tr><td>${dateTxt(h.start)}</td><td>${esc(h.session)}</td><td>${e.sets.filter(s=>!s.extra).map(s=>esc(setTxt(s))+(s.m?` <span class="xs">· ${esc(s.m)}</span>`:"")).join("<br>")||"<span class='xs'>solo riscaldamento/prove</span>"}</td></tr>`); });
-  const tableHtml=`<details class="tbl"><summary>Tabella delle sedute (${rows.length})</summary><table class="stt"><thead><tr><th>Data</th><th>Seduta</th><th>Serie allenanti</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
+  const rows=[]; hs.slice().reverse().forEach(h=>{ const e=h.ex.find(x=>x.ex===id); if(e) rows.push(`<tr><td>${dateTxt(h.start)}</td><td>${esc(h.session)}</td><td>${e.sets.map(s=>(s.extra?`<span class="xs">${esc(s.tipo&&s.tipo!=="extra"?s.tipo:"extra")}: </span>`:"")+esc(setTxt(s))+(s.m?` <span class="xs">· ${esc(s.m)}</span>`:"")).join("<br>")||"<span class='xs'>solo riscaldamento/prove</span>"}</td></tr>`); });
+  const tableHtml=`<details class="tbl"><summary>Tabella delle sedute (${rows.length})</summary><table class="stt"><thead><tr><th>Data</th><th>Seduta</th><th>Serie (extra in grigio)</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
   const note=(st.exNotes||{})[id];
   const wire=()=>{ box.querySelectorAll("[data-split]").forEach(b=>b.onclick=()=>{ st.ui.statsSplit=b.dataset.split==="1"; save(); drawExStats(id); });
     box.querySelectorAll("[data-tot]").forEach(b=>b.onclick=()=>{ st.ui.statsTot=b.dataset.tot==="1"; save(); drawExStats(id); }); };
