@@ -434,3 +434,7 @@ html,body{overflow:hidden}
 /* v64: tasto 🏋 sempre visibile, anche in verticale */
 .wbtn{display:inline-block}
 .chip.lab{display:inline-block}
+
+/* v67: quando i video sono fuori schermo, timer e nome esercizio non finiscono sotto i tasti ☰ e ⟳ */
+body.tophid.chatfull .dock>.timer:not([hidden]){padding-left:56px;padding-right:56px}
+body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right:56px}

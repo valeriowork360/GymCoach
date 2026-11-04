@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "66";
+const APP_VERSION = "67";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1869,6 +1869,7 @@ render();
     const H=top.offsetHeight, ch=W.clientHeight, vis=Math.max(0,Math.min(H,H-W.scrollTop));
     const atBottom = chat.scrollHeight-chat.scrollTop-chat.clientHeight < 40;
     dock.style.height=(ch-vis)+"px"; sp.style.height=vis+"px";
+    document.body.classList.toggle("chatfull", vis<56);   // video fuori schermo: la parte alta della chat va sotto i tasti ☰ e ⟳
     if(atBottom) chat.scrollTop=1e9;
   }
   const req=()=>{ if(!raf) raf=requestAnimationFrame(fit); };
