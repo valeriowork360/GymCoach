@@ -416,3 +416,6 @@ body.tophid .topgrip{display:grid}
 
 /* v59: tasto kg/lb sempre all'inizio della riga dei pesi */
 .chip.unitsw{position:sticky;left:0;z-index:1;background:var(--bg);border-color:var(--acc);color:var(--acc);font-weight:700;box-shadow:8px 0 8px var(--bg)}
+
+/* v60: il tasto ✕ resta visibile anche in verticale finché i pesi sono aperti */
+.wbtn.on{display:inline-block}

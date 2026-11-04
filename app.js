@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "59";
+const APP_VERSION = "60";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -530,7 +530,7 @@ function goEx(k,auto){
   const list=curList();
   if(k<0) return bot("Sei già al primo esercizio.");
   if(k>=list.length) return bot("Era l'ultimo esercizio. Tocca <b>Fine sessione</b> per archiviare.");
-  st.cur.exIdx=k; st.cur.vid=0; st.cur.pending=null; save();
+  st.cur.exIdx=k; st.cur.vid=0; st.cur.pending=null; save(); if(pickW) setPickW(false);
   drawVideo(); drawExbar(); drawTop(); introExercise(); drawChips();
   showVideosTop();
 }
@@ -1035,7 +1035,7 @@ function drawChips(){
   if(pickW && st.cur && !isTimeIt(item()) && !(pend0&&pend0.need)){
     const id=item()[0], {u,c,arr}=quickWeights(id,"__vals"), ch=$("#chips");
     ch.innerHTML=`<button class="chip unitsw" data-wu="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("");
-    ch.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ pickW=false; $("#btnW").classList.remove("on"); unlockAudio(); user(`${kgTxt(+b.dataset.w)} ${u}`); st.cur.pending=null; logSet({kg:+b.dataset.w,unit:u,unitOk:true,reps:null,rir:null}); });
+    ch.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ setPickW(false); unlockAudio(); user(`${kgTxt(+b.dataset.w)} ${u}`); st.cur.pending=null; logSet({kg:+b.dataset.w,unit:u,unitOk:true,reps:null,rir:null}); });
     ch.querySelector("[data-wu]").onclick=()=>{ (st.cur.unitPref ||= {})[st.cur.exIdx]=ch.querySelector("[data-wu]").dataset.wu; save(); drawExbar(); drawChips(); };
     const a=ch.querySelector(".acc"); if(a) ch.scrollLeft=a.offsetLeft-ch.offsetLeft-ch.clientWidth/2+a.offsetWidth/2;
     return;
@@ -1441,7 +1441,8 @@ $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.rem
 /* barra di scrittura a scomparsa: si apre col tasto ⌨ accanto ai comandi */
 function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden=!open; $("#btnKbd").classList.toggle("on",!!open); $("#btnKbd").textContent=open?"✕":"⌨"; }
 $("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
-$("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } pickW=!pickW; $("#btnW").classList.toggle("on",pickW); drawChips(); };
+function setPickW(on){ pickW=!!on; const b=$("#btnW"); b.classList.toggle("on",pickW); b.textContent=pickW?"✕":"🏋"; b.setAttribute("aria-label",pickW?"Chiudi i pesi e torna ai comandi":"Registra una serie: carico, ripetizioni, RIR"); }
+$("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } setPickW(!pickW); drawChips(); };
 setComposer(!!st.ui.composer);
 /* banda verticale tra musica e video: sceglie la larghezza del riquadro musica */
 function applyMW(){ const t=$("#mTile"); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }
