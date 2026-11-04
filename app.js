@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "53";
+const APP_VERSION = "54";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -832,6 +832,7 @@ function startGridPlayers(){
   document.querySelectorAll("#vgrid .vcard").forEach(c=>g.io.observe(c));
 }
 function makeGridPlayer(g,k){
+  const card=document.querySelector(`#vgrid .vcard[data-k="${k}"]`); seekZones(card,()=>g.ready[k]?g.players[k]:null);
   g.players[k]=new YT.Player("ytG"+k,{width:"100%",height:"100%",videoId:g.ids[k],
     playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
     events:{ onReady:e=>{ g.ready[k]=true; applyVolV(); try{ e.target.playVideo(); }catch(_){} },
@@ -877,12 +878,28 @@ function showExerciseVideo(id){
   if(!apiOk()) return;                          // il lettore si crea quando l'API di YouTube è pronta
   if(yv){ if(yvReady && yvId!==id){ yv.loadVideoById(id); yvId=id; applyVolV(); } return; }
   $("#frame").innerHTML='<div id="ytV"></div>';
+  seekZones($("#frame"),()=>yvReady?yv:null);
   yv=new YT.Player("ytV",{width:"100%",height:"100%",videoId:id,
     playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
     events:{
       onReady:e=>{ yvReady=true; yvId=id; if(yvWant&&yvWant!==id){ yv.loadVideoById(yvWant); yvId=yvWant; } applyVolV(); try{ e.target.playVideo(); }catch(err){} },
       onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
     }});
+}
+/* doppio tocco a sinistra/destra = indietro/avanti di 10 s (come nell'app YouTube); un tocco = play/pausa */
+function seekZones(parent,getP,onSingle){
+  if(!parent || parent.querySelector(":scope > .seekz")) return;
+  const z=document.createElement("div"); z.className="seekz";
+  z.innerHTML='<div data-d="-10"><span>« 10 s</span></div><div data-d="10"><span>10 s »</span></div>';
+  z.querySelectorAll("[data-d]").forEach(el=>{ let t=0, tm=null, sum=0;
+    el.addEventListener("click",ev=>{ ev.stopPropagation(); ev.preventDefault(); const now=Date.now(), d=+el.dataset.d;
+      if(now-t<380){ clearTimeout(tm); t=now; const p=getP(); if(!p) return;
+        try{ p.seekTo(Math.max(0,(p.getCurrentTime()||0)+d),true); }catch(e){}
+        sum=(sum||0)+d; const sp=el.querySelector("span"); sp.textContent=d<0?`« ${-sum} s`:`${sum} s »`; el.classList.remove("fl"); void el.offsetWidth; el.classList.add("fl");
+        clearTimeout(el._r); el._r=setTimeout(()=>{ sum=0; el.classList.remove("fl"); },700); }
+      else { t=now; sum=0; tm=setTimeout(()=>{ t=0; if(onSingle) onSingle(); else { const p=getP(); try{ p.getPlayerState()===1?p.pauseVideo():p.playVideo(); }catch(e){} } },380); }
+    }); });
+  parent.appendChild(z);
 }
 function destroyExerciseVideo(){ if(!yv) return; try{ yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }
 
@@ -950,6 +967,7 @@ setInterval(()=>{ if(!document.hidden) drawSeek(); },1000);
 document.querySelectorAll("[data-sk]").forEach(b=>b.onclick=()=>{ if(!ym||!ymReady) return; try{ const t=Math.max(0,(ym.getCurrentTime()||0)+(+b.dataset.sk)); ym.seekTo(t,true); }catch(e){} setTimeout(drawSeek,200); });
 $("#mPos").addEventListener("input",()=>{ seekDrag=true; drawSeek(); });
 $("#mPos").addEventListener("change",()=>{ seekDrag=false; try{ ym.seekTo(+$("#mPos").value,true); }catch(e){} setTimeout(drawSeek,200); });
+seekZones($("#mTile"),()=>ymReady&&ym?ym:null,()=>toggleMusic());
 $("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); if(!$("#mPanel").hidden) loadDuetto(); };
 /* libreria di Duetto: gli stessi autori YouTube, con i video più recenti (aggiornati da Duetto ogni 8 ore) */
 const DUETTO_URL="https://valeriowork360.github.io/duetto/videos.json";

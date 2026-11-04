@@ -383,3 +383,12 @@ body.resizing iframe{pointer-events:none}
 .chip.lab{display:none}
 @media (orientation:landscape){ .wbtn{display:inline-block} .chip.lab{display:inline-block} }
 .chip.lab{background:transparent;border-color:transparent;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.03em;cursor:default}
+
+/* v54: doppio tocco per avanti/indietro */
+.seekz{position:absolute;left:0;right:0;top:0;bottom:48px;display:flex;justify-content:space-between;z-index:2;pointer-events:none}
+.seekz>div{width:34%;height:100%;pointer-events:auto;display:grid;place-items:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.seekz span{opacity:0;background:rgba(0,0,0,.6);color:#fff;font:700 13px Inter,sans-serif;padding:6px 10px;border-radius:999px;transition:opacity .25s}
+.seekz>div.fl span{opacity:1}
+.m-tile .seekz{bottom:38px}
+.m-tile .seekz>div{width:50%}
+.vcard .seekz{bottom:44px}
