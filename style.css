@@ -438,3 +438,18 @@ html,body{overflow:hidden}
 /* v67: quando i video sono fuori schermo, timer e nome esercizio non finiscono sotto i tasti ☰ e ⟳ */
 body.tophid.chatfull .dock>.timer:not([hidden]){padding-left:56px;padding-right:56px}
 body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right:56px}
+
+/* v68: barra esercizio come la scheda — titolo verde, target arancione, carico di oggi a destra */
+.exbar{align-items:flex-start}
+.exbar .xn{display:block;color:var(--ok);font:800 18px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em}
+.exbar .xt-w{display:block;color:#ff8a3d;font:800 16px/1.2 "Barlow Condensed",sans-serif;text-transform:uppercase;margin-top:2px}
+.exbar .xt-g{display:block;color:var(--text);font:700 15px/1.2 "Barlow Condensed",sans-serif;text-transform:uppercase;margin-top:2px}
+.exbar .rx{margin-top:1px}
+.exbar .xr{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.exbar .xl{text-align:right;line-height:1.05}
+.exbar .xl small{display:block;font:700 10.5px Inter,sans-serif;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.exbar .xl b{display:block;font:800 22px/1.05 "Barlow Condensed",sans-serif;color:var(--ok)}
+.exbar .xl i{display:block;font-style:normal;font-size:11px;color:var(--mut)}
+.exbar .dots .dot{width:24px;height:24px}
+.exbar .xr{flex-direction:row-reverse;align-items:center;gap:10px}
+.exbar .dots{flex-direction:column;gap:4px}

@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -437,7 +437,9 @@ function localFallback(text){
 function withEx(i,fn){ if(i==null||i===st.cur.exIdx) return fn(); const keep=st.cur.exIdx; st.cur.exIdx=i; try{ return fn(); } finally{ st.cur.exIdx=keep; } }
 const extraIdx = () => st.cur && st.cur.nextExtra && typeof st.cur.nextExtra==="object" ? st.cur.nextExtra.i : null;
 function logSet(p){
-  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && !p.__in){ withEx(ei,()=>logSet({...p,__in:true})); save(); drawExbar(); drawTop(); drawChips(); return; } }
+  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && !p.__in){ withEx(ei,()=>logSet({...p,__in:true})); save(); drawExbar(); drawTop(); drawChips();
+      if(!st.cur.nextExtra && !st.cur.pending) introExercise();   // serie extra registrata: torna la scheda dell'esercizio attuale
+      return; } }
   const it=item(), [id,n,lo,hi,rest]=it, i=st.cur.exIdx, sets=setsOf(i), ws=workSets(i);
   let val=p.kg, u=p.unit||null;
   if(val==null){
@@ -474,7 +476,7 @@ function logSet(p){
     txt+=`<br>Recupero ${restTxt(rest)}.`;
     txt+=quickWeights(id, c.v==="ok"||c.w==null?val:c.w, u);
   }
-  bot(txt);
+  bot(txt+exSummary(i,id));
   if(lastOfEx){
     const nt=nextTime(it,setsOf(i),(perfsOf(id)[0]||{}).sets);
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
@@ -505,8 +507,14 @@ function startHold(){
   startTimer(sec*(e.sides?2:1),{label:e.sides?"Lato 1":"Tenuta",sideAt:e.sides?sec:null,hold:true});
   drawChips();
 }
+/* riepilogo di tutto l'esercizio dopo ogni serie: serie allenanti ed eventuali extra */
+function exSummary(i,id){
+  const ss=setsOf(i).filter(x=>x.sec==null); if(!ss.length) return "";
+  let n=0;
+  return `<div class="is" style="margin-top:8px">Riepilogo — ${esc(EX[id].n)}</div><table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ss.map(x=>`<tr class="${x.extra?"xr":"done"}"><td>${x.extra?"extra":++n}</td><td>${esc(setWB(x))}</td><td>${x.reps??"?"}</td><td>${x.rir??"?"}</td></tr>`).join("")}</table>`;
+}
 function logTimed(inner){
-  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); return; } }
+  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); introExercise(); return; } }
   const it=item(), e=exOf(it), [id,n,sec,,rest]=it, i=st.cur.exIdx, ws=workSets(i);
   stopTimer();
   const extra=ws.length>=n || !!st.cur.nextExtra, num=ws.length+1; st.cur.nextExtra=false;
@@ -766,7 +774,7 @@ function tick(){
   $("#tBar").style.width=clamp(100*(1-left/tTot),0,100)+"%";
   if(tOpts.sideAt && !sideBeeped && left<=tOpts.sideAt && left>0){ sideBeeped=true; shortBeep(); $(".t-lab").textContent="Cambia lato · Lato 2"; }
   if(left<=0 && !beeped){ beeped=true; beep(); if(tOpts.hold && st.cur && isTimeIt(item())){ logTimed(); return; } }
-  if(left<-300) stopTimer();
+  if(left<-3*3600) stopTimer();   // continua a contare il tempo dall'ultima serie (fino a 3 ore)
 }
 $("#tPlus").onclick=()=>{ tEnd+=15000; tTot+=15; beeped=false; if(st.cur){st.cur.timer={end:tEnd,tot:tTot};save();} tick(); };
 $("#tStop").onclick=stopTimer;
@@ -1034,8 +1042,11 @@ function drawExbar(){
   let dots=""; for(let s=0;s<n;s++){ const x=ws[s]; dots+=`<span class="dot ${x?"done":s===ws.length?"next":""}" title="Serie ${s+1}">${x?(x.sec!=null?"✓":x.reps):s+1}</span>`; }
   const g=isTimeIt(it)?null:suggested(it[0]), sk=g?wTxt(g.v,g.u):null;
   const rx=isTimeIt(it)?`${n} giri × ${holdTxt(it)} · pausa ${rest} s`:`${n}×${lo}–${hi} · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}${sk!=null?` · oggi ${sk}${g.u==="lb"?` (≈${r1(g.v*LB)} kg)`:` (≈${r1(g.v/LB)} lb)`} ${modeOf(it[0])}`:` · kg ${modeOf(it[0])}`}`;
-  const big=!isTimeIt(it) && (lo>8||hi>12) ? `<span class="rng">Range ${lo}–${hi} rip.</span>` : "";
-  $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}${big}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
+  const list=curList(), tm=isTimeIt(it), wide=!tm && (lo>8||hi>12);
+  const tgt = tm ? `<span class="xt-g">${n} giri × ${holdTxt(it)}</span>` : wide ? `<span class="xt-w">⚠ Target ${lo}–${hi} rip.</span>` : `<span class="xt-g">${lo}–${hi} rip.</span>`;
+  const sub = tm ? `pausa ${rest} s` : `${n} serie · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}`;
+  const load = g ? `<div class="xl"><small>Oggi</small><b>${esc(sk)}</b><i>≈ ${g.u==="lb"?r1(g.v*LB)+" kg":r1(g.v/LB)+" lb"} · ${esc(modeOf(it[0]))}</i></div>` : (!tm?`<div class="xl"><small>Oggi</small><b>—</b><i>${esc(modeOf(it[0]))}</i></div>`:"");
+  $("#exbar").innerHTML=`<div class="nm"><span class="xn">${st.cur.exIdx+1}/${list.length} — ${esc(e.n)}</span>${tgt}<span class="rx">${sub}</span></div><div class="xr">${load}<div class="dots">${dots}</div></div>`;
   drawTop();
 }
 let pickW=false;
@@ -1131,7 +1142,7 @@ function render(){
     $("#home").hidden=true; $("#workout").hidden=false;
     drawTop(); drawVideo(); drawExbar(); drawChat(); drawChips(); drawMusic();
     const tm=st.cur.timer;
-    if(tm && tm.end>Date.now()-300000 && !(tm.hold && tm.end<Date.now())){ tEnd=tm.end; tTot=tm.tot; tOpts={label:tm.label,sideAt:tm.sideAt,hold:tm.hold}; beeped=tEnd<Date.now(); sideBeeped=!!tm.sideAt && (tEnd-Date.now())/1000<=tm.sideAt; $(".t-lab").textContent=tm.label||"Recupero"; $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
+    if(tm && tm.end>Date.now()-3*3600e3 && !(tm.hold && tm.end<Date.now())){ tEnd=tm.end; tTot=tm.tot; tOpts={label:tm.label,sideAt:tm.sideAt,hold:tm.hold}; beeped=tEnd<Date.now(); sideBeeped=!!tm.sideAt && (tEnd-Date.now())/1000<=tm.sideAt; $(".t-lab").textContent=tm.label||"Recupero"; $("#timer").hidden=false; clearInterval(tInt); tick(); tInt=setInterval(tick,250); }
     keepAwake();
   } else { $("#workout").hidden=true; $("#home").hidden=false; stopTimer(); drawTop(); drawHome(); }
 }
