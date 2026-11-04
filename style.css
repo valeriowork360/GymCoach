@@ -459,3 +459,13 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .qa{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:12px;padding:10px 14px;font:600 14px Inter,sans-serif;cursor:pointer}
 .qa.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .qa:disabled{opacity:.45}
+
+/* v72: conferma a scorrimento per Fine sessione e Scarta */
+.slide{position:relative;flex:1;min-width:220px;height:50px;border-radius:14px;background:var(--panel2);border:1px solid var(--acc);overflow:hidden;--p:0;user-select:none;-webkit-user-select:none}
+.slide::before{content:"";position:absolute;inset:0;background:var(--acc);opacity:calc(var(--p)*.35)}
+.slide.danger{border-color:var(--red)}
+.slide.danger::before{background:var(--red)}
+.sl-lab{position:absolute;inset:0;display:grid;place-items:center;font:600 14px Inter,sans-serif;color:var(--mut);padding-left:40px}
+.sl-knob{position:absolute;left:4px;top:4px;width:42px;height:40px;border-radius:11px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font-size:18px;touch-action:none;cursor:grab}
+.slide.danger .sl-knob{background:var(--red);color:#fff}
+.slide.ok .sl-lab{color:var(--text)}

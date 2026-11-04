@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "71";
+const APP_VERSION = "72";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1329,6 +1329,20 @@ function startSession(s){
   sys(`Sessione ${s} iniziata alle ${new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`);
   introExercise(); drawChips();
 }
+/* conferma a scorrimento: il pulsante diventa una barra da trascinare fino in fondo */
+function slideConfirm(btn,label,onDone,danger){
+  const w=document.createElement("div"); w.className="slide"+(danger?" danger":"");
+  w.innerHTML=`<span class="sl-lab">${label}</span><div class="sl-knob" role="slider" aria-label="${label}">➜</div>`;
+  btn.replaceWith(w);
+  const k=w.querySelector(".sl-knob"); let x0=0,drag=false,max=0,done=false;
+  const set=x=>{ k.style.transform=`translateX(${x}px)`; w.style.setProperty("--p",max?x/max:0); };
+  k.addEventListener("pointerdown",e=>{ if(done) return; drag=true; x0=e.clientX; max=w.clientWidth-k.offsetWidth-8; k.setPointerCapture(e.pointerId); w.classList.add("on"); });
+  k.addEventListener("pointermove",e=>{ if(!drag) return; set(clamp(e.clientX-x0,0,max)); });
+  const end=e=>{ if(!drag) return; drag=false; w.classList.remove("on"); const x=clamp(e.clientX-x0,0,max);
+    if(x>=max*0.9){ done=true; set(max); w.classList.add("ok"); w.querySelector(".sl-lab").textContent="✓"; setTimeout(onDone,180); }
+    else { k.style.transition="transform .2s"; set(0); setTimeout(()=>k.style.transition="",220); } };
+  k.addEventListener("pointerup",end); k.addEventListener("pointercancel",end);
+}
 function finishSession(){
   if(!st.cur) return;
   const list=curList();
@@ -1336,14 +1350,15 @@ function finishSession(){
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
   if(!ex.length){
     openSheet("Fine sessione",`<p>Non hai registrato nessuna serie, quindi non c'è niente da salvare.</p><p class="muted">Scarta la sessione: non finisce nell'archivio e cancello anche la sua chat dal backup su GitHub.</p><div class="row"><button class="btn danger" id="discard">🗑 Scarta sessione</button><button class="btn" id="keep">Continua</button></div>`);
-    $("#discard").onclick=e=>{ const b=e.target; if(b.dataset.armed){ discardSession(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo per scartare"; } };
+    $("#discard").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
     $("#keep").onclick=closeSheet; return;
   }
   openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
     <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
   $("#keep").onclick=closeSheet;
-  $("#discardAll").onclick=e=>{ const b=e.target; if(b.dataset.armed){ discardSession(); closeSheet(); render(); } else { b.dataset.armed=1; b.textContent="Tocca di nuovo per scartare"; } };
-  $("#confirmEnd").onclick=()=>{
+  $("#discardAll").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
+  $("#confirmEnd").onclick=e=>slideConfirm(e.target,"Scorri per salvare e chiudere →",saveEnd);
+  const saveEnd=()=>{
     st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex,chat:chatPlain(st.cur.chat)});
     st.history.slice(0,-15).forEach(h=>{ if(h.chat && h.chatSynced) delete h.chat; });   // sul telefono restano le chat delle ultime 15 sessioni
     const pos=CYCLE.indexOf(st.cur.session); if(pos>=0) st.cyclePos=pos;
