@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "54";
+const APP_VERSION = "56";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -789,7 +789,7 @@ function drawVideo(){
   const multi = st.ui.vidLayout!=="single" && e.v.length>1;
   $("#player").classList.toggle("collapsed",!!st.ui.videoHidden);
   $("#player").classList.toggle("small",!st.ui.videoHidden && st.ui.vsize!=="l");
-  applyVH();
+  applyVH(); applyMW();
   $("#frame").classList.toggle("multi",multi);
   $("#player").classList.toggle("multi",multi);
   if(st.ui.videoHidden){ destroyGrid(); destroyExerciseVideo(); }
@@ -905,15 +905,18 @@ function destroyExerciseVideo(){ if(!yv) return; try{ yv.destroy(); }catch(e){} 
 
 function ensureMusic(){
   const m=st.ui.music; if(!apiOk()||ym||!m.src) return;
-  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; }
+  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
+  const resume = m.pos>3 && (m.src.list ? true : m.posId===m.src.id) ? Math.floor(m.pos) : 0;   // riparte da dove era
+  if(resume) pv.start=resume;
   $("#mPh").hidden=true;
   ym=new YT.Player("ytM",{width:"100%",height:"100%",videoId:m.src.list?undefined:m.src.id,playerVars:pv,
     events:{
-      onReady:()=>{ ymReady=true; ym.setVolume(m.vol); if(ymWant) ym.playVideo(); drawMusic(); },
+      onReady:()=>{ ymReady=true; ym.setVolume(m.vol); if(resume){ try{ ym.seekTo(resume,true); if(!ymWant) ym.pauseVideo(); }catch(e){} } if(ymWant) ym.playVideo(); drawMusic(); },
       onStateChange:e=>{ const S=YT.PlayerState;
         if(e.data===S.ENDED && m.loop){ if(m.src&&m.src.list) ym.playVideoAt(0); else { ym.seekTo(0); ym.playVideo(); } return; }
         ymPlaying=(e.data===S.PLAYING||e.data===S.BUFFERING);
         if(e.data===S.PLAYING){ ymWant=false; noteTitle(); keepAwake(); }
+        if(e.data===S.PAUSED) saveMusicPos(true);
         drawMusic(); },
       onError:e=>{ ymPlaying=false; ymWant=false; drawMusic(e.data===101||e.data===150?"Questo brano non si può riprodurre fuori da YouTube":"Link non disponibile"); }
     }});
@@ -924,7 +927,7 @@ function noteTitle(){
 }
 function loadMusic(raw,autoplay=true){
   const src=parseYT(raw); if(!src){ drawMusic("Link non valido: copialo da YouTube (Condividi → Copia link)"); return false; }
-  const m=st.ui.music; m.src=src; m.raw=raw.trim(); m.title=""; save();
+  const m=st.ui.music; m.src=src; m.raw=raw.trim(); m.title=""; m.pos=0; m.posId=null; m.plIdx=0; save();
   ymWant=autoplay; unlockAudio();
   if(!ym) ensureMusic();
   else if(ymReady){ if(src.list) ym.loadPlaylist({list:src.list,listType:"playlist",index:0}); else ym.loadVideoById(src.id); ym.setVolume(m.vol); if(!autoplay) ym.pauseVideo(); }
@@ -963,7 +966,16 @@ function drawSeek(){
   if(!seekDrag){ $("#mPos").max=Math.max(1,Math.round(d)); $("#mPos").value=Math.round(c); }
   $("#mTime").textContent=`${hms(seekDrag?+$("#mPos").value:c)} / ${hms(d)}`;
 }
-setInterval(()=>{ if(!document.hidden) drawSeek(); },1000);
+let posSaved=0;
+function saveMusicPos(force){
+  if(!ym||!ymReady||!st.ui.music.src) return;
+  try{ const m=st.ui.music, t=ym.getCurrentTime()||0; if(t<1) return;
+    m.pos=t; m.posId=(ym.getVideoData()||{}).video_id||m.src.id; if(m.src.list&&ym.getPlaylistIndex) m.plIdx=Math.max(0,ym.getPlaylistIndex()||0);
+    if(force||Date.now()-posSaved>5000){ posSaved=Date.now(); save(); } }catch(e){}
+}
+setInterval(()=>{ if(!document.hidden) drawSeek(); if(ymPlaying) saveMusicPos(false); },1000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") saveMusicPos(true); });
+window.addEventListener("pagehide",()=>saveMusicPos(true));
 document.querySelectorAll("[data-sk]").forEach(b=>b.onclick=()=>{ if(!ym||!ymReady) return; try{ const t=Math.max(0,(ym.getCurrentTime()||0)+(+b.dataset.sk)); ym.seekTo(t,true); }catch(e){} setTimeout(drawSeek,200); });
 $("#mPos").addEventListener("input",()=>{ seekDrag=true; drawSeek(); });
 $("#mPos").addEventListener("change",()=>{ seekDrag=false; try{ ym.seekTo(+$("#mPos").value,true); }catch(e){} setTimeout(drawSeek,200); });
@@ -1420,6 +1432,18 @@ function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden
 $("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
 $("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } pickW=!pickW; $("#btnW").classList.toggle("on",pickW); drawChips(); };
 setComposer(!!st.ui.composer);
+/* banda verticale tra musica e video: sceglie la larghezza del riquadro musica */
+function applyMW(){ const t=$("#mTile"); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }
+(function(){
+  const hd=$("#mresize"); let x0=0,w0=0,drag=false,raf=0,want=0;
+  hd.addEventListener("pointerdown",e=>{ if(st.ui.videoHidden) return; drag=true; x0=e.clientX; w0=$("#mTile").getBoundingClientRect().width; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
+  hd.addEventListener("pointermove",e=>{ if(!drag) return; const maxW=Math.round(document.querySelector(".stage").getBoundingClientRect().width*0.8);
+    want=Math.max(56,Math.min(maxW,Math.round(w0+e.clientX-x0))); if(!raf) raf=requestAnimationFrame(()=>{ raf=0; st.ui.mw=want; applyMW(); }); });
+  const end=()=>{ if(!drag) return; drag=false; hd.classList.remove("on"); document.body.classList.remove("resizing"); if(want){ st.ui.mw=want; save(); } };
+  hd.addEventListener("pointerup",end); hd.addEventListener("pointercancel",end);
+  hd.addEventListener("dblclick",()=>{ st.ui.mw=null; save(); applyMW(); });
+  applyMW();
+})();
 /* banda trascinabile sotto i video: sceglie l'altezza dello spazio video */
 function applyVH(){ const sg=document.querySelector(".stage"); if(!sg) return; if(st.ui.vh && !st.ui.videoHidden) sg.style.setProperty("--fh",st.ui.vh+"px"); else sg.style.removeProperty("--fh"); }
 (function(){

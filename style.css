@@ -392,3 +392,11 @@ body.resizing iframe{pointer-events:none}
 .m-tile .seekz{bottom:38px}
 .m-tile .seekz>div{width:50%}
 .vcard .seekz{bottom:44px}
+
+/* v56: banda verticale per la larghezza del riquadro musica */
+.mresize{position:absolute;top:0;right:-11px;width:16px;height:100%;z-index:4;cursor:ew-resize;touch-action:none;display:grid;place-items:center}
+.mresize i{display:block;width:5px;height:56px;border-radius:3px;background:#5a6070}
+.mresize.on i,.mresize:active i{background:var(--acc);height:80px}
+.m-tile{overflow:visible}
+.m-tile .m-screen{border-radius:10px;overflow:hidden}
+.player.collapsed .mresize{display:none}
