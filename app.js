@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "69";
+const APP_VERSION = "70";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -438,7 +438,7 @@ function withEx(i,fn){ if(i==null||i===st.cur.exIdx) return fn(); const keep=st.
 const extraIdx = () => st.cur && st.cur.nextExtra && typeof st.cur.nextExtra==="object" ? st.cur.nextExtra.i : null;
 function logSet(p){
   { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && !p.__in){ withEx(ei,()=>logSet({...p,__in:true})); save(); drawExbar(); drawTop(); drawChips();
-      if(!st.cur.nextExtra && !st.cur.pending) introExercise();   // serie extra registrata: torna la scheda dell'esercizio attuale
+      if(!st.cur.nextExtra && !st.cur.pending) bot(`Cosa fai adesso?${choiceHtml(ei)}`);   // altra extra o prossimo esercizio
       return; } }
   const it=item(), [id,n,lo,hi,rest]=it, i=st.cur.exIdx, sets=setsOf(i), ws=workSets(i);
   let val=p.kg, u=p.unit||null;
@@ -476,7 +476,7 @@ function logSet(p){
     txt+=`<br>Recupero ${restTxt(rest)}.`;
     txt+=quickWeights(id, c.v==="ok"||c.w==null?val:c.w, u);
   }
-  bot(txt+exSummary(i,id));
+  bot(txt+exSummary(i,id)+(extra && !p.__in && workSets(i).length>=n ? `<div style="margin-top:6px">Cosa fai adesso?</div>${choiceHtml(i)}` : ""));
   if(lastOfEx){
     const nt=nextTime(it,setsOf(i),(perfsOf(id)[0]||{}).sets);
     if(nt){ (st.cur.prevSugg ||= {})[id] = st.sugg[id] ?? null; st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; bot(`<b>${esc(EX[id].n)} completato.</b> ${md(nt.txt)}`); }
@@ -514,7 +514,7 @@ function exSummary(i,id){
   return `<div class="is" style="margin-top:8px">Riepilogo — ${esc(EX[id].n)}</div><table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ss.map(x=>`<tr class="${x.extra?"xr":"done"}"><td>${x.extra?"extra":++n}</td><td>${esc(setWB(x))}</td><td>${x.reps??"?"}</td><td>${x.rir??"?"}</td></tr>`).join("")}</table>`;
 }
 function logTimed(inner){
-  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); introExercise(); return; } }
+  { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); bot(`Cosa fai adesso?${choiceHtml(ei)}`); return; } }
   const it=item(), e=exOf(it), [id,n,sec,,rest]=it, i=st.cur.exIdx, ws=workSets(i);
   stopTimer();
   const extra=ws.length>=n || !!st.cur.nextExtra, num=ws.length+1; st.cur.nextExtra=false;
@@ -539,6 +539,21 @@ function undoSet(){
   bot(undoStatus(s));
   drawExbar(); drawChips();
 }
+/* scelta dopo un esercizio completato / una serie extra: altra extra oppure prossimo esercizio */
+function nextIdxAfter(i){ const l=curList(); if(i!==st.cur.exIdx) return st.cur.exIdx; let k=l.findIndex((x,j)=>j>i&&workSets(j).length<x[1]); if(k<0) k=l.findIndex((x,j)=>workSets(j).length<x[1]); return k; }
+function choiceHtml(i){
+  const l=curList(), k=nextIdxAfter(i);
+  return `<div class="qact"><button type="button" class="qa" data-act="extra|${i}">＋ Un'altra serie extra</button>${k>=0?`<button type="button" class="qa acc" data-act="go|${k}">➡ ${esc(EX[l[k][0]].n)}</button>`:`<button type="button" class="qa acc" data-act="end|0">🏁 Fine sessione</button>`}</div>`;
+}
+$("#chat").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-act]"); if(!b||!st.cur) return;
+  const [a,v]=b.dataset.act.split("|"), k=+v; unlockAudio();
+  b.closest(".qact").querySelectorAll("button").forEach(x=>x.disabled=true);
+  if(a==="go"){ st.cur.nextExtra=false; save(); if(k===st.cur.exIdx){ introExercise(); drawChips(); } else goEx(k); }
+  else if(a==="end") finishSession();
+  else if(a==="extra"){ const it=curList()[k]; if(!it) return; st.cur.nextExtra={i:k}; st.cur.pending=null; save();
+    bot(`<b>Un'altra serie extra su ${esc(EX[it[0]].n)}.</b> ${isTimeIt(it)?"Scrivi «fatto» quando hai finito.":"Tocca il carico usato, poi ripetizioni e RIR:"}${isTimeIt(it)?"":withEx(k,()=>quickWeights(it[0]))}`); drawChips(); }
+});
 /* dopo "Annulla": cosa è stato tolto, cosa resta registrato e cosa fare adesso */
 function undoStatus(s){
   const it=item(), [id,n]=it, i=st.cur.exIdx, ws=workSets(i), tm=isTimeIt(it);
@@ -546,7 +561,7 @@ function undoStatus(s){
   t+=`<div class="is">Stato attuale — ${esc(EX[id].n)}</div>`;
   t+= setsOf(i).length ? exSummary(i,id).replace(/^<div class="is"[^>]*>[^<]*<\/div>/,"") : `<div class="muted">Nessuna serie registrata per questo esercizio.</div>`;
   t+= ws.length<n ? `<div style="margin-top:6px"><b>Ora: ${tm?"giro":"serie"} ${ws.length+1} di ${n}.</b> ${tm?"Tocca ▶ Avvia o scrivi «fatto».":"Tocca il carico usato, poi ripetizioni e RIR:"}</div>${tm?"":quickWeights(id)}`
-                  : `<div style="margin-top:6px"><b>Tutte le ${n} serie sono registrate.</b> Puoi aggiungere una serie extra o passare al prossimo esercizio.</div>`;
+                  : `<div style="margin-top:6px"><b>Tutte le ${n} serie sono registrate.</b> Cosa fai adesso?</div>${choiceHtml(i)}`;
   return t;
 }
 

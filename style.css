@@ -453,3 +453,9 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .exbar .dots .dot{width:24px;height:24px}
 .exbar .xr{flex-direction:row-reverse;align-items:center;gap:10px}
 .exbar .dots{flex-direction:column;gap:4px}
+
+/* v70: scelta dopo la serie extra */
+.qact{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.qa{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:12px;padding:10px 14px;font:600 14px Inter,sans-serif;cursor:pointer}
+.qa.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.qa:disabled{opacity:.45}
