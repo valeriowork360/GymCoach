@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "70";
+const APP_VERSION = "71";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -136,6 +136,7 @@ function setLine(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setTxt(s)}${s.ti
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
 function cleanSet({kg,reps,rir,extra,sec,u,v}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
+const rirTxt = r => r==null ? "?" : r%1 ? `${Math.floor(r)}–${Math.ceil(r)}` : String(r);
 const isExtraSess = s => typeof EXTRA_SESSIONS!=="undefined" && EXTRA_SESSIONS.includes(s);
 const holdTxt = it => `${it[2]} s${EX[it[0]].sides?" per lato":""}`;
 
@@ -171,10 +172,10 @@ function coachSet(it,set){
     if(v==="ok"||v==="near") w=w0;
   }
   let why;
-  if(v==="ok") why=`<span class="ok">✔ Carico giusto</span>: ${set.reps} rip nel range ${lo}–${hi} a RIR ${set.rir}.`;
-  else if(v==="near") why=`<span class="down">⚠ Vicino al cedimento</span>: RIR ${set.rir}, ma ${set.reps} rip sono ${set.reps>hi?"sopra":"nel"} range ${lo}–${hi}, quindi il carico va bene: la prossima fermati a 2–3 rip dal cedimento.`;
-  else if(v==="heavy") why=`<span class="down">⬇ Troppo pesante</span>: ${set.rir<RIR_MIN?`RIR ${set.rir} è troppo vicino al cedimento`:`${set.reps} rip sono sotto il minimo di ${lo}`}.`;
-  else why=`<span class="up">⬆ Troppo leggero</span>: ${set.rir>RIR_MAX?`RIR ${set.rir}, ti restavano troppe ripetizioni`:`${set.reps} rip superano il massimo di ${hi}`}.`;
+  if(v==="ok") why=`<span class="ok">✔ Carico giusto</span>: ${set.reps} rip nel range ${lo}–${hi} a RIR ${rirTxt(set.rir)}.`;
+  else if(v==="near") why=`<span class="down">⚠ Vicino al cedimento</span>: RIR ${rirTxt(set.rir)}, ma ${set.reps} rip sono ${set.reps>hi?"sopra":"nel"} range ${lo}–${hi}, quindi il carico va bene: la prossima fermati a 2–3 rip dal cedimento.`;
+  else if(v==="heavy") why=`<span class="down">⬇ Troppo pesante</span>: ${set.rir<RIR_MIN?`RIR ${rirTxt(set.rir)} è troppo vicino al cedimento`:`${set.reps} rip sono sotto il minimo di ${lo}`}.`;
+  else why=`<span class="up">⬆ Troppo leggero</span>: ${set.rir>RIR_MAX?`RIR ${rirTxt(set.rir)}, ti restavano troppe ripetizioni`:`${set.reps} rip superano il massimo di ${hi}`}.`;
   return {v,w,u,why};
 }
 /* consiglio per la prossima seduta (double progression), nell'unità dell'ultima serie */
@@ -253,7 +254,8 @@ function norm(t){
 function parseSet(raw){
   let t=" "+norm(raw)+" ", kg=null, unit=null, reps=null, rir=null, m;
   const take=(re,f)=>{ m=t.match(re); if(m){ f(m); t=t.replace(m[0]," "); return true;} return false; };
-  take(/\brir\s*(?:di|=|:)?\s*(\d)\b/,m=>rir=+m[1]) || take(/\b(\d)\s*rir\b/,m=>rir=+m[1]) || take(/@\s*(\d)\b/,m=>rir=+m[1]) || take(/\b(\d)\s*(?:in canna|di riserva|buffer)/,m=>rir=+m[1]);
+  const rr=(a,b)=>b!=null&&b!==""&&+b>+a ? (+a + +b)/2 : +a;   // "1-2" o "1/2" = 1,5; "1.5" = 1,5
+  take(/\brir\s*(?:di|=|:)?\s*(\d(?:\.5)?)(?:\s*[-–\/]\s*(\d))?(?!\d)/,m=>rir=rr(m[1],m[2])) || take(/\b(\d(?:\.5)?)(?:\s*[-–\/]\s*(\d))?\s*rir\b/,m=>rir=rr(m[1],m[2])) || take(/@\s*(\d(?:\.5)?)(?:\s*[-–\/]\s*(\d))?(?!\d)/,m=>rir=rr(m[1],m[2])) || take(/\b(\d)\s*(?:in canna|di riserva|buffer)/,m=>rir=+m[1]);
   take(/(\d+(?:\.\d+)?)\s*(lbs?|libbr[ae]|pounds?|kg|kili|kilo|chili|chilo|k)\b/,m=>{ kg=+m[1]; unit=/^(lb|libbr|pound)/.test(m[2])?"lb":"kg"; });
   take(/(\d+)\s*(?:rip\w*|reps?|volte|ripetizioni)\b/,m=>reps=+m[1]);
   if(kg==null && reps==null) take(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+)\b/,m=>{kg=+m[1];reps=+m[2];});
@@ -415,7 +417,7 @@ async function onSend(text){
       if(/lb|libbr|pound/.test(t)) u="lb"; else if(/kg|chil|kil/.test(t)) u="kg"; else if(/^s[iì]\b/.test(t)) u=pend.alt; else if(/^no\b/.test(t)) u=pend.unit;
       if(u){ return logSet({...pend,unit:u,unitOk:true}); }
     }
-    if(pend.need==="rir"){ const v=p.rir??(only?+only[1].replace(",","."):null); if(v!=null && v<=10) return logSet({...pend,rir:v}); }
+    if(pend.need==="rir"){ const hm=t.match(/^\D*(\d)\s*[-–\/]\s*(\d)\D*$/); const v=p.rir??(hm&&+hm[2]>+hm[1]?(+hm[1]+ +hm[2])/2:only?+only[1].replace(",","."):null); if(v!=null && v<=10) return logSet({...pend,rir:v}); }
     if(pend.need==="reps"){ const v=p.reps??(only?+only[1]:null); if(v) return logSet({...pend,reps:v,rir:pend.rir??p.rir}); }
     if(pend.need==="kg"){ const v=p.kg??(only?+only[1].replace(",","."):null); if(v!=null) return logSet({...pend,kg:v,unit:p.unit??null}); }
   }
@@ -464,11 +466,11 @@ function logSet(p){
   if(p.rir==null){ st.cur.pending={need:"rir",kg:val,unit:u,unitOk:true,reps:p.reps}; save(); bot(`${wTxt(val,u)} × ${p.reps}: quante <b>RIR</b> ti sentivi (ripetizioni rimaste in canna)?`); return drawChips(); }
   st.cur.pending=null;
   const extra = ws.length>=n || !!st.cur.nextExtra; st.cur.nextExtra=false;
-  const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,t:Date.now(),...(extra?{extra:true}:{})};
+  const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,...(p.rir%1?{rt:`${Math.floor(p.rir)}–${Math.ceil(p.rir)}`}:{}),t:Date.now(),...(extra?{extra:true}:{})};
   sets.push(set); save();
   const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
-  let txt = extra ? `Serie extra su <b>${esc(EX[id].n)}</b> registrata: ${setW(set)} × ${set.reps}, RIR ${set.rir} <span class="muted">(non conta nelle serie allenanti)</span>.`
-                  : `Serie ${num}/${n}: <b>${setW(set)} × ${set.reps}</b> <span class="muted">${modeOf(id)}</span>${conv}, RIR ${set.rir}.<br>${c.why}`;
+  let txt = extra ? `Serie extra su <b>${esc(EX[id].n)}</b> registrata: ${setW(set)} × ${set.reps}, RIR ${rirTxt(set.rir)} <span class="muted">(non conta nelle serie allenanti)</span>.`
+                  : `Serie ${num}/${n}: <b>${setW(set)} × ${set.reps}</b> <span class="muted">${modeOf(id)}</span>${conv}, RIR ${rirTxt(set.rir)}.<br>${c.why}`;
   const lastOfEx = !extra && num>=n;
   if(!extra && !lastOfEx){
     if(c.v==="ok"||c.v==="near") txt+=` Serie ${num+1}: <b>resta a ${wTxt(val,u)}</b>${c.v==="near"?" e fermati prima":""}.`;
@@ -511,7 +513,7 @@ function startHold(){
 function exSummary(i,id){
   const ss=setsOf(i).filter(x=>x.sec==null); if(!ss.length) return "";
   let n=0;
-  return `<div class="is" style="margin-top:8px">Riepilogo — ${esc(EX[id].n)}</div><table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ss.map(x=>`<tr class="${x.extra?"xr":"done"}"><td>${x.extra?"extra":++n}</td><td>${esc(setWB(x))}</td><td>${x.reps??"?"}</td><td>${x.rir??"?"}</td></tr>`).join("")}</table>`;
+  return `<div class="is" style="margin-top:8px">Riepilogo — ${esc(EX[id].n)}</div><table class="mt it"><tr><th>Serie</th><th>Carico</th><th>Reps</th><th>RIR</th></tr>${ss.map(x=>`<tr class="${x.extra?"xr":"done"}"><td>${x.extra?"extra":++n}</td><td>${esc(setWB(x))}</td><td>${x.reps??"?"}</td><td>${x.rt?esc(x.rt):rirTxt(x.rir)}</td></tr>`).join("")}</table>`;
 }
 function logTimed(inner){
   { const ei=extraIdx(); if(ei!=null && ei!==st.cur.exIdx && inner!==true){ withEx(ei,()=>logTimed(true)); save(); drawExbar(); drawTop(); drawChips(); bot(`Cosa fai adesso?${choiceHtml(ei)}`); return; } }
@@ -1095,7 +1097,7 @@ function drawChips0(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
   if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
-  else if(pend && pend.need==="rir") html=[0,1,2,3,4,5,6].map(v=>`<button class="chip ${v>=RIR_MIN&&v<=RIR_MAX?"acc":""}" data-say="RIR ${v}">RIR ${v}</button>`).join("");
+  else if(pend && pend.need==="rir") html=[0,1,1.5,2,2.5,3,4,5,6].map(v=>`<button class="chip ${v>=RIR_MIN&&v<=RIR_MAX?"acc":""}" data-say="RIR ${v}">RIR ${v%1?`${Math.floor(v)}/${Math.ceil(v)}`:v}</button>`).join("");
   else if(pend && pend.need==="reps"){ const [, ,lo,hi]=item(); for(let v=1;v<=Math.max(30,hi+10);v++) html+=`<button class="chip ${v>=lo&&v<=hi?"acc":""}" data-say="${v} rip">${v}</button>`; }
   else {
     const list=curList(), allDone=list.every((x,k)=>workSets(k).length>=x[1]), it=item();
