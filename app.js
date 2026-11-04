@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "58";
+const APP_VERSION = "59";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1034,7 +1034,7 @@ function drawChips(){
   const pend0=st.cur&&st.cur.pending;
   if(pickW && st.cur && !isTimeIt(item()) && !(pend0&&pend0.need)){
     const id=item()[0], {u,c,arr}=quickWeights(id,"__vals"), ch=$("#chips");
-    ch.innerHTML=`<span class="chip lab">Carico (${u})</span>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("")+`<button class="chip" data-wu="${u==="lb"?"kg":"lb"}">${u==="lb"?"kg":"lb"} ⇄</button>`;
+    ch.innerHTML=`<button class="chip unitsw" data-wu="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("");
     ch.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ pickW=false; $("#btnW").classList.remove("on"); unlockAudio(); user(`${kgTxt(+b.dataset.w)} ${u}`); st.cur.pending=null; logSet({kg:+b.dataset.w,unit:u,unitOk:true,reps:null,rir:null}); });
     ch.querySelector("[data-wu]").onclick=()=>{ (st.cur.unitPref ||= {})[st.cur.exIdx]=ch.querySelector("[data-wu]").dataset.wu; save(); drawExbar(); drawChips(); };
     const a=ch.querySelector(".acc"); if(a) ch.scrollLeft=a.offsetLeft-ch.offsetLeft-ch.clientWidth/2+a.offsetWidth/2;
