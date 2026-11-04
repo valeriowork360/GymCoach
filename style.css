@@ -430,3 +430,7 @@ html,body{overflow:hidden}
 #app{height:var(--appH,100dvh)}
 .cbtn{position:fixed;right:calc(10px + env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));z-index:31;display:none;appearance:none;border:1px solid var(--acc);background:rgba(14,15,17,.85);color:var(--acc);border-radius:12px;padding:9px 12px;font:700 14px Inter,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.5)}
 .cbtn.show{display:block}
+
+/* v64: tasto 🏋 sempre visibile, anche in verticale */
+.wbtn{display:inline-block}
+.chip.lab{display:inline-block}
