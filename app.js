@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "52";
+const APP_VERSION = "53";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -305,12 +305,13 @@ function quickWeights(id,focusV,focusU){
   const inc=(u==="lb"?st.settings.incLb:st.settings.inc)[e.eq||"machine"] || (u==="lb"?5:2.5);
   const R=v=>Math.round(v*100)/100, snap=v=>R(Math.max(inc,Math.round(v/inc)*inc));
   const inU=(v,vu)=>vu===u?v:snap(fromKg(toKg(v,vu),u));
-  let c = focusV!=null ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
+  let c = focusV!=null&&focusV!=="__vals" ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
   if(c==null && p){ const ls=p.sets.filter(x=>x.kg!=null&&!x.extra); if(ls.length) c=inU(valOf(ls[ls.length-1]),unitOf(ls[ls.length-1])); }
   if(c==null) c=e.eq==="bw"?0:u==="lb"?45:20;
   c=R(c);
   const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
   const arr=[]; for(let k=-12;k<=12;k++){ const v=R(c+k*step); if(v>0||(e.eq==="bw"&&v===0)) arr.push(v); }
+  if(focusV==="__vals") return {u,c,arr};
   return `<div class="qw" data-qex="${st.cur.exIdx}|${id}"><button type="button" class="qu" data-qunit="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
 }
 /* scorre la riga dei pesi in modo che il consigliato sia al centro */
@@ -998,7 +999,23 @@ function drawExbar(){
   $("#exbar").innerHTML=`<div class="nm">${esc(e.n)}${big}<span class="rx">${rx}</span></div><div class="dots">${dots}</div>`;
   drawTop();
 }
+let pickW=false;
 function drawChips(){
+  const pend0=st.cur&&st.cur.pending;
+  if(pickW && st.cur && !isTimeIt(item()) && !(pend0&&pend0.need)){
+    const id=item()[0], {u,c,arr}=quickWeights(id,"__vals"), ch=$("#chips");
+    ch.innerHTML=`<span class="chip lab">Carico (${u})</span>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("")+`<button class="chip" data-wu="${u==="lb"?"kg":"lb"}">${u==="lb"?"kg":"lb"} ⇄</button>`;
+    ch.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{ pickW=false; $("#btnW").classList.remove("on"); unlockAudio(); user(`${kgTxt(+b.dataset.w)} ${u}`); st.cur.pending=null; logSet({kg:+b.dataset.w,unit:u,unitOk:true,reps:null,rir:null}); });
+    ch.querySelector("[data-wu]").onclick=()=>{ (st.cur.unitPref ||= {})[st.cur.exIdx]=ch.querySelector("[data-wu]").dataset.wu; save(); drawExbar(); drawChips(); };
+    const a=ch.querySelector(".acc"); if(a) ch.scrollLeft=a.offsetLeft-ch.offsetLeft-ch.clientWidth/2+a.offsetWidth/2;
+    return;
+  }
+  drawChips0();
+  const pend=st.cur&&st.cur.pending, ch=$("#chips");
+  if(pend&&pend.need==="reps") ch.insertAdjacentHTML("afterbegin",`<span class="chip lab">Ripetizioni</span>`);
+  if(pend&&pend.need==="rir") ch.insertAdjacentHTML("afterbegin",`<span class="chip lab">RIR</span>`);
+}
+function drawChips0(){
   const c=$("#chips"), pend=st.cur&&st.cur.pending;
   let html="";
   if(pend && pend.need==="unit") html=`<button class="chip acc" data-say="${pend.alt}">Sì, ${wTxt(pend.kg,pend.alt)}</button><button class="chip" data-say="${pend.unit}">No, ${wTxt(pend.kg,pend.unit)}</button>`;
@@ -1383,6 +1400,7 @@ $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.rem
 /* barra di scrittura a scomparsa: si apre col tasto ⌨ accanto ai comandi */
 function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden=!open; $("#btnKbd").classList.toggle("on",!!open); $("#btnKbd").textContent=open?"✕":"⌨"; }
 $("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
+$("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } pickW=!pickW; $("#btnW").classList.toggle("on",pickW); drawChips(); };
 setComposer(!!st.ui.composer);
 /* banda trascinabile sotto i video: sceglie l'altezza dello spazio video */
 function applyVH(){ const sg=document.querySelector(".stage"); if(!sg) return; if(st.ui.vh && !st.ui.videoHidden) sg.style.setProperty("--fh",st.ui.vh+"px"); else sg.style.removeProperty("--fh"); }
