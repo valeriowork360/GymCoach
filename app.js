@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "64";
+const APP_VERSION = "65";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -310,7 +310,9 @@ function quickWeights(id,focusV,focusU){
   if(c==null) c=e.eq==="bw"?0:u==="lb"?45:20;
   c=R(c);
   const step=u==="kg"&&inc<2.5&&Math.abs(c/2.5-Math.round(c/2.5))<1e-6?2.5:inc;   // es. manubri 7,5 → 5 / 10
-  const arr=[]; for(let k=-12;k<=12;k++){ const v=R(c+k*step); if(v>0||(e.eq==="bw"&&v===0)) arr.push(v); }
+  // gamma ampia: dal minimo fino a ~3 volte il consigliato (almeno 40 passi sopra), così si trova qualsiasi carico
+  const arr=[]; const top=Math.max(c*3, c+40*step), kmin=-Math.ceil(c/step), kmax=Math.min(Math.ceil((top-c)/step),150);
+  for(let k=kmin;k<=kmax;k++){ const v=R(c+k*step); if(v>0||(e.eq==="bw"&&v===0)) arr.push(v); }
   if(focusV==="__vals") return {u,c,arr};
   return `<div class="qw" data-qex="${st.cur.exIdx}|${id}"><button type="button" class="qu" data-qunit="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>${arr.map(v=>`<button type="button" class="${v===c?"acc":""}" data-qw="${v}|${u}|${st.cur.exIdx}|${id}">${kgTxt(v)}</button>`).join("")}</div>`;
 }
