@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "87";
+const APP_VERSION = "88";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2202,7 +2202,7 @@ const fdR1=v=>v==null?"":String(Math.round(v*10)/10);
 const ymdLocal=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const dayNo=ymd=>Math.round((Date.UTC(+ymd.slice(0,4),+ymd.slice(5,7)-1,+ymd.slice(8,10))-FD_DAY0)/864e5)+1;
 const csvCell=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v; };
-const toCSV=(head,rows)=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join("\n")+"\n";
+const toCSV=(head,rows,eol="\n")=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join(eol)+eol;
 const MEALS=["Colazione","Pranzo","Cena","Spuntino","Spuntino serale","Shake proteico"];
 /* nome del pasto: tengo quello scritto (es. "Spuntino 2", "Spuntino serale"), traduco solo i nomi inglesi e sistemo le maiuscole */
 function mealName(t){ t=String(t||"").replace(/[:\-–—*#•]+$/,"").trim(); const l=t.toLowerCase();
@@ -2375,7 +2375,7 @@ async function flushFoodQ(){
     if(!(st.foodQ||[]).length) return true;
     if(!st.settings.ghToken||!st.settings.ghRepo) return false;
     try{ for(const dir of [...new Set(st.foodQ.map(j=>j.dir||"alimentazione/"))]){ const jobs=st.foodQ.filter(j=>(j.dir||"alimentazione/")===dir);
-      const get=async f=>{ const r=await gh(dir+f); if(r.status===404) return {rows:[],sha:null,head:[]}; if(!r.ok) throw r.status; const j=await r.json(); const txt=unb64(j.content); return {rows:parseCSV(txt),sha:j.sha,head:(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean)}; };
+      const get=async f=>{ const r=await gh(dir+f); if(r.status===404) return {rows:[],sha:null,head:[],eol:"\r\n"}; if(!r.ok) throw r.status; const j=await r.json(); const txt=unb64(j.content); return {rows:parseCSV(txt),sha:j.sha,eol:txt.includes("\r\n")?"\r\n":"\n",head:(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean)}; };
       const H=(F,base)=>[...F.head,...base.filter(k=>!F.head.includes(k))];
       const put=async(f,content,sha,msg)=>{ const r=await gh(dir+f,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})}); if(!r.ok) throw r.status; };
       const [G,P,A]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
@@ -2402,9 +2402,9 @@ async function flushFoodQ(){
       const by=(a,b)=>a.data<b.data?-1:a.data>b.data?1:0;
       G.rows.sort(by); P.rows.sort(by); A.rows.sort(by);
       const msg=(dir.includes("prova")?"Prova app — ":"")+"Diario alimentare: "+[...new Set(dates)].join(", ");
-      await put("pasti.csv",toCSV(H(P,["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"]),P.rows),P.sha,msg);
-      await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte","affidabilita"]),A.rows),A.sha,msg);
-      await put("giorni.csv",toCSV(H(G,["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g","carboidrati_min_g","carboidrati_max_g","grassi_min_g","grassi_max_g","stato_kcal","stato_proteine","stato_carboidrati","stato_grassi","nota"]),G.rows),G.sha,msg);
+      await put("pasti.csv",toCSV(H(P,["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"]),P.rows,P.eol),P.sha,msg);
+      await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte","affidabilita"]),A.rows,A.eol),A.sha,msg);
+      await put("giorni.csv",toCSV(H(G,["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g","carboidrati_min_g","carboidrati_max_g","grassi_min_g","grassi_max_g","stato_kcal","stato_proteine","stato_carboidrati","stato_grassi","nota"]),G.rows,G.eol),G.sha,msg);
       // testo originale del recap, per il confronto
       for(const job of jobs) if(job.raw){ await put(`recap/${job.date}.txt`,job.raw,(await (async()=>{ const r=await gh(dir+`recap/${job.date}.txt`); return r.ok?(await r.json()).sha:null; })()),msg); }
       st.foodQ=st.foodQ.filter(j=>!jobs.includes(j)); save(); }
