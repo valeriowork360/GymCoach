@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "75";
+const APP_VERSION = "77";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1743,33 +1743,167 @@ function openStats(sel){
   if(!hs.length){ openSheet("Progressi","<p class='muted'>Ancora nessun dato: registra una sessione o importa lo storico da 🗂 Archivio.</p>"); return; }
   const first=hs[0].start, last=hs[hs.length-1].start;
   const now=Date.now(), w4=hs.filter(h=>h.start>now-28*864e5).length;
-  // volume settimanale per muscolo (ultime 6 settimane con dati)
-  const weeks=[...new Set(work.map(w=>mondayOf(w.h.start)))].sort((a,b)=>a-b).slice(-6);
-  const vol={}; work.forEach(w=>{ const g=MUSCLE[w.ex]||(EX[w.ex]&&EX[w.ex].like&&MUSCLE[EX[w.ex].like])||"Altro"; const k=mondayOf(w.h.start); if(!weeks.includes(k)) return; (vol[g] ||= {})[k]=((vol[g]||{})[k]||0)+1; });
-  const maxV=Math.max(1,...Object.values(vol).flatMap(o=>Object.values(o)));
-  const groups=[...MUSCLE_ORDER.filter(g=>vol[g]), ...Object.keys(vol).filter(g=>!MUSCLE_ORDER.includes(g))];
-  const wk=t=>new Date(t).toLocaleDateString("it-IT",{day:"2-digit",month:"2-digit"});
-  const heat=`<table class="heat"><thead><tr><th></th>${weeks.map(k=>`<th>${wk(k)}</th>`).join("")}</tr></thead><tbody>${groups.map(g=>`<tr><th>${g}</th>${weeks.map(k=>{const v=(vol[g]||{})[k]||0; return `<td title="${g}, settimana del ${wk(k)}: ${v} serie allenanti" style="background:${v?`rgba(57,135,229,${(0.18+0.72*v/maxV).toFixed(2)})`:"transparent"}">${v||"·"}</td>`;}).join("")}</tr>`).join("")}</tbody></table>`;
   // esercizi con dati
   const exIds=[...new Set(work.map(w=>w.ex))].sort((a,b)=>MUSCLE_ORDER.indexOf(MUSCLE[a]||"Z")-MUSCLE_ORDER.indexOf(MUSCLE[b]||"Z")||EX[a].n.localeCompare(EX[b].n));
   const cur = sel && exIds.includes(sel) ? sel : (st.cur && exIds.includes(item()[0]) ? item()[0] : exIds[0]);
+  // indicatori della panoramica
+  const fam=h=>/^FULL\s*BODY/i.test(h.session)?"A/B":"PPL/UL";
+  const fams=[...new Set(hs.map(fam))];
+  const withR=work.filter(w=>w.s.rir!=null), pct=(a,b)=>b?Math.round(100*a/b)+"%":"—";
+  const low=a=>{ const r=a.filter(w=>w.s.rir!=null); return pct(r.filter(w=>w.s.rir<=1).length,r.length); };
+  const exN=new Set(work.map(w=>w.ex)).size;
+  const kpi=(l,v,sub,id)=>`<div class="kpi"${id?` id="${id}"`:""}><span class="l">${l}</span><b>${v}</b><span class="s">${sub}</span></div>`;
+  const famTxt=fams.length>1?fams.map(f=>`${f} ${hs.filter(h=>fam(h)===f).length}`).join(" · "):`ultime 4 sett.: ${w4}`;
+  const lowTxt=fams.length>1?fams.map(f=>`${f} ${low(work.filter(w=>fam(w.h)===f))}`).join(" → "):"tra le serie con RIR comunicato";
   openSheet("Progressi",`
-    <div class="tiles">
-      <div class="tile"><b>${hs.length}</b><span>sessioni</span></div>
-      <div class="tile"><b>${work.length}</b><span>serie (extra incluse)</span></div>
-      <div class="tile"><b>${w4}</b><span>sessioni ultime 4 sett.</span></div>
+    <p class="muted" style="margin:0 2px 8px">Dal ${new Date(first).toLocaleDateString("it-IT")} al ${new Date(last).toLocaleDateString("it-IT")}: <b>${hs.length}</b> sedute e <b>${work.length}</b> serie allenanti (extra incluse).</p>
+    <div class="kpis">
+      ${kpi("Sedute con dati",hs.length,famTxt)}
+      ${kpi("Serie allenanti",work.length,`su ${exN} esercizi eseguiti`)}
+      ${kpi("Serie nel target (≥2 RIR)",pct(withR.filter(w=>w.s.rir>=2).length,withR.length),"tra le serie con RIR comunicato")}
+      ${kpi("Serie a 0–1 RIR",low(work),lowTxt)}
+      ${kpi("Calorie medie al giorno","…","dati alimentazione","kpiK")}
+      ${kpi("Proteine medie al giorno","…","grammi","kpiP")}
     </div>
-    <p class="muted" style="margin:6px 2px 0">Dal ${new Date(first).toLocaleDateString("it-IT")} al ${new Date(last).toLocaleDateString("it-IT")}</p>
-    <div class="card"><h3>Andamento per esercizio</h3>
+    <div class="card"><h3>Quadro esercizi</h3><div id="ovBody"></div></div>
+    <div class="card"><h3>Serie allenanti per settimana, per fascia di RIR</h3><p class="muted cap">Quante serie e quanto vicine al cedimento. Target 2–3 RIR.</p><div id="rirBody"></div></div>
+    <div class="card"><h3>Tonnellaggio per settimana e distretto</h3><p class="muted cap">Carico totale × ripetizioni (lb convertite in kg, bilanciere con la barra).</p><div id="tonBody"></div></div>
+    <div class="card" id="kcalCard"><h3>Calorie al giorno</h3><p class="muted cap">Colore rispetto al target del giorno · • = giorno di allenamento.</p><div id="kcalBody"><p class="muted">Carico i dati…</p></div></div>
+    <div class="card"><h3>Serie per gruppo muscolare e settimana</h3><div class="heatwrap" id="heatBody"></div>
+      <p class="muted" style="margin:8px 0 0">Serie allenanti ed extra di ogni settimana (da lunedì). Più scuro = più serie.</p></div>
+    <div class="card" id="exCard"><h3>Andamento per esercizio</h3>
       <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+EX[id].n)}</option>`).join("")}</select>
       <div id="stChart"></div>
     </div>
-    <div class="card" id="foodCard"><h3>Alimentazione</h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>
-    <div class="card"><h3>Serie allenanti a settimana per muscolo</h3><div class="heatwrap">${heat}</div>
-      <p class="muted" style="margin:8px 0 0">Conta le serie allenanti e le serie extra (non riscaldamento o prove) di ogni settimana, da lunedì. Più scuro = più serie.</p></div>`);
+    <div class="card" id="foodCard"><h3>Alimentazione</h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>`);
+  drawWeekly(work);
   $("#stEx").onchange=e=>drawExStats(e.target.value);
   drawExStats(cur);
+  drawOverview();
   drawFood();
+  drawKcal();
+}
+/* riepilogo per esercizio: tendenza, ultima serie migliore, variazione di forza, quota a 0–1 RIR */
+const OV_GROUPS=[["Petto",["Petto"]],["Schiena",["Schiena"]],["Spalle",["Spalle"]],["Braccia",["Tricipiti","Bicipiti"]],["Gambe",["Quadricipiti","Femorali","Glutei","Polpacci"]],["Addome",["Addome"]]];
+function ovData(){
+  const {hs}=statsData(), out={};
+  hs.forEach(h=>h.ex.forEach(e=>{ const id=e.ex; if(!EX[id]||EX[id].kind==="time") return;
+    const ss=e.sets.filter(countsInStats); if(!ss.length) return;
+    const o=(out[id] ||= {id,segs:{},order:[],work:0,low:0,lastT:0});
+    const by={}; ss.forEach(x=>{ const v=e1n(id,x,"mano"), m=x.m||"—"; if(v!=null&&(!by[m]||v>by[m].v)) by[m]={v,x}; });
+    Object.entries(by).forEach(([m,b])=>{ if(!o.segs[m]){ o.segs[m]=[]; o.order.push(m);} o.segs[m].push({t:h.start,v:b.v,x:b.x}); o.lastM=m; o.lastT=h.start; o.last=b.x; });
+    e.sets.filter(x=>!x.extra&&x.sec==null&&x.rir!=null).forEach(x=>{ o.work++; if(x.rir<=1) o.low++; });
+  }));
+  Object.values(out).forEach(o=>{ const seg=o.segs[o.lastM]; o.seg=seg; o.var=seg.length>1?(seg[seg.length-1].v-seg[0].v)/seg[0].v:null; { const mx=Math.max(...seg.map(p=>p.v)), lv=seg[seg.length-1].v; o.dmax=seg.length>1?(lv>=mx*0.995?0:(lv-mx)/mx):null; } o.lowP=o.work?o.low/o.work:null; o.nM=o.order.length; });
+  return out;
+}
+function sparkSvg(seg,w,h){
+  if(!seg||!seg.length) return "";
+  const ts=seg.map(p=>p.t), ys=seg.map(p=>p.v), t0=Math.min(...ts), t1=Math.max(...ts), y0=Math.min(...ys), y1=Math.max(...ys);
+  const X=t=>t1===t0?w/2:3+(t-t0)/(t1-t0)*(w-6), Y=y=>y1===y0?h/2:h-3-(y-y0)/(y1-y0)*(h-6);
+  const pts=seg.map(p=>[X(p.t).toFixed(1),Y(p.v).toFixed(1)]), lp=pts[pts.length-1];
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="spark" aria-hidden="true">${pts.length>1?`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`:""}<circle cx="${lp[0]}" cy="${lp[1]}" r="2.8" fill="#3987e5"/></svg>`;
+}
+const ovSgn=v=>v==null?"—":(v>0?"+":"")+Math.round(v*100)+"%", ovCls=v=>v==null?"mut":v>0.005?"good":v<-0.005?"bad":"warn", ovLow=v=>v==null?"mut":v>=0.4?"bad":v>=0.2?"warn":"good", ovPct=v=>v==null?"—":Math.round(v*100)+"%";
+function drawOverview(){
+  const B=$("#ovBody"); if(!B) return;
+  const D=ovData(), view=st.ui.ovView||"c";
+  const grp=OV_GROUPS.map(([g,ms])=>[g,Object.values(D).filter(o=>ms.includes(MUSCLE[o.id]||(EX[o.id]&&EX[o.id].mg))).sort((a,b)=>b.lastT-a.lastT)]).filter(([,l])=>l.length);
+  const altri=Object.values(D).filter(o=>!grp.some(([,l])=>l.includes(o))); if(altri.length) grp.push(["Altri",altri]);
+  let h=`<div class="seg"><button type="button" data-ov="c" class="${view==="c"?"on":""}">Tabella compatta</button><button type="button" data-ov="a" class="${view==="a"?"on":""}">Colonne</button></div>
+    <p class="muted" style="margin:6px 2px 8px">Tendenza = forza stimata (e1RM) della serie migliore di ogni seduta sulla macchina attuale. Var. = dalla prima all'ultima seduta. Da max = quanto l'ultima è sotto la migliore di sempre (max = l'ultima è la migliore). Tocca un esercizio per il grafico.</p>`;
+  if(view==="c"){
+    const sh=x=>x?`${x.raw?x.raw.replace(/\s*\/\s*/g,"/"):(x.kg+" kg")} × ${x.reps}${x.rir!=null?" @"+rirTxt(x.rir):""}`:"";
+    h+=`<div class="ovt"><table class="ovtab"><thead><tr><th>Esercizio · ultima serie migliore</th><th>Tendenza</th><th>Var.</th><th>Da max</th><th>0–1 RIR</th></tr></thead><tbody>${grp.map(([g,l])=>`<tr><td class="grp" colspan="5">${esc(g)}</td></tr>${l.map(o=>`<tr data-ovid="${o.id}"><td class="nm">${esc(EX[o.id].n)}<span class="ls">${esc(sh(o.last))} · ${dateTxt(o.lastT)}${o.nM>1?` · ${o.nM} macchine`:""}</span></td><td>${sparkSvg(o.seg,58,20)}</td><td class="num ${ovCls(o.var)}">${ovSgn(o.var)}</td><td class="num ${o.dmax==null?"mut":o.dmax===0?"good":o.dmax>-0.05?"warn":"bad"}">${o.dmax==null?"—":o.dmax===0?"max":ovSgn(o.dmax)}</td><td><span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)}</span></td></tr>`).join("")}`).join("")}</tbody></table></div>`;
+  } else {
+    h+=`<div class="ovcols">${grp.map(([g,l])=>`<div class="ovcol"><h4>${esc(g)} <span>${l.length} esercizi</span></h4>${l.map(o=>`<div class="ovcard" data-ovid="${o.id}"><div class="t">${esc(EX[o.id].n)}</div>${sparkSvg(o.seg,190,34)}<div class="s">Ultima (${dateTxt(o.lastT)}): ${esc(setTxt(o.last))}</div><div class="row"><span class="ovchip ${ovCls(o.var)}">${ovSgn(o.var)} forza</span>${o.dmax!=null?`<span class="ovchip ${o.dmax===0?"good":"mut"}">${o.dmax===0?"max":ovSgn(o.dmax)+" da max"}</span>`:""}<span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)} a 0–1 RIR</span></div></div>`).join("")}</div>`).join("")}</div>`;
+  }
+  if(!grp.length) h=`<p class="muted">Ancora nessun esercizio con dati.</p>`;
+  B.innerHTML=h;
+  B.querySelectorAll("[data-ov]").forEach(b=>b.onclick=()=>{ st.ui.ovView=b.dataset.ov; save(); drawOverview(); });
+  B.querySelectorAll("[data-ovid]").forEach(r=>r.onclick=()=>{ const sel=$("#stEx"); if(sel){ sel.value=r.dataset.ovid; drawExStats(r.dataset.ovid); } const c=$("#exCard"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); });
+}
+/* ---------------- panoramica: grafici settimanali (fasce di RIR, tonnellaggio, mappa per muscolo) ---------------- */
+const WK=t=>new Date(t).toLocaleDateString("it-IT",{day:"numeric",month:"short"}).replace(".","");
+const grpOf=id=>{ const m=MUSCLE[id]||(EX[id]&&(EX[id].mg||(EX[id].like&&MUSCLE[EX[id].like]))); const g=OV_GROUPS.find(([,ms])=>ms.includes(m)); return g?g[0]:"Altro"; };
+function stackSvg(xs,series,fmt,lab){
+  const W=340,H=190,L=34,R=6,T=10,B=22;
+  const tot=xs.map((_,i)=>series.reduce((a,s)=>a+(s.v[i]||0),0)), mx=Math.max(1,...tot);
+  const step=mx>40000?10000:mx>20000?5000:mx>8000?2000:mx>60?20:mx>30?10:mx>12?5:2, top=Math.ceil(mx/step)*step;
+  const slot=(W-L-R)/xs.length, bw=Math.max(3,Math.min(22,slot*0.72)), Y=v=>T+(H-T-B)*(1-v/top);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img">`;
+  for(let v=0;v<=top;v+=step) svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-5}" y="${Y(v)+3}" class="ax" text-anchor="end">${fmt(v)}</text>`;
+  const every=Math.ceil(xs.length/5);
+  xs.forEach((x,i)=>{ const cx=L+slot*(i+.5); let y0=Y(0); const segs=series.map(s=>({s,v:s.v[i]||0})).filter(o=>o.v>0);
+    segs.forEach((o,k)=>{ const y1=Y(0)-(Y(0)-Y(o.v))-(Y(0)-y0); const hgt=y0-y1-(k<segs.length-1||true?0:0); const isTop=k===segs.length-1, r=isTop?Math.min(3,bw/2,hgt):0, x0=cx-bw/2, gap=k>0?1.5:0;
+      const yb=y0-gap, yt=Math.min(yb-0.5,y1);
+      svg+=r?`<path d="M${x0.toFixed(1)},${yb.toFixed(1)} V${(yt+r).toFixed(1)} Q${x0.toFixed(1)},${yt.toFixed(1)} ${(x0+r).toFixed(1)},${yt.toFixed(1)} H${(x0+bw-r).toFixed(1)} Q${(x0+bw).toFixed(1)},${yt.toFixed(1)} ${(x0+bw).toFixed(1)},${(yt+r).toFixed(1)} V${yb.toFixed(1)} Z" fill="${o.s.c}"/>`:`<rect x="${x0.toFixed(1)}" y="${yt.toFixed(1)}" width="${bw.toFixed(1)}" height="${(yb-yt).toFixed(1)}" fill="${o.s.c}"/>`;
+      y0=y1; });
+    if(i%every===0) svg+=`<text x="${cx}" y="${H-6}" class="ax" text-anchor="middle">${WK(x)}</text>`;
+    const tip=`<b>Settimana del ${WK(x)}</b>${series.filter(s=>s.v[i]).map(s=>`<br><i style="background:${s.c}"></i>${s.n}: ${fmt(s.v[i],1)}`).join("")}<br><span class="muted">Totale ${fmt(tot[i],1)}${lab}</span>`;
+    svg+=`<rect x="${(L+slot*i).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${H-T-B}" fill="transparent" class="hit" data-tip="${esc(tip)}"/>`; });
+  svg+=`</svg>`;
+  const leg=`<div class="legend">${series.map(s=>`<span><i style="background:${s.c}"></i>${s.n}</span>`).join("")}</div>`;
+  return `${leg}<div class="chartwrap">${svg}<div class="tip" hidden></div></div>`;
+}
+function bindTips(B){
+  B.querySelectorAll(".chartwrap").forEach(w=>{ const tip=w.querySelector(".tip");
+    w.addEventListener("click",ev=>{ const c=ev.target.closest("[data-tip]"); if(!c){ tip.hidden=true; return; }
+      tip.innerHTML=c.dataset.tip; tip.hidden=false; const r=w.getBoundingClientRect(), cr=c.getBoundingClientRect();
+      tip.style.left=Math.min(r.width-175,Math.max(0,cr.left-r.left+cr.width/2-87))+"px"; tip.style.top=Math.max(0,cr.top-r.top+4)+"px"; }); });
+}
+function drawWeekly(work){
+  if(!work.length) return;
+  const w0=mondayOf(work[0].h.start), w1=mondayOf(work[work.length-1].h.start), xs=[];
+  for(let t=w0;t<=w1+3600e3;t=mondayOf(t+8*864e5)) xs.push(t);
+  const ix=t=>xs.indexOf(mondayOf(t));
+  // fasce di RIR
+  const F=[{n:"≥2 RIR",c:"#199e70",f:r=>r!=null&&r>=2},{n:"~1–2 RIR",c:"#e0a526",f:r=>r!=null&&r>1&&r<2},{n:"0–1 RIR",c:"#d0453b",f:r=>r!=null&&r<=1},{n:"RIR non comunicato",c:"#6b727c",f:r=>r==null}];
+  F.forEach(s=>{ s.v=xs.map(()=>0); work.forEach(w=>{ if(s.f(w.s.rir)) s.v[ix(w.h.start)]++; }); });
+  const rb=$("#rirBody"); if(rb){ rb.innerHTML=stackSvg(xs,F,v=>String(Math.round(v))," serie"); bindTips(rb); }
+  // tonnellaggio per distretto
+  const GC={Petto:"#3987e5",Schiena:"#d95926",Spalle:"#199e70",Braccia:"#c9a227",Gambe:"#d6539a",Addome:"#8a63d2",Altro:"#6b727c"};
+  const G=Object.keys(GC).map(n=>({n,c:GC[n],v:xs.map(()=>0)}));
+  work.forEach(w=>{ const kg=normKg(w.ex,w.s,"tot"); if(!kg||!w.s.reps) return; G.find(g=>g.n===grpOf(w.ex)).v[ix(w.h.start)]+=kg*w.s.reps; });
+  const tb=$("#tonBody"); if(tb){ tb.innerHTML=stackSvg(xs,G.filter(g=>g.v.some(Boolean)),(v,full)=>full?Math.round(v).toLocaleString("it-IT")+" kg":(v>=1000?Math.round(v/1000)+" t":Math.round(v)+""),""); bindTips(tb); }
+  // mappa serie per muscolo e settimana
+  const vol={}; work.forEach(w=>{ const g=MUSCLE[w.ex]||(EX[w.ex]&&EX[w.ex].like&&MUSCLE[EX[w.ex].like])||"Altro"; const k=ix(w.h.start); (vol[g] ||= xs.map(()=>0))[k]++; });
+  const maxV=Math.max(1,...Object.values(vol).flat());
+  const groups=[...MUSCLE_ORDER.filter(g=>vol[g]), ...Object.keys(vol).filter(g=>!MUSCLE_ORDER.includes(g))];
+  const hb=$("#heatBody"); if(hb) hb.innerHTML=`<table class="heat"><thead><tr><th></th>${xs.map((x,i)=>`<th>${i%2?"":WK(x)}</th>`).join("")}</tr></thead><tbody>${groups.map(g=>`<tr><th>${g}</th>${xs.map((x,i)=>{const v=vol[g][i]; return `<td title="${g}, settimana del ${WK(x)}: ${v} serie" style="background:${v?`rgba(57,135,229,${(0.18+0.72*v/maxV).toFixed(2)})`:"transparent"}">${v||"·"}</td>`;}).join("")}</tr>`).join("")}</tbody></table>`;
+  if(hb) hb.scrollLeft=hb.scrollWidth;
+}
+/* calorie al giorno con colore rispetto al target + indicatori della panoramica */
+async function drawKcal(){
+  const B=$("#kcalBody"); if(!B) return;
+  const setK=(id,v,sub)=>{ const e=$("#"+id); if(e){ e.querySelector("b").textContent=v; e.querySelector(".s").textContent=sub; } };
+  if(!st.settings.ghToken){ B.innerHTML=`<p class="muted">Collega il backup GitHub in ⚙ Impostazioni per vedere l'alimentazione.</p>`; setK("kpiK","—","collega GitHub"); setK("kpiP","—","collega GitHub"); return; }
+  const f=await loadFood(); if(!$("#kcalBody")) return;
+  if(!f||!f.giorni||!f.giorni.length){ B.innerHTML=`<p class="muted">Nessun dato di alimentazione.</p>`; setK("kpiK","—","nessun dato"); setK("kpiP","—","nessun dato"); return; }
+  const N=v=>v===""||v==null?null:+String(v).replace(",",".");
+  const days=f.giorni.map(r=>({d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
+  const comp=days.filter(x=>x.ok), avg=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):"—";
+  // target nel tempo (cambi di fascia)
+  const chg=[]; days.forEach(x=>{ const m=x.kmin!=null?Math.round((x.kmin+x.kmax)/2):null; if(m!=null&&(!chg.length||chg[chg.length-1].m!==m)) chg.push({t:x.t,m}); });
+  setK("kpiK",avg(comp.map(x=>x.k).filter(v=>v!=null)),chg.length?`target: ${chg.map((c,i)=>i?`dal ${dateTxt(c.t)} ${c.m}`:c.m).join(", ")} kcal`:"kcal");
+  const pch=[]; days.forEach(x=>{ if(x.pmin!=null){ const tx=Math.round(x.pmin)===x.pmin&&Math.round(x.pmax)===x.pmax?`${x.pmin}–${x.pmax}`:String(Math.round((x.pmin+x.pmax)/2)); if(!pch.length||pch[pch.length-1].tx!==tx) pch.push({t:x.t,tx}); } });
+  setK("kpiP",avg(comp.map(x=>x.p).filter(v=>v!=null)),pch.length?`grammi; target ${pch.map((c,i)=>i?`dal ${dateTxt(c.t)} ${c.tx}`:c.tx).join(", ")} g`:"grammi");
+  const ymd=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }, trainDays=new Set(allSessions().map(h=>ymd(h.start)));
+  const W=340,H=180,L=38,R=6,T=10,Bt=26, pts=days.filter(x=>x.k!=null), mx=Math.max(...pts.map(x=>x.k),...days.map(x=>x.kmax||0)), top=Math.ceil(mx/1000)*1000;
+  const slot=(W-L-R)/days.length, bw=Math.max(2,Math.min(14,slot-1.5)), Y=v=>T+(H-T-Bt)*(1-v/top);
+  const cl=x=>!x.ok?"#6b727c":x.kmin==null?"#3987e5":x.k<x.kmin?"#e0a526":x.k>x.kmax?"#3987e5":"#199e70";
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Calorie al giorno">`;
+  for(let v=0;v<=top;v+=1000) svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-5}" y="${Y(v)+3}" class="ax" text-anchor="end">${v}</text>`;
+  const every=Math.ceil(days.length/5);
+  days.forEach((x,i)=>{ const cx=L+slot*(i+.5);
+    if(x.k!=null){ const y=Y(x.k), r=Math.min(3,bw/2); svg+=`<path d="M${(cx-bw/2).toFixed(1)},${Y(0).toFixed(1)} V${(y+r).toFixed(1)} Q${(cx-bw/2).toFixed(1)},${y.toFixed(1)} ${(cx-bw/2+r).toFixed(1)},${y.toFixed(1)} H${(cx+bw/2-r).toFixed(1)} Q${(cx+bw/2).toFixed(1)},${y.toFixed(1)} ${(cx+bw/2).toFixed(1)},${(y+r).toFixed(1)} V${Y(0).toFixed(1)} Z" fill="${cl(x)}"/>`; }
+    if(trainDays.has(x.d)) svg+=`<circle cx="${cx.toFixed(1)}" cy="${(Y(0)+5).toFixed(1)}" r="1.6" fill="var(--txt,#e8edf2)"/>`;
+    if(i%every===0) svg+=`<text x="${cx}" y="${H-5}" class="ax" text-anchor="middle">${dateTxt(x.t)}</text>`;
+    const st2=!x.ok?"parziale":x.kmin==null?"":x.k<x.kmin?"sotto il target":x.k>x.kmax?"sopra il target":"nel target";
+    svg+=`<rect x="${(L+slot*i).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${H-T-Bt+8}" fill="transparent" class="hit" data-tip="${esc(`<b>${new Date(x.t).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit"})}</b> · ${st2}<br>${x.k??"?"} kcal · P ${x.p??"?"} g<br><span class="muted">Target ${x.kmin!=null?x.kmin+"–"+x.kmax:"—"} kcal${trainDays.has(x.d)?" · allenamento":""}</span>`)}"/>`; });
+  svg+=`</svg>`;
+  B.innerHTML=`<div class="legend"><span><i style="background:#199e70"></i>nel target</span><span><i style="background:#e0a526"></i>sotto</span><span><i style="background:#3987e5"></i>sopra</span><span><i style="background:#6b727c"></i>parziale</span></div><div class="chartwrap">${svg}<div class="tip" hidden></div></div><p class="muted" style="margin:6px 0 0">${days.length} giorni, dal ${dateTxt(days[0].t)} al ${dateTxt(days[days.length-1].t)}. Dettagli e pasti nella scheda Alimentazione qui sotto.</p>`;
+  bindTips(B);
 }
 /* ---------------- alimentazione: letta dal repository privato dei dati (cartella alimentazione/) ---------------- */
 let food=null;
@@ -1808,13 +1942,13 @@ async function drawFood(force){
   let h=`<div class="seg"><button type="button" data-fr="14" class="${rng===14?"on":""}">14 giorni</button><button type="button" data-fr="30" class="${rng===30?"on":""}">30 giorni</button><button type="button" data-fr="0" class="${!rng?"on":""}">Tutto</button></div>
     <div class="seg"><button type="button" data-fm="k" class="${met==="k"?"on":""}">Calorie</button><button type="button" data-fm="p" class="${met==="p"?"on":""}">Proteine</button></div>
     <div class="tiles" style="margin-top:8px"><div class="tile"><b>${avg(comp.map(x=>x.k).filter(v=>v!=null))??"—"}</b><span>kcal medie</span></div><div class="tile"><b>${avg(comp.map(x=>x.p).filter(v=>v!=null))??"—"} g</b><span>proteine medie</span></div><div class="tile"><b>${met==="k"?pc(inK):pc(inP)}</b><span>giorni ${met==="k"?"nel target kcal":"con proteine ≥ minimo"}</span></div></div>
-    <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: cerchio vuoto, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
+    <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: colonna vuota, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
   // grafico: una serie + fascia del target
   const val=x=>met==="k"?x.k:x.p, lo=x=>met==="k"?x.kmin:x.pmin, hi=x=>met==="k"?x.kmax:x.pmax;
   const pts=days.filter(x=>val(x)!=null);
   const W=340,H=180,L=38,R=10,T=10,B2=24, t0=days[0].t, t1=last.t>t0?days[days.length-1].t:t0+864e5;
   const vs=[...pts.map(val),...days.map(lo).filter(v=>v!=null),...days.map(hi).filter(v=>v!=null)];
-  let vmin=Math.min(...vs), vmax=Math.max(...vs); const pad=(vmax-vmin)*0.08||10; vmin=Math.max(0,vmin-pad); vmax+=pad;
+  let vmin=Math.min(...vs), vmax=Math.max(...vs); const pad=(vmax-vmin)*0.08||10; vmin=Math.max(0,vmin-pad*3); vmax+=pad;
   const X=t=>L+(W-L-R)*((t-t0)/((t1-t0)||1)), Y=v=>T+(H-T-B2)*(1-(v-vmin)/(vmax-vmin));
   let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${met==="k"?"Calorie":"Proteine"} giornaliere con la fascia del target">`;
   [0,1,2,3].map(i=>vmin+(vmax-vmin)*i/3).forEach(v=>svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-6}" y="${Y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`);
@@ -1822,8 +1956,11 @@ async function drawFood(force){
   if(band.length){ const step=(t1-t0)/Math.max(1,days.length-1)/2; const top=band.map(x=>`${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(hi(x)).toFixed(1)} ${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(hi(x)).toFixed(1)}`).join(" "), bot=band.slice().reverse().map(x=>`${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(lo(x)).toFixed(1)} ${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(lo(x)).toFixed(1)}`).join(" ");
     svg+=`<polygon points="${top} ${bot}" fill="#199e70" fill-opacity=".16" stroke="none"/>`; }
   [t0,t0+(t1-t0)/2,t1].forEach((t,i)=>svg+=`<text x="${X(t)}" y="${H-7}" class="ax" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateTxt(t)}</text>`);
-  svg+=`<polyline fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" points="${pts.map(x=>`${X(x.t).toFixed(1)},${Y(val(x)).toFixed(1)}`).join(" ")}"/>`;
-  pts.forEach((x,k)=>{ svg+=`<circle cx="${X(x.t)}" cy="${Y(val(x))}" r="${pts.length>40?3:4}" fill="${x.ok?"#3987e5":"#17191c"}" stroke="${x.ok?"#17191c":"#3987e5"}" stroke-width="2"/><circle cx="${X(x.t)}" cy="${Y(val(x))}" r="10" fill="transparent" class="hit" data-fd="${k}"/>`; });
+  // colonne: una barra per giorno dalla base del grafico; giorni parziali solo contorno
+  const slot=(W-L-R)/Math.max(1,days.length), bw=Math.max(2,Math.min(18,slot-2)), base=Y(vmin);
+  pts.forEach((x,k)=>{ const cx=X(x.t), y=Y(val(x)), hgt=Math.max(1,base-y), r=Math.min(4,bw/2);
+    svg+=`<path d="M${(cx-bw/2).toFixed(1)},${base.toFixed(1)} V${(y+r).toFixed(1)} Q${(cx-bw/2).toFixed(1)},${y.toFixed(1)} ${(cx-bw/2+r).toFixed(1)},${y.toFixed(1)} H${(cx+bw/2-r).toFixed(1)} Q${(cx+bw/2).toFixed(1)},${y.toFixed(1)} ${(cx+bw/2).toFixed(1)},${(y+r).toFixed(1)} V${base.toFixed(1)} Z" fill="${x.ok?"#3987e5":"none"}" stroke="${x.ok?"none":"#3987e5"}" stroke-width="${x.ok?0:1.5}"/>`;
+    svg+=`<rect x="${(cx-Math.max(bw,10)/2).toFixed(1)}" y="${T}" width="${Math.max(bw,10)}" height="${(base-T).toFixed(1)}" fill="transparent" class="hit" data-fd="${k}"/>`; });
   svg+=`</svg>`;
   h+=`<div class="chartwrap">${svg}<div class="tip" id="fdTip" hidden></div></div>`;
   // elenco dei giorni con i pasti

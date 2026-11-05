@@ -475,3 +475,51 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .fday summary{cursor:pointer;font-size:13.5px}
 .fmeal{font-size:13px;margin:6px 0 0 10px;line-height:1.35}
 .fday .xs{margin:6px 0 0 10px}
+
+/* v76: riepilogo esercizi (tabella compatta e colonne) */
+.ovt{overflow-x:auto;margin:0 -4px}
+.ovtab{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.ovtab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:600;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ovtab td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ovtab td.grp{font:700 16px "Barlow Condensed",sans-serif;text-transform:uppercase;color:#7fb0f0;padding-top:12px;border-bottom:none}
+.ovtab td.nm{font-weight:600;min-width:120px}
+.ovtab tr[data-ovid]{cursor:pointer}
+.ovtab .num{font-variant-numeric:tabular-nums}
+.vbar{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.vb{position:relative;display:inline-block;height:9px;width:76px;background:var(--panel2);border-radius:3px}
+.vb i{position:absolute;top:0;bottom:0;border-radius:3px}
+.vb .z{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--mut)}
+.ovchip{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--panel2);white-space:nowrap}
+.ovchip.good{color:var(--ok)} .ovchip.bad{color:#ff7b6e} .ovchip.warn{color:var(--warn)} .ovchip.mut{color:var(--mut)}
+.ovcols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,78%);gap:10px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px}
+.ovcol{background:var(--bg);border-radius:10px;padding:8px;display:grid;gap:8px;align-content:start;scroll-snap-align:start}
+.ovcol h4{margin:2px 2px 0;font:700 18px "Barlow Condensed",sans-serif;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline}
+.ovcol h4 span{font:500 11.5px Inter,sans-serif;color:var(--mut);text-transform:none}
+.ovcard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px;display:grid;gap:5px;cursor:pointer}
+.ovcard .t{font-weight:600;font-size:13.5px}
+.ovcard .s{font-size:12px;color:var(--mut)}
+.ovcard .spark{width:100%;height:34px}
+.ovcard .row{gap:6px}
+/* v77 panoramica */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.kpi .l{font-size:11.5px;color:var(--mut)}
+.kpi b{font:800 28px/1.05 "Barlow Condensed",sans-serif}
+.kpi .s{font-size:11.5px;color:var(--mut);line-height:1.3}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mut);margin:2px 0 6px}
+.legend i,.tip i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:0}
+.cap{margin:-2px 2px 6px;font-size:12px}
+.ovtab td.num.good{color:var(--ok)} .ovtab td.num.warn{color:#e0a526} .ovtab td.num.bad{color:var(--red)} .ovtab td.num.mut{color:var(--mut)}
+#heatBody{overflow-x:auto}
+.ovtab td.nm{white-space:normal;min-width:0;width:100%}
+.ovtab td.nm .ls{display:block;font-size:11.5px;color:var(--mut);font-weight:400;margin-top:1px}
+.ovtab td.num.good{color:var(--ok)}
+.ovtab th:not(:first-child),.ovtab td:not(.nm):not(.grp){white-space:nowrap;text-align:right;padding-left:4px;padding-right:4px}
+.ovtab th:nth-child(2),.ovtab td:nth-child(2):not(.grp){text-align:center}
+.ovtab{min-width:0;font-size:13px} .ovtab th:first-child{white-space:normal}
+.ovtab td.num.good,.ovtab td.num.warn,.ovtab td.num.bad{font-weight:600}
+#heatBody .heat{border-collapse:separate;border-spacing:2px}
+#heatBody .heat td{min-width:22px;height:24px;padding:0;font-size:11px;text-align:center;border-radius:4px}
+#heatBody .heat thead th{font-size:10px;font-weight:500;color:var(--mut);white-space:nowrap;text-align:left}
+#heatBody .heat tbody th{position:sticky;left:0;z-index:1;background:var(--panel);font-size:12px;font-weight:500;text-align:left;padding-right:6px;white-space:nowrap}
+#heatBody .heat thead th:first-child{position:sticky;left:0;z-index:2;background:var(--panel)}
