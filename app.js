@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2298,6 +2298,7 @@ function openDiary(date){
     <div class="fdv">${[["kcal","kcal"],["p","P g"],["c","C g"],["g","G g"]].map(([k,l])=>`<label><span>${l}</span><input class="inp" inputmode="decimal" data-fm="${i}" data-k="${k}" value="${m[k]==null?"":fdR1(m[k])}"></label>`).join("")}</div>
     ${m.foods&&m.foods.length>1?`<details class="xs"><summary>${m.foods.length} alimenti</summary>${m.foods.map(f=>`<div>${esc(f.nome)}${f.q&&!f.nome.includes(f.q)?" · "+esc(f.q):""} — ${f.kcal??"?"} kcal${f.p!=null?" · P "+fdR1(f.p):""}${f.c!=null?" · C "+fdR1(f.c):""}${f.g!=null?" · G "+fdR1(f.g):""}</div>`).join("")}</details>`:""}</div>`;
   openSheet("Diario alimentare",`
+    <div class="fdtrial ${st.settings.foodTrial!==false?"on":""}"><label class="chk"><input type="checkbox" id="fdTrial" ${st.settings.foodTrial!==false?"checked":""}> <span><b>Periodo di prova</b>: salvo in <code>alimentazione/prova_app/</code> (con il testo incollato), separato dai dati principali. I grafici usano i dati principali.</span></label></div>
     <div class="fdtop"><input type="date" class="inp" id="fdDate" value="${date}" max="${today}"><span class="muted">giorno ${dayNo(date)}</span></div>
     ${saved.length||q.length?`<div class="card"><h3>Già salvato per questo giorno</h3>${day?`<p><b>${day.kcal||"?"} kcal</b> · P ${day.proteine_g||"?"} g${day.carboidrati_g?` · C ${day.carboidrati_g} g · G ${day.grassi_g} g`:""}${day.giorno_completo==="no"?" · parziale":""}</p>`:""}${saved.map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(fdNum(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(fdNum(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")}${q.length?`<p class="warn">⏳ ${q.length} salvataggio in attesa di rete.</p>`:""}</div>`:""}
     <div class="seg" id="fdMode"><button type="button" data-md="paste" class="${D.mode==="paste"?"on":""}">📋 Incolla riepilogo</button><button type="button" data-md="ai" class="${D.mode==="ai"?"on":""}">💬 Descrivi</button><button type="button" data-md="man" class="${D.mode==="man"?"on":""}">✍ Manuale</button></div>
@@ -2328,9 +2329,10 @@ function openDiary(date){
   if($("#fdComp")) $("#fdComp").onchange=e=>D.complete=e.target.checked;
   if($("#fdNota")) $("#fdNota").oninput=e=>D.nota=e.target.value;
   if($("#fdRep")) $("#fdRep").onchange=e=>D.replace=e.target.checked;
+  $("#fdTrial").onchange=e=>{ st.settings.foodTrial=e.target.checked; save(); openDiary(date); };
   $("#tSave").onclick=()=>{ const n=id=>Math.max(0,+$(id).value||0); st.settings.foodT={k:n("#tK"),p:n("#tP"),c:n("#tC"),g:n("#tG")}; save(); openDiary(date); };
   if($("#fdGo")) $("#fdGo").onclick=async()=>{
-    const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg");
+    const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg"); if(D.mode==="paste") D.rawText=txt;
     let meals=[], tot=null;
     if(D.mode==="paste"){
       // lettura sul telefono, senza AI; l'AI solo se il formato non è riconosciuto
@@ -2355,13 +2357,14 @@ function openDiary(date){
     r.onend=()=>{ b._rec=null; b.textContent="🎤 Detta"; b.classList.remove("on"); }; r.start(); b._rec=r; b.textContent="⏹ Fine"; b.classList.add("on"); };
   if($("#fdSave")) $("#fdSave").onclick=async()=>{
     const tg=D.target||fdTarget(); if(D.target){ st.settings.foodT={...D.target}; }
-    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(tg),tgt:tg,nota:D.nota||"",at:Date.now()};
+    const trial=st.settings.foodTrial!==false;
+    const job={dir:trial?"alimentazione/prova_app/":"alimentazione/",raw:trial&&D.rawText?D.rawText:"",date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:trial?true:(saved.length?D.replace:false),target:fdTargetCols(tg),tgt:tg,nota:D.nota||"",at:Date.now()};
     const m=$("#fdSaveMsg"); m.textContent="Salvo…";
     if(!st.settings.ghToken){ m.textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
     (st.foodQ ||= []).push(job); save();
     const ok=await flushFoodQ();
     fdDraft=null;
-    if(ok){ m.textContent="✓ Salvato."; await loadFood(true); openDiary(job.date); const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",`<p class="okmsg">✓ Giorno salvato nel repository.</p>`); }
+    if(ok){ m.textContent="✓ Salvato."; await loadFood(true); openDiary(job.date); const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",`<p class="okmsg">✓ Giorno salvato ${job.dir.includes("prova")?"nella cartella di prova":"nel repository"}.</p>`); }
     else { openDiary(job.date); const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",`<p class="warn">⏳ Non riesco a raggiungere GitHub: il giorno resta in coda sul telefono e lo salvo appena c'è rete.</p>`); }
   };
 }
@@ -2371,13 +2374,13 @@ async function flushFoodQ(){
   fdFlushing=(async()=>{
     if(!(st.foodQ||[]).length) return true;
     if(!st.settings.ghToken||!st.settings.ghRepo) return false;
-    try{
-      const get=async f=>{ const r=await gh("alimentazione/"+f); if(r.status===404) return {rows:[],sha:null,head:[]}; if(!r.ok) throw r.status; const j=await r.json(); const txt=unb64(j.content); return {rows:parseCSV(txt),sha:j.sha,head:(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean)}; };
+    try{ for(const dir of [...new Set(st.foodQ.map(j=>j.dir||"alimentazione/"))]){ const jobs=st.foodQ.filter(j=>(j.dir||"alimentazione/")===dir);
+      const get=async f=>{ const r=await gh(dir+f); if(r.status===404) return {rows:[],sha:null,head:[]}; if(!r.ok) throw r.status; const j=await r.json(); const txt=unb64(j.content); return {rows:parseCSV(txt),sha:j.sha,head:(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean)}; };
       const H=(F,base)=>[...F.head,...base.filter(k=>!F.head.includes(k))];
-      const put=async(f,content,sha,msg)=>{ const r=await gh("alimentazione/"+f,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})}); if(!r.ok) throw r.status; };
+      const put=async(f,content,sha,msg)=>{ const r=await gh(dir+f,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})}); if(!r.ok) throw r.status; };
       const [G,P,A]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
       const dates=[];
-      for(const job of st.foodQ){
+      for(const job of jobs){
         const n=dayNo(job.date); dates.push(job.date);
         if(job.replace){ P.rows=P.rows.filter(r=>r.data!==job.date); A.rows=A.rows.filter(r=>r.data!==job.date); }
         job.meals.forEach(m=>{ P.rows.push({giorno:n,data:job.date,pasto:m.pasto,descrizione:m.desc,kcal:fdR1(m.kcal),proteine_g:fdR1(m.p),carboidrati_g:fdR1(m.c),grassi_g:fdR1(m.g)});
@@ -2398,11 +2401,14 @@ async function flushFoodQ(){
       }
       const by=(a,b)=>a.data<b.data?-1:a.data>b.data?1:0;
       G.rows.sort(by); P.rows.sort(by); A.rows.sort(by);
-      const msg="Diario alimentare: "+[...new Set(dates)].join(", ");
+      const msg=(dir.includes("prova")?"Prova app — ":"")+"Diario alimentare: "+[...new Set(dates)].join(", ");
       await put("pasti.csv",toCSV(H(P,["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"]),P.rows),P.sha,msg);
       await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte","affidabilita"]),A.rows),A.sha,msg);
       await put("giorni.csv",toCSV(H(G,["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g","carboidrati_min_g","carboidrati_max_g","grassi_min_g","grassi_max_g","stato_kcal","stato_proteine","stato_carboidrati","stato_grassi","nota"]),G.rows),G.sha,msg);
-      st.foodQ=[]; save(); food=null; try{ localStorage.removeItem("gc_food"); }catch(e){}
+      // testo originale del recap, per il confronto
+      for(const job of jobs) if(job.raw){ await put(`recap/${job.date}.txt`,job.raw,(await (async()=>{ const r=await gh(dir+`recap/${job.date}.txt`); return r.ok?(await r.json()).sha:null; })()),msg); }
+      st.foodQ=st.foodQ.filter(j=>!jobs.includes(j)); save(); }
+      food=null; try{ localStorage.removeItem("gc_food"); }catch(e){}
       return true;
     }catch(e){ return false; }
   })();
