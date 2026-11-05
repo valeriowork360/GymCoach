@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "79";
+const APP_VERSION = "80";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2160,3 +2160,23 @@ render();
 })();
 if(!st.ui.fixNear1){ const h=st.history[st.history.length-1]; if(h&&!h.imported) h.ex.forEach(e=>{ if(EX[e.ex]&&EX[e.ex].kind!=="time") recomputeSugg(e.ex); }); st.ui.fixNear1=true; save(); }
 window.__appOk=true;
+
+/* grafici: trascina il dito per leggere i valori (punto o colonna più vicini), con una linea guida verticale */
+(function chartScrub(){
+  let wrap=null, last=null;
+  const pick=(w,x,y)=>{ let best=null, bd=1e9;
+    w.querySelectorAll(".hit").forEach(c=>{ const r=c.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const d=Math.abs(cx-x)*4+Math.abs(cy-y)*(r.height>60?0:1); if(d<bd){ bd=d; best=c; } });
+    return best; };
+  const show=(w,x,y)=>{ const c=pick(w,x,y); if(!c) return;
+    let xh=w.querySelector(".xhair"); if(!xh){ xh=document.createElement("div"); xh.className="xhair"; w.appendChild(xh); }
+    const r=w.getBoundingClientRect(), cr=c.getBoundingClientRect(); xh.style.left=(cr.left-r.left+cr.width/2)+"px"; xh.hidden=false;
+    if(c!==last){ last=c; c.dispatchEvent(new MouseEvent("click",{bubbles:true})); } };
+  document.addEventListener("pointerdown",ev=>{ const w=ev.target.closest&&ev.target.closest(".chartwrap"); if(!w||!w.querySelector(".hit")) return; wrap=w; last=null; show(w,ev.clientX,ev.clientY); },{passive:true});
+  document.addEventListener("pointermove",ev=>{ if(wrap) show(wrap,ev.clientX,ev.clientY); },{passive:true});
+  const end=()=>{ wrap=null; };
+  document.addEventListener("pointerup",end); document.addEventListener("pointercancel",end);
+  // il tocco è già gestito al pointerdown: il click reale non deve chiudere l'etichetta; fuori dai grafici chiude tutto
+  document.addEventListener("click",ev=>{ if(!ev.isTrusted) return; const w=ev.target.closest&&ev.target.closest(".chartwrap");
+    if(w&&w.querySelector(".hit")){ ev.stopPropagation(); return; }
+    document.querySelectorAll(".chartwrap .tip,.xhair").forEach(x=>x.hidden=true); },true);
+})();

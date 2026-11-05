@@ -523,3 +523,7 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 #heatBody .heat thead th{font-size:10px;font-weight:500;color:var(--mut);white-space:nowrap;text-align:left}
 #heatBody .heat tbody th{position:sticky;left:0;z-index:1;background:var(--panel);font-size:12px;font-weight:500;text-align:left;padding-right:6px;white-space:nowrap}
 #heatBody .heat thead th:first-child{position:sticky;left:0;z-index:2;background:var(--panel)}
+/* v80 lettura dei grafici col dito */
+.chartwrap svg{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.xhair{position:absolute;top:8px;bottom:22px;width:0;border-left:1.5px dashed rgba(232,237,242,.45);pointer-events:none;z-index:2}
+.chartwrap .tip{z-index:4}
