@@ -543,3 +543,10 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .warn{color:#e0a526}
 .top-sess{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chartwrap .tip{box-shadow:0 6px 18px rgba(0,0,0,.45)}
+/* v85 alimentazione: stato, alimenti, note */
+.fsts{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.fst{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--panel2)}
+.fst.ok{color:var(--ok)} .fst.lo{color:#e0a526} .fst.hi{color:#5a9cf0}
+.fal{margin:3px 0 0 2px;font-size:12.5px;line-height:1.45}
+.fal i{font-style:normal;color:#e0a526}
+.fnote{margin:6px 0 2px;color:var(--mut)}

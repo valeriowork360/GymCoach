@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "84";
+const APP_VERSION = "85";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1893,12 +1893,13 @@ async function drawKcal(){
   const f=await loadFood(); if(!$("#kpiK")) return;
   if(!f||!f.giorni||!f.giorni.length){ B.innerHTML=`<p class="muted">Nessun dato di alimentazione.</p>`; setK("kpiK","—","nessun dato"); setK("kpiP","—","nessun dato"); return; }
   const N=v=>v===""||v==null?null:+String(v).replace(",",".");
-  const days=f.giorni.map(r=>({d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
+  const days=f.giorni.map(r=>({d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g),cmin:N(r.carboidrati_min_g),cmax:N(r.carboidrati_max_g),fmin:N(r.grassi_min_g),fmax:N(r.grassi_max_g),sk:r.stato_kcal||"",sp:r.stato_proteine||"",sc:r.stato_carboidrati||"",sf:r.stato_grassi||"",nota:r.nota||""})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
   const comp=days.filter(x=>x.ok), avg=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):"—";
-  // target nel tempo (cambi di fascia)
-  const chg=[]; days.forEach(x=>{ const m=x.kmin!=null?Math.round((x.kmin+x.kmax)/2):null; if(m!=null&&(!chg.length||chg[chg.length-1].m!==m)) chg.push({t:x.t,m}); });
+  // target nel tempo, letto dal testo del target di ogni giorno ("2.460 kcal · 175 g")
+  const tgK=x=>{ const m=String(x.tg||"").match(/([\d.]+)\s*kcal/); return m?+m[1].replace(/\./g,""):null; }, tgP=x=>{ const m=String(x.tg||"").split("·")[1]; return m?m.replace(/[^\d–\-,.]/g,"").replace("-","–"):null; };
+  const chg=[]; days.forEach(x=>{ const m=tgK(x); if(m!=null&&(!chg.length||chg[chg.length-1].m!==m)) chg.push({t:x.t,m}); });
   setK("kpiK",avg(comp.map(x=>x.k).filter(v=>v!=null)),chg.length?`target: ${chg.map((c,i)=>i?`dal ${dateTxt(c.t)} ${c.m}`:c.m).join(", ")} kcal`:"kcal");
-  const pch=[]; days.forEach(x=>{ if(x.pmin!=null){ const tx=Math.round(x.pmin)===x.pmin&&Math.round(x.pmax)===x.pmax?`${x.pmin}–${x.pmax}`:String(Math.round((x.pmin+x.pmax)/2)); if(!pch.length||pch[pch.length-1].tx!==tx) pch.push({t:x.t,tx}); } });
+  const pch=[]; days.forEach(x=>{ const tx=tgP(x); if(tx&&(!pch.length||pch[pch.length-1].tx!==tx)) pch.push({t:x.t,tx}); });
   setK("kpiP",avg(comp.map(x=>x.p).filter(v=>v!=null)),pch.length?`grammi; target ${pch.map((c,i)=>i?`dal ${dateTxt(c.t)} ${c.tx}`:c.tx).join(", ")} g`:"grammi");
   const ymd=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }, trainDays=new Set(allSessions().map(h=>ymd(h.start)));
   const W=340,H=180,L=38,R=6,T=10,Bt=26, pts=days.filter(x=>x.k!=null), mx=Math.max(...pts.map(x=>x.k),...days.map(x=>x.kmax||0)), top=Math.ceil(mx/1000)*1000;
@@ -1930,10 +1931,10 @@ function parseCSV(t){
 async function loadFood(force){
   if(!food){ try{ food=JSON.parse(localStorage.getItem("gc_food")||"null"); }catch(e){} }
   if(!st.settings.ghToken||!st.settings.ghRepo) return food;
-  if(!force && food && !food.err && Date.now()-(food._t||0)<10*60e3) return food;
+  if(!force && food && !food.err && food.alimenti && Date.now()-(food._t||0)<10*60e3) return food;
   const get=async f=>{ const r=await fetch(`https://api.github.com/repos/${st.settings.ghRepo}/contents/alimentazione/${f}`,{headers:{"Authorization":"Bearer "+st.settings.ghToken,"Accept":"application/vnd.github.raw","X-GitHub-Api-Version":"2022-11-28"},cache:"no-store"}); if(r.status===404) return null; if(!r.ok) throw new Error("GitHub "+r.status); return r.text(); };
-  try{ const [g,pp]=await Promise.all([get("giorni.csv"),get("pasti.csv")]);
-    food={_t:Date.now(),giorni:g?parseCSV(g):[],pasti:pp?parseCSV(pp):[],none:!g};
+  try{ const [g,pp,al]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
+    food={_t:Date.now(),giorni:g?parseCSV(g):[],pasti:pp?parseCSV(pp):[],alimenti:al?parseCSV(al):[],none:!g};
     try{ localStorage.setItem("gc_food",JSON.stringify(food)); }catch(e){} }
   catch(e){ food=food?{...food,err:String(e.message||e)}:{giorni:[],pasti:[],err:String(e.message||e)}; }
   return food;
@@ -1944,25 +1945,27 @@ async function drawFood(force){
   const f=await loadFood(force); if(!$("#foodBody")) return;
   if(!f||!f.giorni||!f.giorni.length){ B.innerHTML=`<p class="muted">${f&&f.err?"Non riesco a leggere i dati ("+esc(f.err)+").":"Nessun dato nella cartella alimentazione/ del repository."}</p>`; return; }
   const N=v=>v===""||v==null?null:+String(v).replace(",",".");
-  const all=f.giorni.map(r=>({g:+r.giorno,d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),c:N(r.carboidrati_g),f:N(r.grassi_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
+  const all=f.giorni.map(r=>({g:+r.giorno,d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),c:N(r.carboidrati_g),f:N(r.grassi_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g),cmin:N(r.carboidrati_min_g),cmax:N(r.carboidrati_max_g),fmin:N(r.grassi_min_g),fmax:N(r.grassi_max_g),sk:r.stato_kcal||"",sp:r.stato_proteine||"",sc:r.stato_carboidrati||"",sf:r.stato_grassi||"",nota:r.nota||""})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
   const rng=st.ui.foodRange??30, met=st.ui.foodMetric||"k";
   const days=rng?all.slice(-rng):all, comp=days.filter(x=>x.ok);
   const avg=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null;
-  const inK=comp.filter(x=>x.k!=null&&x.kmin!=null&&x.k>=x.kmin&&x.k<=x.kmax).length, inP=comp.filter(x=>x.p!=null&&x.pmin!=null&&x.p>=x.pmin).length;
+  const MT={k:{n:"Calorie",u:"kcal",v:"k",lo:"kmin",hi:"kmax",s:"sk"},p:{n:"Proteine",u:"g",v:"p",lo:"pmin",hi:"pmax",s:"sp"},c:{n:"Carboidrati",u:"g",v:"c",lo:"cmin",hi:"cmax",s:"sc"},f:{n:"Grassi",u:"g",v:"f",lo:"fmin",hi:"fmax",s:"sf"}}[met]||{n:"Calorie",u:"kcal",v:"k",lo:"kmin",hi:"kmax",s:"sk"};
+  const stOf=x=>{ if(x[MT.s]) return x[MT.s]; const v=x[MT.v], l=x[MT.lo], u=x[MT.hi]; return v==null||l==null?"":v<l?"sotto":v>u?"sopra":"centrato"; };
+  const inT=comp.filter(x=>stOf(x)==="centrato").length;
   const pc=n=>comp.length?Math.round(100*n/comp.length)+"%":"—";
   const last=all[all.length-1];
   let h=`<div class="seg"><button type="button" data-fr="7" class="${rng===7?"on":""}">7 giorni</button><button type="button" data-fr="14" class="${rng===14?"on":""}">14 giorni</button><button type="button" data-fr="30" class="${rng===30?"on":""}">30 giorni</button><button type="button" data-fr="0" class="${!rng?"on":""}">Tutto</button></div>
-    <div class="seg"><button type="button" data-fm="k" class="${met==="k"?"on":""}">Calorie</button><button type="button" data-fm="p" class="${met==="p"?"on":""}">Proteine</button></div>
-    <div class="tiles" style="margin-top:8px"><div class="tile"><b>${avg(comp.map(x=>x.k).filter(v=>v!=null))??"—"}</b><span>kcal medie</span></div><div class="tile"><b>${avg(comp.map(x=>x.p).filter(v=>v!=null))??"—"} g</b><span>proteine medie</span></div><div class="tile"><b>${met==="k"?pc(inK):pc(inP)}</b><span>giorni ${met==="k"?"nel target kcal":"con proteine ≥ minimo"}</span></div></div>
+    <div class="seg"><button type="button" data-fm="k" class="${met==="k"?"on":""}">Calorie</button><button type="button" data-fm="p" class="${met==="p"?"on":""}">Proteine</button><button type="button" data-fm="c" class="${met==="c"?"on":""}">Carbo</button><button type="button" data-fm="f" class="${met==="f"?"on":""}">Grassi</button></div>
+    <div class="tiles" style="margin-top:8px"><div class="tile"><b>${avg(comp.map(x=>x.k).filter(v=>v!=null))??"—"}</b><span>kcal medie</span></div><div class="tile"><b>${avg(comp.map(x=>x.p).filter(v=>v!=null))??"—"} g</b><span>proteine medie</span></div><div class="tile"><b>${pc(inT)}</b><span>giorni centrati (${MT.n.toLowerCase()})</span></div></div>
     <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: in grigio, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
   // grafico: una serie + fascia del target
-  const val=x=>met==="k"?x.k:x.p, lo=x=>met==="k"?x.kmin:x.pmin, hi=x=>met==="k"?x.kmax:x.pmax;
+  const val=x=>x[MT.v], lo=x=>x[MT.lo], hi=x=>x[MT.hi];
   const pts=days.filter(x=>val(x)!=null);
   const W=340,H=180,L=38,R=10,T=10,B2=24, t0=days[0].t, t1=last.t>t0?days[days.length-1].t:t0+864e5;
   const vs=[...pts.map(val),...days.map(lo).filter(v=>v!=null),...days.map(hi).filter(v=>v!=null)];
-  const stp=met==="k"?1000:50; let vmin=0, vmax=Math.ceil(Math.max(...vs)*1.04/stp)*stp; if(vmax/stp<3&&met==="k") vmax=Math.max(vmax,3000);
+  const stp=met==="k"?1000:met==="f"?25:50; let vmin=0, vmax=Math.ceil(Math.max(...vs)*1.04/stp)*stp; if(vmax/stp<3&&met==="k") vmax=Math.max(vmax,3000);
   const nD=Math.round((days[days.length-1].t-t0)/864e5)+1, slotD=(W-L-R)/nD, X=t=>L+slotD*((t-t0)/864e5+.5), Y=v=>T+(H-T-B2)*(1-(v-vmin)/(vmax-vmin));
-  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${met==="k"?"Calorie":"Proteine"} giornaliere con la fascia del target">`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${MT.n} giornaliere con la fascia del target">`;
   Array.from({length:Math.round(vmax/stp)+1},(_,i)=>i*stp).forEach(v=>svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-6}" y="${Y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`);
   const band=days.filter(x=>lo(x)!=null&&hi(x)!=null);
   if(band.length){ const step=864e5/2; const top=band.map(x=>`${X(x.t-step).toFixed(1)},${Y(hi(x)).toFixed(1)} ${X(x.t+step).toFixed(1)},${Y(hi(x)).toFixed(1)}`).join(" "), bot=band.slice().reverse().map(x=>`${X(x.t+step).toFixed(1)},${Y(lo(x)).toFixed(1)} ${X(x.t-step).toFixed(1)},${Y(lo(x)).toFixed(1)}`).join(" ");
@@ -1970,7 +1973,7 @@ async function drawFood(force){
   [t0,t0+Math.round((nD-1)/2)*864e5,days[days.length-1].t].forEach(t=>svg+=`<text x="${X(t)}" y="${H-7}" class="ax" text-anchor="middle">${dateTxt(t)}</text>`);
   // colonne: una barra per giorno dalla base del grafico; giorni parziali solo contorno
   const slot=slotD, bw=Math.max(2,Math.min(22,slot*0.7)), base=Y(vmin);
-  const tcol=x=>{ const v=val(x); if(!x.ok) return "#6b727c"; if(lo(x)==null) return "#3987e5"; return v<lo(x)?"#e0a526":(hi(x)!=null&&v>hi(x))?"#3987e5":"#199e70"; };
+  const tcol=x=>{ if(!x.ok) return "#6b727c"; const z=stOf(x); return /sotto/.test(z)?"#e0a526":/sopra/.test(z)?"#3987e5":z?"#199e70":"#3987e5"; };
   const ymd2=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }, trainD=new Set(allSessions().map(h=>ymd2(h.start)));
   pts.forEach((x,k)=>{ const cx=X(x.t), y=Y(val(x)), r=Math.min(4,bw/2);
     svg+=`<path d="M${(cx-bw/2).toFixed(1)},${base.toFixed(1)} V${(y+r).toFixed(1)} Q${(cx-bw/2).toFixed(1)},${y.toFixed(1)} ${(cx-bw/2+r).toFixed(1)},${y.toFixed(1)} H${(cx+bw/2-r).toFixed(1)} Q${(cx+bw/2).toFixed(1)},${y.toFixed(1)} ${(cx+bw/2).toFixed(1)},${(y+r).toFixed(1)} V${base.toFixed(1)} Z" fill="${tcol(x)}"/>`;
@@ -1980,14 +1983,16 @@ async function drawFood(force){
   h+=`<div class="legend" style="margin-top:8px"><span><i style="background:#199e70"></i>nel target</span><span><i style="background:#e0a526"></i>sotto</span><span><i style="background:#3987e5"></i>sopra</span><span><i style="background:#6b727c"></i>parziale</span><span>• allenamento</span></div><div class="chartwrap">${svg}<div class="tip" id="fdTip" hidden></div></div>`;
   // elenco dei giorni con i pasti
   const meals=g=>f.pasti.filter(m=>+m.giorno===g);
-  h+=`<details class="tbl"><summary>Giorni e pasti (${days.length})</summary>${days.slice().reverse().map(x=>`<details class="fday"><summary><b>${dateTxt(x.t)}</b> · ${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?` · C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}${x.ok?"":` <span class="xs">· parziale</span>`}</summary>${meals(x.g).map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(N(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(N(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")||`<p class="muted">Nessun pasto dettagliato.</p>`}<div class="xs">Target: ${esc(x.tg||"—")}</div></details>`).join("")}</details>`;
+  const foods=(g,pasto)=>(f.alimenti||[]).filter(a=>+a.giorno===g&&a.pasto===pasto);
+  const stTxt=x=>[["kcal",x.sk],["P",x.sp],["C",x.sc],["G",x.sf]].filter(z=>z[1]).map(([l,z])=>`<span class="fst ${/sotto/.test(z)?"lo":/sopra/.test(z)?"hi":"ok"}">${l} ${esc(z)}</span>`).join(" ");
+  h+=`<details class="tbl"><summary>Giorni e pasti (${days.length})</summary>${days.slice().reverse().map(x=>`<details class="fday"><summary><b>${dateTxt(x.t)}</b> · ${x.k!=null?Math.round(x.k):"?"} kcal · P ${x.p??"?"} g${x.c!=null?` · C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}${x.ok?"":` <span class="xs">· parziale</span>`}</summary>${stTxt(x)?`<div class="fsts">${stTxt(x)}</div>`:""}${meals(x.g).map(m=>{ const al=foods(x.g,m.pasto); return `<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(N(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(N(m.proteine_g)):""}${m.carboidrati_g?" · C "+Math.round(N(m.carboidrati_g)):""}${m.grassi_g?" · G "+Math.round(N(m.grassi_g)):""}</span>${al.length?`<div class="fal">${al.map(a=>`<div>${a.fonte==="stimato"?"<i title='stimato'>~</i> ":a.fonte==="parziale"?"<i title='in parte stimato'>≈</i> ":""}${esc(a.alimento)}${a.quantita?` <span class="muted">${esc(a.quantita)}</span>`:""}<span class="muted"> · ${Math.round(N(a.kcal))} kcal · P ${N(a.proteine_g)??"?"}</span></div>`).join("")}</div>`:`<br>${esc(m.descrizione)}`}</div>`; }).join("")||`<p class="muted">Nessun pasto dettagliato.</p>`}${x.nota?`<div class="xs fnote">📝 ${esc(x.nota)}</div>`:""}<div class="xs">Target: ${esc(x.tg||"—")}${(f.alimenti||[]).some(a=>+a.giorno===x.g)?" · ~ = valore stimato":""}</div></details>`).join("")}</details>`;
   h+=`<p class="muted" style="margin:8px 0 0">Dati fino al ${new Date(last.t).toLocaleDateString("it-IT")} · <a href="#" id="fdReload">aggiorna</a></p>`;
   B.innerHTML=h;
   B.querySelectorAll("[data-fr]").forEach(b=>b.onclick=()=>{ st.ui.foodRange=+b.dataset.fr; save(); drawFood(); });
   B.querySelectorAll("[data-fm]").forEach(b=>b.onclick=()=>{ st.ui.foodMetric=b.dataset.fm; save(); drawFood(); });
   $("#fdReload").onclick=e=>{ e.preventDefault(); B.innerHTML=`<p class="muted">Aggiorno…</p>`; drawFood(true); };
   B.querySelectorAll("[data-fd]").forEach(c=>c.onclick=()=>{ const x=pts[+c.dataset.fd], tip=$("#fdTip");
-    tip.innerHTML=`<b>${new Date(x.t).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit"})}</b>${x.ok?"":" · parziale"}<br>${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?`<br>C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}<br><span class="muted">Target ${esc(x.tg||"")}</span>`;
+    tip.innerHTML=`<b>${new Date(x.t).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit"})}</b>${x.ok?"":" · parziale"}<br>${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?`<br>C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}<br><span class="muted">${MT.n}: ${esc(stOf(x)||"—")} · target ${esc(x.tg||"")}</span>`;
     tip.hidden=false; const r=B.querySelector(".chartwrap").getBoundingClientRect(), cr=c.getBoundingClientRect();
     tip.style.left=Math.min(r.width-170,Math.max(0,cr.left-r.left-80))+"px"; tip.style.top=Math.max(0,cr.top-r.top-86)+"px"; });
   B.querySelector(".chartwrap").addEventListener("click",ev=>{ if(!ev.target.classList.contains("hit")) $("#fdTip").hidden=true; });
@@ -2198,20 +2203,24 @@ const ymdLocal=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.g
 const dayNo=ymd=>Math.round((Date.UTC(+ymd.slice(0,4),+ymd.slice(5,7)-1,+ymd.slice(8,10))-FD_DAY0)/864e5)+1;
 const csvCell=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v; };
 const toCSV=(head,rows)=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join("\n")+"\n";
-const MEALS=["Colazione","Pranzo","Cena","Spuntini e shake","Pre-allenamento","Post-allenamento"];
-function mealName(t){ t=String(t||"").trim(); const l=t.toLowerCase();
-  if(/colaz|breakfast/.test(l)) return "Colazione"; if(/pranzo|lunch/.test(l)) return "Pranzo"; if(/cena|dinner/.test(l)) return "Cena";
-  if(/pre[- ]?(allen|work)/.test(l)) return "Pre-allenamento"; if(/post[- ]?(allen|work)/.test(l)) return "Post-allenamento";
-  if(/spunt|snack|merend|shake/.test(l)) return "Spuntini e shake"; return t||"Altro"; }
+const MEALS=["Colazione","Pranzo","Cena","Spuntino","Spuntino serale","Shake proteico"];
+/* nome del pasto: tengo quello scritto (es. "Spuntino 2", "Spuntino serale"), traduco solo i nomi inglesi e sistemo le maiuscole */
+function mealName(t){ t=String(t||"").replace(/[:\-–—*#•]+$/,"").trim(); const l=t.toLowerCase();
+  const map={breakfast:"Colazione",lunch:"Pranzo",dinner:"Cena",snack:"Spuntino",snacks:"Spuntini"}; if(map[l]) return map[l];
+  return t?t[0].toUpperCase()+t.slice(1):"Altro"; }
 let fdDraft=null;   // {date, mode, meals:[{pasto,desc,kcal,p,c,g,foods:[...]}], tot, complete, replace}
 function fdTarget(){
-  const t=st.settings.foodT; if(t) return t;
+  const t=st.settings.foodT; if(t&&t.c!=null) return t;
   const g=(food&&food.giorni)||[], l=g[g.length-1];
-  if(l&&l.kcal_min){ const km=(fdNum(l.kcal_min)+fdNum(l.kcal_max))/2, pm=(fdNum(l.proteine_min_g)+fdNum(l.proteine_max_g))/2; return {k:Math.round(km/10)*10,kt:Math.round((fdNum(l.kcal_max)-km)/km*100)||4,p:Math.round(pm),pt:Math.round((fdNum(l.proteine_max_g)-pm)/pm*100)||4}; }
-  return {k:2500,kt:4,p:170,pt:4};
+  if(l){ const m=String(l.target||"").match(/([\d.]+)\s*kcal\s*·\s*(\d+)(?:–(\d+))?\s*g/); const r=(lo)=>fdNum(lo)!=null?Math.round(fdNum(lo)/0.925):null;
+    if(m) return {k:+m[1].replace(/\./g,""),p:m[3]?Math.round((+m[2]+ +m[3])/2):+m[2],c:r(l.carboidrati_min_g)??260,g:r(l.grassi_min_g)??80}; }
+  return {k:2460,p:175,c:260,g:80};
 }
-function fdTargetCols(t){ const kl=Math.round(t.k*(1-t.kt/100)), kh=Math.round(t.k*(1+t.kt/100)), pl=Math.round(t.p*(1-t.pt/100)*10)/10, ph=Math.round(t.p*(1+t.pt/100)*10)/10;
-  return {target:`${t.k.toLocaleString("it-IT")} kcal · ${t.p} g (±${t.kt===t.pt?t.kt+"%":t.kt+"% / ±"+t.pt+"%"})`,kcal_min:kl,kcal_max:kh,proteine_min_g:pl,proteine_max_g:ph}; }
+const FD_LO=0.925, FD_HI=1.05;
+function fdTargetCols(t){ const r=v=>Math.round(v*10)/10;
+  return {target:`${String(t.k).replace(/\B(?=(\d{3})+(?!\d))/g,".")} kcal · ${t.p} g`,kcal_min:r(t.k*FD_LO),kcal_max:r(t.k*FD_HI),proteine_min_g:r(t.p*FD_LO),proteine_max_g:r(t.p*FD_HI),carboidrati_min_g:r(t.c*FD_LO),carboidrati_max_g:r(t.c*FD_HI),grassi_min_g:r(t.g*FD_LO),grassi_max_g:r(t.g*FD_HI)}; }
+/* stato rispetto al target, con le soglie del README: <85% molto sotto, <92,5% appena sotto, ≤105% centrato, ≤110% appena sopra */
+const fdState=(v,t)=>v==null||!t?"":v<t*0.85?"molto sotto":v<t*0.925?"appena sotto":v<=t*1.05?"centrato":v<=t*1.10?"appena sopra":"molto sopra";
 /* lettura locale (senza AI) di un riepilogo incollato: intestazioni dei pasti, alimenti con kcal e macro */
 function parseFoodText(txt){
   const meals=[]; let cur=null, tot=null;
@@ -2222,7 +2231,7 @@ function parseFoodText(txt){
     const v=vals(l), head=l.replace(/[:\-–—*#•]+/g," ").trim();
     if(/^(tot|totale|total)/i.test(head)){ tot=v; return; }
     const isMeal=/^(colazione|pranzo|cena|spuntin\w*|snack\w*|merenda|pre[- ]?allen\w*|post[- ]?allen\w*|shake|breakfast|lunch|dinner)\b/i.test(head);
-    if(isMeal){ cur={pasto:mealName(head),foods:[],...v}; meals.push(cur); return; }
+    if(isMeal){ cur={pasto:mealName(head.replace(/\s*\d+(?:[.,]\d+)?\s*(?:kcal|cal)\b.*$/i,"")),foods:[],...v}; meals.push(cur); return; }
     if(v.kcal==null&&v.p==null) return;
     if(!cur){ cur={pasto:"Altro",foods:[]}; meals.push(cur); }
     const nome=l.replace(/\(?\s*\d+(?:[.,]\d+)?\s*(kcal|cal)\b.*$/i,"").replace(/[·|,;:–—-]+\s*$/,"").trim();
@@ -2266,13 +2275,13 @@ function openDiary(date){
       <p class="muted" id="fdMsg"></p>`}
     ${D.meals.length?`<div class="card"><h3>Da salvare</h3>${D.meals.map(row).join("")}
       <p class="fdtot"><b>Totale: ${Math.round(tot.kcal)} kcal</b> · P ${fdR1(tot.p)} g · C ${fdR1(tot.c)} g · G ${fdR1(tot.g)} g${D.tot&&D.tot.kcal!=null&&Math.abs(D.tot.kcal-sum("kcal"))>5?` <span class="xs">(totale dell'app; somma dei pasti ${Math.round(sum("kcal"))})</span>`:""}</p>
-      <p class="muted xs">Target: ${t.k} kcal (${Math.round(t.k*(1-t.kt/100))}–${Math.round(t.k*(1+t.kt/100))}) · proteine ${t.p} g</p>
+      <p class="muted xs">Target: ${t.k} kcal · P ${t.p} · C ${t.c} · G ${t.g} g → ${fdState(tot.kcal,t.k)||"—"} (kcal), ${fdState(tot.p,t.p)||"—"} (proteine)</p>
       <label class="chk"><input type="checkbox" id="fdComp" ${D.complete?"checked":""}> Giornata completa</label>
       ${saved.length?`<label class="chk"><input type="checkbox" id="fdRep" ${D.replace?"checked":""}> Sostituisci i ${saved.length} pasti già salvati per questo giorno (altrimenti li aggiungo)</label>`:""}
       <div class="row"><button type="button" class="btn acc" id="fdSave">💾 Salva il giorno</button><button type="button" class="btn" id="fdClear">Svuota</button></div><p class="muted" id="fdSaveMsg"></p></div>`:""}
-    <details class="card"><summary><b>Target giornaliero</b> <span class="muted">${t.k} kcal ±${t.kt}% · ${t.p} g ±${t.pt}%</span></summary>
-      <div class="fdv"><label><span>kcal</span><input class="inp" inputmode="numeric" id="tK" value="${t.k}"></label><label><span>± %</span><input class="inp" inputmode="numeric" id="tKt" value="${t.kt}"></label><label><span>Proteine g</span><input class="inp" inputmode="numeric" id="tP" value="${t.p}"></label><label><span>± %</span><input class="inp" inputmode="numeric" id="tPt" value="${t.pt}"></label></div>
-      <div class="row"><button type="button" class="btn" id="tSave">Salva target</button></div><p class="muted xs">Vale per i giorni che salvi da ora in poi.</p></details>
+    <details class="card"><summary><b>Target giornaliero</b> <span class="muted">${t.k} kcal · P ${t.p} · C ${t.c} · G ${t.g} g</span></summary>
+      <div class="fdv"><label><span>kcal</span><input class="inp" inputmode="numeric" id="tK" value="${t.k}"></label><label><span>Proteine g</span><input class="inp" inputmode="numeric" id="tP" value="${t.p}"></label><label><span>Carbo g</span><input class="inp" inputmode="numeric" id="tC" value="${t.c}"></label><label><span>Grassi g</span><input class="inp" inputmode="numeric" id="tG" value="${t.g}"></label></div>
+      <div class="row"><button type="button" class="btn" id="tSave">Salva target</button></div><p class="muted xs">Vale per i giorni che salvi da ora in poi. "Centrato" = 92,5–105% del target.</p></details>
     ${st.settings.ghToken?"":`<p class="warn">Per salvare collega il backup GitHub in ⚙ Impostazioni.</p>`}`);
   const B=$("#sheetBody");
   $("#fdDate").onchange=e=>{ fdDraft.date=e.target.value; fdDraft.meals.forEach(()=>{}); openDiary(e.target.value); };
@@ -2284,19 +2293,19 @@ function openDiary(date){
   if($("#fdClear")) $("#fdClear").onclick=()=>{ D.meals=[]; D.tot=null; D.text=""; openDiary(date); };
   if($("#fdComp")) $("#fdComp").onchange=e=>D.complete=e.target.checked;
   if($("#fdRep")) $("#fdRep").onchange=e=>D.replace=e.target.checked;
-  $("#tSave").onclick=()=>{ const n=id=>Math.max(0,+$(id).value||0); st.settings.foodT={k:n("#tK"),kt:n("#tKt"),p:n("#tP"),pt:n("#tPt")}; save(); openDiary(date); };
+  $("#tSave").onclick=()=>{ const n=id=>Math.max(0,+$(id).value||0); st.settings.foodT={k:n("#tK"),p:n("#tP"),c:n("#tC"),g:n("#tG")}; save(); openDiary(date); };
   if($("#fdGo")) $("#fdGo").onclick=async()=>{
     const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg");
     let meals=[], tot=null;
     if(D.mode==="paste"){
       if(aiReady()){ msg.textContent="Leggo il riepilogo…"; const j=await fdAI("paste",txt); if(!j.err){ meals=j.pasti||[]; tot=j.totale; if(j.data&&/^\d{4}-\d\d-\d\d$/.test(j.data)&&j.data<=today) D.date=j.data; } }
       if(!meals.length){ const r=parseFoodText(txt); meals=r.meals; tot=r.tot; if(!meals.length){ msg.textContent="Non sono riuscito a leggere il riepilogo. Usa ✍ Manuale oppure mandami un esempio del testo che copi."; return; } }
-      D.meals=fdNormalize(meals); D.tot=tot&&fdNum(tot.kcal)!=null?{kcal:fdNum(tot.kcal),p:fdNum(tot.p),c:fdNum(tot.c),g:fdNum(tot.g)}:null; D.complete=true; D.replace=true; D.text="";
+      D.meals=fdNormalize(meals).map(m=>({...m,src:"diario"})); D.tot=tot&&fdNum(tot.kcal)!=null?{kcal:fdNum(tot.kcal),p:fdNum(tot.p),c:fdNum(tot.c),g:fdNum(tot.g)}:null; D.complete=true; D.replace=true; D.text="";
     } else {
       if(!aiReady()){ msg.textContent="Per la stima serve una chiave Gemini o OpenRouter in ⚙. Puoi usare ✍ Manuale."; return; }
       msg.textContent="Stimo i valori…"; const j=await fdAI("ai",txt);
       if(j.err){ msg.textContent="Non riesco a stimare ora ("+j.err+"). Riprova più tardi o usa ✍ Manuale."; return; }
-      D.meals=[...D.meals,...fdNormalize(j.pasti||[])]; D.tot=null; D.complete=day?day.giorno_completo!=="no":false; D.replace=false; D.text="";
+      D.meals=[...D.meals,...fdNormalize(j.pasti||[]).map(m=>({...m,src:"stimato"}))]; D.tot=null; D.complete=day?day.giorno_completo!=="no":false; D.replace=false; D.text="";
     }
     fdDraft.date=D.date; openDiary(D.date);
   };
@@ -2306,7 +2315,7 @@ function openDiary(date){
     let said=""; r.onresult=ev=>{ for(let k=ev.resultIndex;k<ev.results.length;k++) if(ev.results[k].isFinal) said+=" "+ev.results[k][0].transcript; ta.value=(base+" "+said).trim(); };
     r.onend=()=>{ b._rec=null; b.textContent="🎤 Detta"; b.classList.remove("on"); }; r.start(); b._rec=r; b.textContent="⏹ Fine"; b.classList.add("on"); };
   if($("#fdSave")) $("#fdSave").onclick=async()=>{
-    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(fdTarget()),at:Date.now()};
+    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(fdTarget()),tgt:fdTarget(),at:Date.now()};
     const m=$("#fdSaveMsg"); m.textContent="Salvo…";
     if(!st.settings.ghToken){ m.textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
     (st.foodQ ||= []).push(job); save();
@@ -2323,7 +2332,8 @@ async function flushFoodQ(){
     if(!(st.foodQ||[]).length) return true;
     if(!st.settings.ghToken||!st.settings.ghRepo) return false;
     try{
-      const get=async f=>{ const r=await gh("alimentazione/"+f); if(r.status===404) return {rows:[],sha:null}; if(!r.ok) throw r.status; const j=await r.json(); return {rows:parseCSV(unb64(j.content)),sha:j.sha}; };
+      const get=async f=>{ const r=await gh("alimentazione/"+f); if(r.status===404) return {rows:[],sha:null,head:[]}; if(!r.ok) throw r.status; const j=await r.json(); const txt=unb64(j.content); return {rows:parseCSV(txt),sha:j.sha,head:(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean)}; };
+      const H=(F,base)=>[...F.head,...base.filter(k=>!F.head.includes(k))];
       const put=async(f,content,sha,msg)=>{ const r=await gh("alimentazione/"+f,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})}); if(!r.ok) throw r.status; };
       const [G,P,A]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
       const dates=[];
@@ -2331,7 +2341,7 @@ async function flushFoodQ(){
         const n=dayNo(job.date); dates.push(job.date);
         if(job.replace){ P.rows=P.rows.filter(r=>r.data!==job.date); A.rows=A.rows.filter(r=>r.data!==job.date); }
         job.meals.forEach(m=>{ P.rows.push({giorno:n,data:job.date,pasto:m.pasto,descrizione:m.desc,kcal:fdR1(m.kcal),proteine_g:fdR1(m.p),carboidrati_g:fdR1(m.c),grassi_g:fdR1(m.g)});
-          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g)})); });
+          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g),fonte:m.src||"diario"})); });
         // totali del giorno: dall'app esterna se il giorno è stato incollato intero, altrimenti somma dei pasti salvati
         const dm=P.rows.filter(r=>r.data===job.date), s=k=>{ const v=dm.map(r=>fdNum(r[k])).filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)*10)/10:null; };
         const useT=job.replace&&job.tot&&job.tot.kcal!=null;
@@ -2341,15 +2351,17 @@ async function flushFoodQ(){
         const app=!job.replace&&old.data;
         const tv=(k,col)=>useT&&job.tot[k]!=null?job.tot[k]:app?add(k):s(col);
         const row={giorno:n,data:job.date,kcal:Math.round(tv("kcal","kcal")||0),proteine_g:fdR1(tv("p","proteine_g")),carboidrati_g:fdR1(tv("c","carboidrati_g")),grassi_g:fdR1(tv("g","grassi_g")),
-          giorno_completo:job.complete?"sì":"no",...(old.target&&!job.replace?{target:old.target,kcal_min:old.kcal_min,kcal_max:old.kcal_max,proteine_min_g:old.proteine_min_g,proteine_max_g:old.proteine_max_g}:job.target)};
+          giorno_completo:job.complete?"sì":"no",...(old.target?Object.fromEntries(Object.keys(job.target).map(k=>[k,old[k]??job.target[k]])):job.target),nota:old.nota||""};
+        { const tg=old.target?{k:fdNum(old.kcal_min)/FD_LO,p:fdNum(old.proteine_min_g)/FD_LO,c:fdNum(old.carboidrati_min_g)/FD_LO,g:fdNum(old.grassi_min_g)/FD_LO}:job.tgt;
+          row.stato_kcal=fdState(fdNum(row.kcal),tg.k); row.stato_proteine=fdState(fdNum(row.proteine_g),tg.p); row.stato_carboidrati=fdState(fdNum(row.carboidrati_g),tg.c); row.stato_grassi=fdState(fdNum(row.grassi_g),tg.g); }
         G.rows=G.rows.filter(r=>r.data!==job.date); G.rows.push(row);
       }
       const by=(a,b)=>a.data<b.data?-1:a.data>b.data?1:0;
       G.rows.sort(by); P.rows.sort(by); A.rows.sort(by);
       const msg="Diario alimentare: "+[...new Set(dates)].join(", ");
-      await put("pasti.csv",toCSV(["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"],P.rows),P.sha,msg);
-      await put("alimenti.csv",toCSV(["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g"],A.rows),A.sha,msg);
-      await put("giorni.csv",toCSV(["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g"],G.rows),G.sha,msg);
+      await put("pasti.csv",toCSV(H(P,["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"]),P.rows),P.sha,msg);
+      await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte"]),A.rows),A.sha,msg);
+      await put("giorni.csv",toCSV(H(G,["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g","carboidrati_min_g","carboidrati_max_g","grassi_min_g","grassi_max_g","stato_kcal","stato_proteine","stato_carboidrati","stato_grassi","nota"]),G.rows),G.sha,msg);
       st.foodQ=[]; save(); food=null; try{ localStorage.removeItem("gc_food"); }catch(e){}
       return true;
     }catch(e){ return false; }
