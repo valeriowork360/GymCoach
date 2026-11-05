@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "80";
+const APP_VERSION = "82";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1785,8 +1785,9 @@ function openStats(sel){
       <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+stN(id))}</option>`).join("")}</select>
       <div id="stChart"></div>
     </div>
-    <div class="card" id="foodCard"><h3>Alimentazione</h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>`);
+    <div class="card" id="foodCard"><h3>Alimentazione <button type="button" class="btn sm" id="fdOpen" style="float:right">🍽 Aggiungi</button></h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>`);
   drawWeekly(work);
+  $("#fdOpen").onclick=()=>openDiary();
   $("#stEx").onchange=e=>drawExStats(e.target.value);
   drawExStats(cur);
   drawOverview();
@@ -1951,30 +1952,33 @@ async function drawFood(force){
   const inK=comp.filter(x=>x.k!=null&&x.kmin!=null&&x.k>=x.kmin&&x.k<=x.kmax).length, inP=comp.filter(x=>x.p!=null&&x.pmin!=null&&x.p>=x.pmin).length;
   const pc=n=>comp.length?Math.round(100*n/comp.length)+"%":"—";
   const last=all[all.length-1];
-  let h=`<div class="seg"><button type="button" data-fr="14" class="${rng===14?"on":""}">14 giorni</button><button type="button" data-fr="30" class="${rng===30?"on":""}">30 giorni</button><button type="button" data-fr="0" class="${!rng?"on":""}">Tutto</button></div>
+  let h=`<div class="seg"><button type="button" data-fr="7" class="${rng===7?"on":""}">7 giorni</button><button type="button" data-fr="14" class="${rng===14?"on":""}">14 giorni</button><button type="button" data-fr="30" class="${rng===30?"on":""}">30 giorni</button><button type="button" data-fr="0" class="${!rng?"on":""}">Tutto</button></div>
     <div class="seg"><button type="button" data-fm="k" class="${met==="k"?"on":""}">Calorie</button><button type="button" data-fm="p" class="${met==="p"?"on":""}">Proteine</button></div>
     <div class="tiles" style="margin-top:8px"><div class="tile"><b>${avg(comp.map(x=>x.k).filter(v=>v!=null))??"—"}</b><span>kcal medie</span></div><div class="tile"><b>${avg(comp.map(x=>x.p).filter(v=>v!=null))??"—"} g</b><span>proteine medie</span></div><div class="tile"><b>${met==="k"?pc(inK):pc(inP)}</b><span>giorni ${met==="k"?"nel target kcal":"con proteine ≥ minimo"}</span></div></div>
-    <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: colonna vuota, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
+    <p class="muted" style="margin:6px 2px 0">Dal ${dateTxt(days[0].t)} al ${dateTxt(last.t)} · ${days.length} giorni${days.length-comp.length?` (${days.length-comp.length} registrati solo in parte: in grigio, esclusi dalle medie)`:""} · fascia = target del periodo</p>`;
   // grafico: una serie + fascia del target
   const val=x=>met==="k"?x.k:x.p, lo=x=>met==="k"?x.kmin:x.pmin, hi=x=>met==="k"?x.kmax:x.pmax;
   const pts=days.filter(x=>val(x)!=null);
   const W=340,H=180,L=38,R=10,T=10,B2=24, t0=days[0].t, t1=last.t>t0?days[days.length-1].t:t0+864e5;
   const vs=[...pts.map(val),...days.map(lo).filter(v=>v!=null),...days.map(hi).filter(v=>v!=null)];
-  let vmin=Math.min(...vs), vmax=Math.max(...vs); const pad=(vmax-vmin)*0.08||10; vmin=Math.max(0,vmin-pad*3); vmax+=pad;
-  const X=t=>L+(W-L-R)*((t-t0)/((t1-t0)||1)), Y=v=>T+(H-T-B2)*(1-(v-vmin)/(vmax-vmin));
+  const stp=met==="k"?1000:50; let vmin=0, vmax=Math.ceil(Math.max(...vs)*1.04/stp)*stp; if(vmax/stp<3&&met==="k") vmax=Math.max(vmax,3000);
+  const nD=Math.round((days[days.length-1].t-t0)/864e5)+1, slotD=(W-L-R)/nD, X=t=>L+slotD*((t-t0)/864e5+.5), Y=v=>T+(H-T-B2)*(1-(v-vmin)/(vmax-vmin));
   let svg=`<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${met==="k"?"Calorie":"Proteine"} giornaliere con la fascia del target">`;
-  [0,1,2,3].map(i=>vmin+(vmax-vmin)*i/3).forEach(v=>svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-6}" y="${Y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`);
+  Array.from({length:Math.round(vmax/stp)+1},(_,i)=>i*stp).forEach(v=>svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-6}" y="${Y(v)+3}" class="ax" text-anchor="end">${Math.round(v)}</text>`);
   const band=days.filter(x=>lo(x)!=null&&hi(x)!=null);
-  if(band.length){ const step=(t1-t0)/Math.max(1,days.length-1)/2; const top=band.map(x=>`${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(hi(x)).toFixed(1)} ${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(hi(x)).toFixed(1)}`).join(" "), bot=band.slice().reverse().map(x=>`${X(Math.min(t1,x.t+step)).toFixed(1)},${Y(lo(x)).toFixed(1)} ${X(Math.max(t0,x.t-step)).toFixed(1)},${Y(lo(x)).toFixed(1)}`).join(" ");
-    svg+=`<polygon points="${top} ${bot}" fill="#199e70" fill-opacity=".16" stroke="none"/>`; }
-  [t0,t0+(t1-t0)/2,t1].forEach((t,i)=>svg+=`<text x="${X(t)}" y="${H-7}" class="ax" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateTxt(t)}</text>`);
+  if(band.length){ const step=864e5/2; const top=band.map(x=>`${X(x.t-step).toFixed(1)},${Y(hi(x)).toFixed(1)} ${X(x.t+step).toFixed(1)},${Y(hi(x)).toFixed(1)}`).join(" "), bot=band.slice().reverse().map(x=>`${X(x.t+step).toFixed(1)},${Y(lo(x)).toFixed(1)} ${X(x.t-step).toFixed(1)},${Y(lo(x)).toFixed(1)}`).join(" ");
+    svg+=`<polygon points="${top} ${bot}" fill="#199e70" fill-opacity=".10" stroke="none"/>`; }
+  [t0,t0+Math.round((nD-1)/2)*864e5,days[days.length-1].t].forEach(t=>svg+=`<text x="${X(t)}" y="${H-7}" class="ax" text-anchor="middle">${dateTxt(t)}</text>`);
   // colonne: una barra per giorno dalla base del grafico; giorni parziali solo contorno
-  const slot=(W-L-R)/Math.max(1,days.length), bw=Math.max(2,Math.min(18,slot-2)), base=Y(vmin);
-  pts.forEach((x,k)=>{ const cx=X(x.t), y=Y(val(x)), hgt=Math.max(1,base-y), r=Math.min(4,bw/2);
-    svg+=`<path d="M${(cx-bw/2).toFixed(1)},${base.toFixed(1)} V${(y+r).toFixed(1)} Q${(cx-bw/2).toFixed(1)},${y.toFixed(1)} ${(cx-bw/2+r).toFixed(1)},${y.toFixed(1)} H${(cx+bw/2-r).toFixed(1)} Q${(cx+bw/2).toFixed(1)},${y.toFixed(1)} ${(cx+bw/2).toFixed(1)},${(y+r).toFixed(1)} V${base.toFixed(1)} Z" fill="${x.ok?"#3987e5":"none"}" stroke="${x.ok?"none":"#3987e5"}" stroke-width="${x.ok?0:1.5}"/>`;
-    svg+=`<rect x="${(cx-Math.max(bw,10)/2).toFixed(1)}" y="${T}" width="${Math.max(bw,10)}" height="${(base-T).toFixed(1)}" fill="transparent" class="hit" data-fd="${k}"/>`; });
+  const slot=slotD, bw=Math.max(2,Math.min(22,slot*0.7)), base=Y(vmin);
+  const tcol=x=>{ const v=val(x); if(!x.ok) return "#6b727c"; if(lo(x)==null) return "#3987e5"; return v<lo(x)?"#e0a526":(hi(x)!=null&&v>hi(x))?"#3987e5":"#199e70"; };
+  const ymd2=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }, trainD=new Set(allSessions().map(h=>ymd2(h.start)));
+  pts.forEach((x,k)=>{ const cx=X(x.t), y=Y(val(x)), r=Math.min(4,bw/2);
+    svg+=`<path d="M${(cx-bw/2).toFixed(1)},${base.toFixed(1)} V${(y+r).toFixed(1)} Q${(cx-bw/2).toFixed(1)},${y.toFixed(1)} ${(cx-bw/2+r).toFixed(1)},${y.toFixed(1)} H${(cx+bw/2-r).toFixed(1)} Q${(cx+bw/2).toFixed(1)},${y.toFixed(1)} ${(cx+bw/2).toFixed(1)},${(y+r).toFixed(1)} V${base.toFixed(1)} Z" fill="${tcol(x)}"/>`;
+    if(trainD.has(x.d)) svg+=`<circle cx="${cx.toFixed(1)}" cy="${(base+4).toFixed(1)}" r="1.6" fill="#e8edf2"/>`;
+    svg+=`<rect x="${(cx-Math.max(slot,10)/2).toFixed(1)}" y="${T}" width="${Math.max(slot,10)}" height="${(base-T+6).toFixed(1)}" fill="transparent" class="hit" data-fd="${k}"/>`; });
   svg+=`</svg>`;
-  h+=`<div class="chartwrap">${svg}<div class="tip" id="fdTip" hidden></div></div>`;
+  h+=`<div class="legend" style="margin-top:8px"><span><i style="background:#199e70"></i>nel target</span><span><i style="background:#e0a526"></i>sotto</span><span><i style="background:#3987e5"></i>sopra</span><span><i style="background:#6b727c"></i>parziale</span><span>• allenamento</span></div><div class="chartwrap">${svg}<div class="tip" id="fdTip" hidden></div></div>`;
   // elenco dei giorni con i pasti
   const meals=g=>f.pasti.filter(m=>+m.giorno===g);
   h+=`<details class="tbl"><summary>Giorni e pasti (${days.length})</summary>${days.slice().reverse().map(x=>`<details class="fday"><summary><b>${dateTxt(x.t)}</b> · ${x.k??"?"} kcal · P ${x.p??"?"} g${x.c!=null?` · C ${Math.round(x.c)} g · G ${Math.round(x.f)} g`:""}${x.ok?"":` <span class="xs">· parziale</span>`}</summary>${meals(x.g).map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(N(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(N(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")||`<p class="muted">Nessun pasto dettagliato.</p>`}<div class="xs">Target: ${esc(x.tg||"—")}</div></details>`).join("")}</details>`;
@@ -2180,3 +2184,175 @@ window.__appOk=true;
     if(w&&w.querySelector(".hit")){ ev.stopPropagation(); return; }
     document.querySelectorAll(".chartwrap .tip,.xhair").forEach(x=>x.hidden=true); },true);
 })();
+
+/* ---------------- 🍽 diario alimentare: incolla il riepilogo, descrivi il pasto o inseriscilo a mano ----------------
+   Salva in alimentazione/ del repository dei dati: giorni.csv (totali del giorno), pasti.csv (un pasto per riga)
+   e alimenti.csv (un alimento per riga). Se non c'è rete il giorno resta in coda sul telefono e viene salvato dopo. */
+const FD_DAY0=Date.UTC(2026,7,22);   // giorno 1 = 22/08/2026
+const fdNum=v=>v===""||v==null||isNaN(+String(v).replace(",","."))?null:+String(v).replace(",",".");
+const fdR1=v=>v==null?"":String(Math.round(v*10)/10);
+const ymdLocal=t=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const dayNo=ymd=>Math.round((Date.UTC(+ymd.slice(0,4),+ymd.slice(5,7)-1,+ymd.slice(8,10))-FD_DAY0)/864e5)+1;
+const csvCell=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v; };
+const toCSV=(head,rows)=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join("\n")+"\n";
+const MEALS=["Colazione","Pranzo","Cena","Spuntini e shake","Pre-allenamento","Post-allenamento"];
+function mealName(t){ t=String(t||"").trim(); const l=t.toLowerCase();
+  if(/colaz|breakfast/.test(l)) return "Colazione"; if(/pranzo|lunch/.test(l)) return "Pranzo"; if(/cena|dinner/.test(l)) return "Cena";
+  if(/pre[- ]?(allen|work)/.test(l)) return "Pre-allenamento"; if(/post[- ]?(allen|work)/.test(l)) return "Post-allenamento";
+  if(/spunt|snack|merend|shake/.test(l)) return "Spuntini e shake"; return t||"Altro"; }
+let fdDraft=null;   // {date, mode, meals:[{pasto,desc,kcal,p,c,g,foods:[...]}], tot, complete, replace}
+function fdTarget(){
+  const t=st.settings.foodT; if(t) return t;
+  const g=(food&&food.giorni)||[], l=g[g.length-1];
+  if(l&&l.kcal_min){ const km=(fdNum(l.kcal_min)+fdNum(l.kcal_max))/2, pm=(fdNum(l.proteine_min_g)+fdNum(l.proteine_max_g))/2; return {k:Math.round(km/10)*10,kt:Math.round((fdNum(l.kcal_max)-km)/km*100)||4,p:Math.round(pm),pt:Math.round((fdNum(l.proteine_max_g)-pm)/pm*100)||4}; }
+  return {k:2500,kt:4,p:170,pt:4};
+}
+function fdTargetCols(t){ const kl=Math.round(t.k*(1-t.kt/100)), kh=Math.round(t.k*(1+t.kt/100)), pl=Math.round(t.p*(1-t.pt/100)*10)/10, ph=Math.round(t.p*(1+t.pt/100)*10)/10;
+  return {target:`${t.k.toLocaleString("it-IT")} kcal · ${t.p} g (±${t.kt===t.pt?t.kt+"%":t.kt+"% / ±"+t.pt+"%"})`,kcal_min:kl,kcal_max:kh,proteine_min_g:pl,proteine_max_g:ph}; }
+/* lettura locale (senza AI) di un riepilogo incollato: intestazioni dei pasti, alimenti con kcal e macro */
+function parseFoodText(txt){
+  const meals=[]; let cur=null, tot=null;
+  const grab=(l,re)=>{ const m=l.match(re); return m?fdNum(m[1]):null; };
+  const vals=l=>({kcal:grab(l,/(\d+(?:[.,]\d+)?)\s*(?:kcal|cal)\b/i),p:grab(l,/(?:\bP(?:rot\w*)?|protein\w*)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)??grab(l,/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?prot/i),
+    c:grab(l,/(?:\bC(?:arb\w*)?|carbo\w*)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)??grab(l,/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?carb/i),g:grab(l,/(?:\bG(?:rass\w*)?|\bF(?:at)?|lipid\w*)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)??grab(l,/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?(?:grass|fat)/i)});
+  txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach(l=>{
+    const v=vals(l), head=l.replace(/[:\-–—*#•]+/g," ").trim();
+    if(/^(tot|totale|total)/i.test(head)){ tot=v; return; }
+    const isMeal=/^(colazione|pranzo|cena|spuntin\w*|snack\w*|merenda|pre[- ]?allen\w*|post[- ]?allen\w*|shake|breakfast|lunch|dinner)\b/i.test(head);
+    if(isMeal){ cur={pasto:mealName(head),foods:[],...v}; meals.push(cur); return; }
+    if(v.kcal==null&&v.p==null) return;
+    if(!cur){ cur={pasto:"Altro",foods:[]}; meals.push(cur); }
+    const nome=l.replace(/\(?\s*\d+(?:[.,]\d+)?\s*(kcal|cal)\b.*$/i,"").replace(/[·|,;:–—-]+\s*$/,"").trim();
+    const q=(nome.match(/(\d+(?:[.,]\d+)?\s*(?:g|ml|gr|pz|x)\b)/i)||[])[1]||"";
+    cur.foods.push({nome:nome||l,q,...v});
+  });
+  return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot};
+}
+function fdNormalize(meals){ return meals.map(m=>{ const foods=(m.foods||m.alimenti||[]).map(f=>({nome:String(f.nome||f.name||"").trim(),q:String(f.q||f.quantita||"").trim(),kcal:fdNum(f.kcal),p:fdNum(f.p),c:fdNum(f.c),g:fdNum(f.g)}));
+  const sum=k=>foods.some(f=>f[k]!=null)?foods.reduce((a,f)=>a+(f[k]||0),0):null;
+  return {pasto:mealName(m.pasto),foods,desc:m.desc||foods.map(f=>f.nome+(f.q&&!f.nome.includes(f.q)?" "+f.q:"")).join("; "),kcal:fdNum(m.kcal)??sum("kcal"),p:fdNum(m.p)??sum("p"),c:fdNum(m.c)??sum("c"),g:fdNum(m.g)??sum("g")}; }); }
+async function fdAI(mode,text){
+  const json='{"data":"YYYY-MM-DD" o null,"pasti":[{"pasto":"Colazione|Pranzo|Cena|Spuntini e shake|...","alimenti":[{"nome":"","quantita":"","kcal":0,"p":0,"c":0,"g":0}],"kcal":0,"p":0,"c":0,"g":0}],"totale":{"kcal":0,"p":0,"c":0,"g":0} o null}';
+  const sys = mode==="paste"
+    ? `Ricevi il riepilogo giornaliero di un diario alimentare copiato da un'app. NON stimare e NON correggere: copia esattamente i valori presenti (kcal, proteine p, carboidrati c, grassi g in grammi) per ogni alimento, ogni pasto e il totale. Se un valore manca metti null. Mantieni i nomi degli alimenti e le quantità come scritti. Rispondi SOLO con JSON valido nel formato ${json}`
+    : `Stima i valori nutrizionali (valore centrale realistico) dei pasti descritti dall'utente, alimento per alimento: kcal, proteine p, carboidrati c, grassi g in grammi. Se la quantità non è indicata usa una porzione tipica e scrivila in "quantita" con "~". Rispondi SOLO con JSON valido nel formato ${json}`;
+  const order=st.settings.provider==="openrouter"?[callOpenRouter,callGemini]:[callGemini,callOpenRouter]; const errs=[];
+  for(const f of order){ if(f===callGemini&&!st.settings.apiKey||f===callOpenRouter&&!st.settings.orKey) continue;
+    const r=await f(sys,text); if(r.out){ try{ const j=JSON.parse(r.out.replace(/^[\s\S]*?(\{)/,"$1").replace(/\}[^}]*$/,"}")); return j; }catch(e){ errs.push("risposta non leggibile"); continue; } } errs.push(r.err); if(r.offline) break; }
+  return {err:errs.join("; ")||"nessuna chiave AI configurata"};
+}
+function openDiary(date){
+  const today=ymdLocal(Date.now()); date=date||(fdDraft&&fdDraft.date)||today;
+  if(!fdDraft||fdDraft.date!==date) fdDraft={date,mode:(fdDraft&&fdDraft.mode)||"paste",meals:[],tot:null,complete:true,replace:true,text:""};
+  const D=fdDraft, t=fdTarget();
+  const saved=((food&&food.pasti)||[]).filter(m=>m.data===date), day=((food&&food.giorni)||[]).find(g=>g.data===date);
+  const q=(st.foodQ||[]).filter(x=>x.date===date);
+  const sum=k=>D.meals.reduce((a,m)=>a+(m[k]||0),0);
+  const tot=D.tot&&D.tot.kcal!=null?D.tot:{kcal:sum("kcal"),p:sum("p"),c:sum("c"),g:sum("g")};
+  const row=(m,i)=>`<div class="fdm"><div class="fdh"><select class="inp" data-fm="${i}" data-k="pasto">${[...new Set([...MEALS,m.pasto])].map(x=>`<option ${x===m.pasto?"selected":""}>${esc(x)}</option>`).join("")}</select><button type="button" class="btn sm" data-fdel="${i}" aria-label="Elimina">✕</button></div>
+    <textarea class="inp" rows="2" data-fm="${i}" data-k="desc">${esc(m.desc)}</textarea>
+    <div class="fdv">${[["kcal","kcal"],["p","P g"],["c","C g"],["g","G g"]].map(([k,l])=>`<label><span>${l}</span><input class="inp" inputmode="decimal" data-fm="${i}" data-k="${k}" value="${m[k]==null?"":fdR1(m[k])}"></label>`).join("")}</div>
+    ${m.foods&&m.foods.length>1?`<details class="xs"><summary>${m.foods.length} alimenti</summary>${m.foods.map(f=>`<div>${esc(f.nome)}${f.q&&!f.nome.includes(f.q)?" · "+esc(f.q):""} — ${f.kcal??"?"} kcal${f.p!=null?" · P "+fdR1(f.p):""}${f.c!=null?" · C "+fdR1(f.c):""}${f.g!=null?" · G "+fdR1(f.g):""}</div>`).join("")}</details>`:""}</div>`;
+  openSheet("Diario alimentare",`
+    <div class="fdtop"><input type="date" class="inp" id="fdDate" value="${date}" max="${today}"><span class="muted">giorno ${dayNo(date)}</span></div>
+    ${saved.length||q.length?`<div class="card"><h3>Già salvato per questo giorno</h3>${day?`<p><b>${day.kcal||"?"} kcal</b> · P ${day.proteine_g||"?"} g${day.carboidrati_g?` · C ${day.carboidrati_g} g · G ${day.grassi_g} g`:""}${day.giorno_completo==="no"?" · parziale":""}</p>`:""}${saved.map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(fdNum(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(fdNum(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")}${q.length?`<p class="warn">⏳ ${q.length} salvataggio in attesa di rete.</p>`:""}</div>`:""}
+    <div class="seg" id="fdMode"><button type="button" data-md="paste" class="${D.mode==="paste"?"on":""}">📋 Incolla riepilogo</button><button type="button" data-md="ai" class="${D.mode==="ai"?"on":""}">💬 Descrivi</button><button type="button" data-md="man" class="${D.mode==="man"?"on":""}">✍ Manuale</button></div>
+    ${D.mode==="man"?`<p class="muted cap">Aggiungi un pasto e compila i valori.</p><div class="row"><button type="button" class="btn" id="fdAdd">➕ Aggiungi pasto</button></div>`
+      :`<textarea class="inp" id="fdText" rows="${D.mode==="paste"?7:3}" placeholder="${D.mode==="paste"?"Incolla qui il riepilogo della giornata copiato dall'app (pasti, alimenti, kcal e macro)":"Es. pranzo: 150 g riso basmati, 200 g petto di pollo, insalata con un cucchiaio d'olio"}">${esc(D.text||"")}</textarea>
+      <div class="row">${D.mode==="ai"&&SR?`<button type="button" class="btn" id="fdMic">🎤 Detta</button>`:""}<button type="button" class="btn acc" id="fdGo">${D.mode==="paste"?"Leggi il riepilogo":"Stima i valori"}</button></div>
+      <p class="muted" id="fdMsg"></p>`}
+    ${D.meals.length?`<div class="card"><h3>Da salvare</h3>${D.meals.map(row).join("")}
+      <p class="fdtot"><b>Totale: ${Math.round(tot.kcal)} kcal</b> · P ${fdR1(tot.p)} g · C ${fdR1(tot.c)} g · G ${fdR1(tot.g)} g${D.tot&&D.tot.kcal!=null&&Math.abs(D.tot.kcal-sum("kcal"))>5?` <span class="xs">(totale dell'app; somma dei pasti ${Math.round(sum("kcal"))})</span>`:""}</p>
+      <p class="muted xs">Target: ${t.k} kcal (${Math.round(t.k*(1-t.kt/100))}–${Math.round(t.k*(1+t.kt/100))}) · proteine ${t.p} g</p>
+      <label class="chk"><input type="checkbox" id="fdComp" ${D.complete?"checked":""}> Giornata completa</label>
+      ${saved.length?`<label class="chk"><input type="checkbox" id="fdRep" ${D.replace?"checked":""}> Sostituisci i ${saved.length} pasti già salvati per questo giorno (altrimenti li aggiungo)</label>`:""}
+      <div class="row"><button type="button" class="btn acc" id="fdSave">💾 Salva il giorno</button><button type="button" class="btn" id="fdClear">Svuota</button></div><p class="muted" id="fdSaveMsg"></p></div>`:""}
+    <details class="card"><summary><b>Target giornaliero</b> <span class="muted">${t.k} kcal ±${t.kt}% · ${t.p} g ±${t.pt}%</span></summary>
+      <div class="fdv"><label><span>kcal</span><input class="inp" inputmode="numeric" id="tK" value="${t.k}"></label><label><span>± %</span><input class="inp" inputmode="numeric" id="tKt" value="${t.kt}"></label><label><span>Proteine g</span><input class="inp" inputmode="numeric" id="tP" value="${t.p}"></label><label><span>± %</span><input class="inp" inputmode="numeric" id="tPt" value="${t.pt}"></label></div>
+      <div class="row"><button type="button" class="btn" id="tSave">Salva target</button></div><p class="muted xs">Vale per i giorni che salvi da ora in poi.</p></details>
+    ${st.settings.ghToken?"":`<p class="warn">Per salvare collega il backup GitHub in ⚙ Impostazioni.</p>`}`);
+  const B=$("#sheetBody");
+  $("#fdDate").onchange=e=>{ fdDraft.date=e.target.value; fdDraft.meals.forEach(()=>{}); openDiary(e.target.value); };
+  B.querySelectorAll("[data-md]").forEach(b=>b.onclick=()=>{ keepText(); D.mode=b.dataset.md; if(!D.meals.length){ D.replace=D.mode==="paste"; } openDiary(date); });
+  const keepText=()=>{ const ta=$("#fdText"); if(ta) D.text=ta.value; };
+  B.querySelectorAll("[data-fm]").forEach(inp=>inp.onchange=()=>{ const m=D.meals[+inp.dataset.fm], k=inp.dataset.k; m[k]=["kcal","p","c","g"].includes(k)?fdNum(inp.value):inp.value; if(["kcal","p","c","g"].includes(k)) D.tot=null; keepText(); openDiary(date); });
+  B.querySelectorAll("[data-fdel]").forEach(b=>b.onclick=()=>{ D.meals.splice(+b.dataset.fdel,1); D.tot=null; keepText(); openDiary(date); });
+  if($("#fdAdd")) $("#fdAdd").onclick=()=>{ D.meals.push({pasto:MEALS[Math.min(saved.length+D.meals.length,3)],desc:"",kcal:null,p:null,c:null,g:null,foods:[]}); D.complete=day?day.giorno_completo!=="no":false; D.replace=false; openDiary(date); };
+  if($("#fdClear")) $("#fdClear").onclick=()=>{ D.meals=[]; D.tot=null; D.text=""; openDiary(date); };
+  if($("#fdComp")) $("#fdComp").onchange=e=>D.complete=e.target.checked;
+  if($("#fdRep")) $("#fdRep").onchange=e=>D.replace=e.target.checked;
+  $("#tSave").onclick=()=>{ const n=id=>Math.max(0,+$(id).value||0); st.settings.foodT={k:n("#tK"),kt:n("#tKt"),p:n("#tP"),pt:n("#tPt")}; save(); openDiary(date); };
+  if($("#fdGo")) $("#fdGo").onclick=async()=>{
+    const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg");
+    let meals=[], tot=null;
+    if(D.mode==="paste"){
+      if(aiReady()){ msg.textContent="Leggo il riepilogo…"; const j=await fdAI("paste",txt); if(!j.err){ meals=j.pasti||[]; tot=j.totale; if(j.data&&/^\d{4}-\d\d-\d\d$/.test(j.data)&&j.data<=today) D.date=j.data; } }
+      if(!meals.length){ const r=parseFoodText(txt); meals=r.meals; tot=r.tot; if(!meals.length){ msg.textContent="Non sono riuscito a leggere il riepilogo. Usa ✍ Manuale oppure mandami un esempio del testo che copi."; return; } }
+      D.meals=fdNormalize(meals); D.tot=tot&&fdNum(tot.kcal)!=null?{kcal:fdNum(tot.kcal),p:fdNum(tot.p),c:fdNum(tot.c),g:fdNum(tot.g)}:null; D.complete=true; D.replace=true; D.text="";
+    } else {
+      if(!aiReady()){ msg.textContent="Per la stima serve una chiave Gemini o OpenRouter in ⚙. Puoi usare ✍ Manuale."; return; }
+      msg.textContent="Stimo i valori…"; const j=await fdAI("ai",txt);
+      if(j.err){ msg.textContent="Non riesco a stimare ora ("+j.err+"). Riprova più tardi o usa ✍ Manuale."; return; }
+      D.meals=[...D.meals,...fdNormalize(j.pasti||[])]; D.tot=null; D.complete=day?day.giorno_completo!=="no":false; D.replace=false; D.text="";
+    }
+    fdDraft.date=D.date; openDiary(D.date);
+  };
+  if($("#fdMic")) $("#fdMic").onclick=()=>{ const ta=$("#fdText"), b=$("#fdMic");
+    if(b._rec){ b._rec.stop(); return; }
+    const r=new SR(); r.lang="it-IT"; r.continuous=true; r.interimResults=false; const base=ta.value;
+    let said=""; r.onresult=ev=>{ for(let k=ev.resultIndex;k<ev.results.length;k++) if(ev.results[k].isFinal) said+=" "+ev.results[k][0].transcript; ta.value=(base+" "+said).trim(); };
+    r.onend=()=>{ b._rec=null; b.textContent="🎤 Detta"; b.classList.remove("on"); }; r.start(); b._rec=r; b.textContent="⏹ Fine"; b.classList.add("on"); };
+  if($("#fdSave")) $("#fdSave").onclick=async()=>{
+    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(fdTarget()),at:Date.now()};
+    const m=$("#fdSaveMsg"); m.textContent="Salvo…";
+    if(!st.settings.ghToken){ m.textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
+    (st.foodQ ||= []).push(job); save();
+    const ok=await flushFoodQ();
+    fdDraft=null;
+    if(ok){ m.textContent="✓ Salvato."; await loadFood(true); openDiary(job.date); const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",`<p class="okmsg">✓ Giorno salvato nel repository.</p>`); }
+    else { openDiary(job.date); const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",`<p class="warn">⏳ Non riesco a raggiungere GitHub: il giorno resta in coda sul telefono e lo salvo appena c'è rete.</p>`); }
+  };
+}
+let fdFlushing=null;
+async function flushFoodQ(){
+  if(fdFlushing) return fdFlushing;
+  fdFlushing=(async()=>{
+    if(!(st.foodQ||[]).length) return true;
+    if(!st.settings.ghToken||!st.settings.ghRepo) return false;
+    try{
+      const get=async f=>{ const r=await gh("alimentazione/"+f); if(r.status===404) return {rows:[],sha:null}; if(!r.ok) throw r.status; const j=await r.json(); return {rows:parseCSV(unb64(j.content)),sha:j.sha}; };
+      const put=async(f,content,sha,msg)=>{ const r=await gh("alimentazione/"+f,{method:"PUT",body:JSON.stringify({message:msg,content:b64(content),...(sha?{sha}:{})})}); if(!r.ok) throw r.status; };
+      const [G,P,A]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
+      const dates=[];
+      for(const job of st.foodQ){
+        const n=dayNo(job.date); dates.push(job.date);
+        if(job.replace){ P.rows=P.rows.filter(r=>r.data!==job.date); A.rows=A.rows.filter(r=>r.data!==job.date); }
+        job.meals.forEach(m=>{ P.rows.push({giorno:n,data:job.date,pasto:m.pasto,descrizione:m.desc,kcal:fdR1(m.kcal),proteine_g:fdR1(m.p),carboidrati_g:fdR1(m.c),grassi_g:fdR1(m.g)});
+          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g)})); });
+        // totali del giorno: dall'app esterna se il giorno è stato incollato intero, altrimenti somma dei pasti salvati
+        const dm=P.rows.filter(r=>r.data===job.date), s=k=>{ const v=dm.map(r=>fdNum(r[k])).filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)*10)/10:null; };
+        const useT=job.replace&&job.tot&&job.tot.kcal!=null;
+        const old=G.rows.find(r=>r.data===job.date)||{};
+        // aggiunta a un giorno già salvato: totali precedenti + nuovi pasti (i vecchi pasti possono non avere tutti i macro)
+        const add=k=>{ const a=fdNum(old[{kcal:"kcal",p:"proteine_g",c:"carboidrati_g",g:"grassi_g"}[k]]), v=job.meals.map(m=>m[k]).filter(x=>x!=null), n=v.reduce((x,y)=>x+y,0); return a==null&&!v.length?null:Math.round(((a||0)+n)*10)/10; };
+        const app=!job.replace&&old.data;
+        const tv=(k,col)=>useT&&job.tot[k]!=null?job.tot[k]:app?add(k):s(col);
+        const row={giorno:n,data:job.date,kcal:Math.round(tv("kcal","kcal")||0),proteine_g:fdR1(tv("p","proteine_g")),carboidrati_g:fdR1(tv("c","carboidrati_g")),grassi_g:fdR1(tv("g","grassi_g")),
+          giorno_completo:job.complete?"sì":"no",...(old.target&&!job.replace?{target:old.target,kcal_min:old.kcal_min,kcal_max:old.kcal_max,proteine_min_g:old.proteine_min_g,proteine_max_g:old.proteine_max_g}:job.target)};
+        G.rows=G.rows.filter(r=>r.data!==job.date); G.rows.push(row);
+      }
+      const by=(a,b)=>a.data<b.data?-1:a.data>b.data?1:0;
+      G.rows.sort(by); P.rows.sort(by); A.rows.sort(by);
+      const msg="Diario alimentare: "+[...new Set(dates)].join(", ");
+      await put("pasti.csv",toCSV(["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"],P.rows),P.sha,msg);
+      await put("alimenti.csv",toCSV(["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g"],A.rows),A.sha,msg);
+      await put("giorni.csv",toCSV(["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g"],G.rows),G.sha,msg);
+      st.foodQ=[]; save(); food=null; try{ localStorage.removeItem("gc_food"); }catch(e){}
+      return true;
+    }catch(e){ return false; }
+  })();
+  try{ return await fdFlushing; } finally{ fdFlushing=null; }
+}
+window.addEventListener("online",()=>{ if((st.foodQ||[]).length) flushFoodQ(); });
+if((st.foodQ||[]).length) setTimeout(flushFoodQ,4000);
+$("#btnFood").onclick=async()=>{ openDiary(); if(st.settings.ghToken&&!food){ await loadFood(); if(!$("#sheet").hidden&&$("#sheetTitle").textContent==="Diario alimentare") openDiary(); } };
