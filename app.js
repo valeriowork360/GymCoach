@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -101,6 +101,7 @@ function curList(){
 }
 function origId(k){ return SESSIONS[st.cur.session][k][0]; }
 function item(){ return st.cur ? curList()[st.cur.exIdx] : null; }
+if(!st.settings.bar18){ if(st.settings.barKg===20) delete st.settings.barKg; st.settings.bar18=1; }
 (function fixCur(){ if(!st.cur) return; if(!SESSIONS[st.cur.session]){ st.cur=null; return; }
   const n=SESSIONS[st.cur.session].length; if(!(st.cur.exIdx<n)) st.cur.exIdx=Math.max(0,n-1); })();
 function exOf(it){ return EX[it[0]]; }
@@ -1457,7 +1458,7 @@ function openSettings(){
     <label class="f">Incremento minimo di carico — il salto più piccolo disponibile in palestra</label>
     <div class="inc inc3"><span></span><b class="muted">kg</b><b class="muted">lb</b>${Object.entries(EQ_LABEL).map(([k,l])=>`<span>${l[0].toUpperCase()+l.slice(1)} <span class="muted">(${LOAD_MODE[k]})</span></span><input class="inp" inputmode="decimal" data-inc="${k}" value="${kgTxt(s.inc[k])}"><input class="inp" inputmode="decimal" data-inclb="${k}" value="${kgTxt(s.incLb[k])}">`).join("")}</div>
     <label class="f">Peso medio della barra — per confrontare bilanciere e manubri nei Progressi</label>
-    <div class="inc"><span>Bilanciere (kg)</span><input class="inp" id="sBar" inputmode="decimal" value="${kgTxt(s.barKg??20)}"><span>Barra Smith (kg)</span><input class="inp" id="sSmith" inputmode="decimal" value="${kgTxt(s.smithKg??15)}"></div>
+    <div class="inc"><span>Bilanciere (kg)</span><input class="inp" id="sBar" inputmode="decimal" value="${kgTxt(s.barKg??18)}"><span>Barra Smith (kg)</span><input class="inp" id="sSmith" inputmode="decimal" value="${kgTxt(s.smithKg??15)}"></div>
     <button class="btn acc wide" id="sSave">Salva</button>
     <div class="card"><h3>Programma di allenamento</h3><p class="muted" style="margin:0 0 8px">${st.program?"Stai usando un programma <b>personalizzato</b>.":"Stai usando il programma di base."} Puoi cambiare esercizi, serie, ripetizioni, recuperi e la divisione della settimana.</p><button class="btn wide" id="sProg">✏️ Modifica programma</button></div>
     <div class="card"><h3>Ciclo</h3><p class="muted" style="margin:0 0 8px">Ultimo passaggio completato: <b>${st.cyclePos>=0?CYCLE[st.cyclePos]:"nessuno"}</b>. Correggilo se serve:</p>
@@ -1723,7 +1724,7 @@ function eqOfSet(id,s){
 function normKg(id,s,mode){
   if(!s.kg) return null;
   const q=eqOfSet(id,s), k=s.kg;
-  if(q==="bb"||q==="smith"){ const bar=q==="bb"?(st.settings.barKg??20):(st.settings.smithKg??15); return mode==="tot" ? bar+2*k : (bar+2*k)/2; }
+  if(q==="bb"||q==="smith"){ const bar=q==="bb"?(st.settings.barKg??18):(st.settings.smithKg??15); return mode==="tot" ? bar+2*k : (bar+2*k)/2; }
   if(mode!=="tot") return k;
   if(q==="db"||q==="plate") return 2*k;
   if(/per lato/.test((EX[id]&&EX[id].lm)||"")) return 2*k;   // es. croci ai cavi: un pacco per lato
@@ -1732,8 +1733,17 @@ function normKg(id,s,mode){
 const e1n = (id,s,mode) => { const w=normKg(id,s,mode); return (w && s.reps) ? w*(1+(s.reps+(s.rir||0))/30) : null; };
 const e1 = s => (s.kg && s.reps) ? s.kg*(1+(s.reps+(s.rir||0))/30) : null;   // stessa formula del tuo Excel (RIR mancante = 0)
 const mondayOf = ts => { const d=new Date(ts); d.setHours(0,0,0,0); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return d.getTime(); };
+/* esercizi uniti nei Progressi: il bilanciere confrontato coi manubri ((barra + dischi dei due lati) / 2) */
+const STAT_MERGE={bb_bench:"db_flat"}, STAT_NAME={db_flat:"Panca piana (manubri + bilanciere)"};
+const stN=id=>STAT_NAME[id]||EX[id].n;
+function mergeStats(h){
+  if(!h.ex.some(e=>STAT_MERGE[e.ex])) return h;
+  const ex=[]; h.ex.forEach(e=>{ const id=STAT_MERGE[e.ex]||e.ex, sets=STAT_MERGE[e.ex]?e.sets.map(x=>({...x,m:/bilanc/i.test(x.m||"")?x.m:"Bilanciere"+(x.m?" · "+x.m:"")})):e.sets;
+    const o=ex.find(y=>y.ex===id); if(o) o.sets=[...o.sets,...sets]; else ex.push({...e,ex:id,sets}); });
+  return {...h,ex};
+}
 function statsData(){
-  const hs=allSessions().filter(h=>!isExtraSess(h.session));
+  const hs=allSessions().filter(h=>!isExtraSess(h.session)).map(mergeStats);
   const work=[]; // una riga per serie allenante
   hs.forEach(h=>h.ex.forEach(e=>e.sets.forEach(s=>{ if(countsInStats(s)) work.push({h,ex:e.ex,s}); })));
   return {hs,work};
@@ -1772,7 +1782,7 @@ function openStats(sel){
     <div class="card"><h3>Serie per gruppo muscolare e settimana</h3><div class="heatwrap" id="heatBody"></div>
       <p class="muted" style="margin:8px 0 0">Serie allenanti ed extra di ogni settimana (da lunedì). Più scuro = più serie.</p></div>
     <div class="card" id="exCard"><h3>Andamento per esercizio</h3>
-      <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+EX[id].n)}</option>`).join("")}</select>
+      <select class="inp" id="stEx">${exIds.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${esc((MUSCLE[id]?MUSCLE[id]+" · ":"")+stN(id))}</option>`).join("")}</select>
       <div id="stChart"></div>
     </div>
     <div class="card" id="foodCard"><h3>Alimentazione</h3><div id="foodBody"><p class="muted">Carico i dati…</p></div></div>`);
@@ -1816,9 +1826,9 @@ function drawOverview(){
     <p class="muted" style="margin:6px 2px 8px">Tendenza = forza stimata (e1RM) della serie migliore di ogni seduta, tutte le macchine su un'unica linea (lb convertite in kg). Var. = dalla prima all'ultima seduta. Da max = quanto l'ultima è sotto la migliore di sempre (max = l'ultima è la migliore). Tocca un esercizio per il grafico.</p>`;
   if(view==="c"){
     const sh=x=>x?`${x.raw?x.raw.replace(/\s*\/\s*/g,"/"):(x.kg+" kg")} × ${x.reps}${x.rir!=null?" @"+rirTxt(x.rir):""}`:"";
-    h+=`<div class="ovt"><table class="ovtab"><thead><tr><th>Esercizio · ultima serie migliore</th><th>Tendenza</th><th>Var.</th><th>Da max</th><th>0–1 RIR</th></tr></thead><tbody>${grp.map(([g,l])=>`<tr><td class="grp" colspan="5">${esc(g)}</td></tr>${l.map(o=>`<tr data-ovid="${o.id}"><td class="nm">${esc(EX[o.id].n)}<span class="ls">${esc(sh(o.last))} · ${dateTxt(o.lastT)}${o.nM>1?` · ${o.nM} macchine`:""}</span></td><td>${sparkSvg(o.seg,58,20)}</td><td class="num ${ovCls(o.var)}">${ovSgn(o.var)}</td><td class="num ${o.dmax==null?"mut":o.dmax===0?"good":o.dmax>-0.05?"warn":"bad"}">${o.dmax==null?"—":o.dmax===0?"max":ovSgn(o.dmax)}</td><td><span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)}</span></td></tr>`).join("")}`).join("")}</tbody></table></div>`;
+    h+=`<div class="ovt"><table class="ovtab"><thead><tr><th>Esercizio · ultima serie migliore</th><th>Tendenza</th><th>Var.</th><th>Da max</th><th>0–1 RIR</th></tr></thead><tbody>${grp.map(([g,l])=>`<tr><td class="grp" colspan="5">${esc(g)}</td></tr>${l.map(o=>`<tr data-ovid="${o.id}"><td class="nm">${esc(stN(o.id))}<span class="ls">${esc(sh(o.last))} · ${dateTxt(o.lastT)}${o.nM>1?` · ${o.nM} macchine`:""}</span></td><td>${sparkSvg(o.seg,58,20)}</td><td class="num ${ovCls(o.var)}">${ovSgn(o.var)}</td><td class="num ${o.dmax==null?"mut":o.dmax===0?"good":o.dmax>-0.05?"warn":"bad"}">${o.dmax==null?"—":o.dmax===0?"max":ovSgn(o.dmax)}</td><td><span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)}</span></td></tr>`).join("")}`).join("")}</tbody></table></div>`;
   } else {
-    h+=`<div class="ovcols">${grp.map(([g,l])=>`<div class="ovcol"><h4>${esc(g)} <span>${l.length} esercizi</span></h4>${l.map(o=>`<div class="ovcard" data-ovid="${o.id}"><div class="t">${esc(EX[o.id].n)}</div>${sparkSvg(o.seg,190,34)}<div class="s">Ultima (${dateTxt(o.lastT)}): ${esc(setTxt(o.last))}</div><div class="row"><span class="ovchip ${ovCls(o.var)}">${ovSgn(o.var)} forza</span>${o.dmax!=null?`<span class="ovchip ${o.dmax===0?"good":"mut"}">${o.dmax===0?"max":ovSgn(o.dmax)+" da max"}</span>`:""}<span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)} a 0–1 RIR</span></div></div>`).join("")}</div>`).join("")}</div>`;
+    h+=`<div class="ovcols">${grp.map(([g,l])=>`<div class="ovcol"><h4>${esc(g)} <span>${l.length} esercizi</span></h4>${l.map(o=>`<div class="ovcard" data-ovid="${o.id}"><div class="t">${esc(stN(o.id))}</div>${sparkSvg(o.seg,190,34)}<div class="s">Ultima (${dateTxt(o.lastT)}): ${esc(setTxt(o.last))}</div><div class="row"><span class="ovchip ${ovCls(o.var)}">${ovSgn(o.var)} forza</span>${o.dmax!=null?`<span class="ovchip ${o.dmax===0?"good":"mut"}">${o.dmax===0?"max":ovSgn(o.dmax)+" da max"}</span>`:""}<span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)} a 0–1 RIR</span></div></div>`).join("")}</div>`).join("")}</div>`;
   }
   if(!grp.length) h=`<p class="muted">Ancora nessun esercizio con dati.</p>`;
   B.innerHTML=h;
@@ -2018,7 +2028,7 @@ function drawExStats(id){
   const best={}; pts.forEach(p=>{ if(!best[p.m]||p.v>best[p.m].v) best[p.m]=p; });
   const lastP=pts.slice().sort((a,b)=>b.t-a.t)[0];
   const expl = `Forza stimata (e1RM, kg, ${modeTxt}) della serie migliore di ogni seduta (extra comprese).`
-    + (hasBar ? ` Bilanciere: (barra ${kgTxt(st.settings.barKg??20)} kg + dischi dei due lati)${mode==="tot"?"":" ÷ 2, per confrontarlo coi manubri"}${id==="smith_sq"||hs.some(h=>{const e=h.ex.find(x=>x.ex===id);return e&&e.sets.some(s=>eqOfSet(id,s)==="smith");})?`; Smith con barra ${kgTxt(st.settings.smithKg??15)} kg`:""} (modificabile in ⚙).` : "")
+    + (hasBar ? ` Bilanciere: (barra ${kgTxt(st.settings.barKg??18)} kg + dischi dei due lati)${mode==="tot"?"":" ÷ 2, per confrontarlo coi manubri"}${id==="smith_sq"||hs.some(h=>{const e=h.ex.find(x=>x.ex===id);return e&&e.sets.some(s=>eqOfSet(id,s)==="smith");})?`; Smith con barra ${kgTxt(st.settings.smithKg??15)} kg`:""} (modificabile in ⚙).` : "")
     + (split ? " Confronta solo punti dello stesso colore." : " Le libbre sono convertite in kg; macchine diverse possono dare valori diversi.");
   box.innerHTML=`${ctrls}<p class="muted" style="margin:8px 0 2px">${expl}</p>${legend}<div class="chartwrap">${svg}<div class="tip" id="stTip" hidden></div></div>
     <div class="kv"><span>Ultima seduta</span><b>${dateTxt(lastP.t)} · ${esc(setTxt(lastP.s))}</b></div>
