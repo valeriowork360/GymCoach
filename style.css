@@ -552,3 +552,14 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .fnote{margin:6px 0 2px;color:var(--mut)}
 .fdnl{display:flex;flex-direction:column;gap:3px;margin:8px 0}.fdnl textarea{width:100%;box-sizing:border-box;font-size:13px}
 .fdtrial{border:1px dashed var(--line);border-radius:10px;padding:2px 10px;margin-bottom:8px;font-size:12.5px}.fdtrial.on{border-color:#e0a526;background:rgba(224,165,38,.07)}.fdtrial code{font-size:11.5px}
+/* v89 alimentazione: dashboard */
+.ftabs{margin-bottom:10px}
+.fdsum{font-size:13.5px;line-height:1.5;margin:8px 2px}
+.fdh4{margin:10px 0 2px;font-size:13px;font-weight:600}
+.ftab{width:100%;border-collapse:collapse;font-size:12.5px}
+.ftab th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);text-align:left;padding:5px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ftab td{padding:5px 4px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ftab tr.b td{font-weight:700}
+.fdays tr[data-fg]{cursor:pointer}
+.fdays td.num{text-align:right;border-radius:4px}
+.fdet td{white-space:normal;background:var(--panel2)}
