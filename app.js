@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "77";
+const APP_VERSION = "78";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1790,10 +1790,12 @@ function ovData(){
   hs.forEach(h=>h.ex.forEach(e=>{ const id=e.ex; if(!EX[id]||EX[id].kind==="time") return;
     const ss=e.sets.filter(countsInStats); if(!ss.length) return;
     const o=(out[id] ||= {id,segs:{},order:[],work:0,low:0,lastT:0});
-    const by={}; ss.forEach(x=>{ const v=e1n(id,x,"mano"), m=x.m||"—"; if(v!=null&&(!by[m]||v>by[m].v)) by[m]={v,x}; });
-    Object.entries(by).forEach(([m,b])=>{ if(!o.segs[m]){ o.segs[m]=[]; o.order.push(m);} o.segs[m].push({t:h.start,v:b.v,x:b.x}); o.lastM=m; o.lastT=h.start; o.last=b.x; });
+    const ms=new Set(ss.map(x=>x.m||"—")); ms.forEach(m=>{ if(!o.order.includes(m)) o.order.push(m); });
+    let b=null; ss.forEach(x=>{ const v=e1n(id,x,"mano"); if(v!=null&&(!b||v>b.v)) b={v,x}; });
+    if(b){ (o.segs.all ||= []).push({t:h.start,v:b.v,x:b.x}); o.lastM="all"; o.lastT=h.start; o.last=b.x; }
     e.sets.filter(x=>!x.extra&&x.sec==null&&x.rir!=null).forEach(x=>{ o.work++; if(x.rir<=1) o.low++; });
   }));
+  Object.keys(out).forEach(k=>{ if(!out[k].segs.all) delete out[k]; });
   Object.values(out).forEach(o=>{ const seg=o.segs[o.lastM]; o.seg=seg; o.var=seg.length>1?(seg[seg.length-1].v-seg[0].v)/seg[0].v:null; { const mx=Math.max(...seg.map(p=>p.v)), lv=seg[seg.length-1].v; o.dmax=seg.length>1?(lv>=mx*0.995?0:(lv-mx)/mx):null; } o.lowP=o.work?o.low/o.work:null; o.nM=o.order.length; });
   return out;
 }
@@ -1811,7 +1813,7 @@ function drawOverview(){
   const grp=OV_GROUPS.map(([g,ms])=>[g,Object.values(D).filter(o=>ms.includes(MUSCLE[o.id]||(EX[o.id]&&EX[o.id].mg))).sort((a,b)=>b.lastT-a.lastT)]).filter(([,l])=>l.length);
   const altri=Object.values(D).filter(o=>!grp.some(([,l])=>l.includes(o))); if(altri.length) grp.push(["Altri",altri]);
   let h=`<div class="seg"><button type="button" data-ov="c" class="${view==="c"?"on":""}">Tabella compatta</button><button type="button" data-ov="a" class="${view==="a"?"on":""}">Colonne</button></div>
-    <p class="muted" style="margin:6px 2px 8px">Tendenza = forza stimata (e1RM) della serie migliore di ogni seduta sulla macchina attuale. Var. = dalla prima all'ultima seduta. Da max = quanto l'ultima è sotto la migliore di sempre (max = l'ultima è la migliore). Tocca un esercizio per il grafico.</p>`;
+    <p class="muted" style="margin:6px 2px 8px">Tendenza = forza stimata (e1RM) della serie migliore di ogni seduta, tutte le macchine su un'unica linea (lb convertite in kg). Var. = dalla prima all'ultima seduta. Da max = quanto l'ultima è sotto la migliore di sempre (max = l'ultima è la migliore). Tocca un esercizio per il grafico.</p>`;
   if(view==="c"){
     const sh=x=>x?`${x.raw?x.raw.replace(/\s*\/\s*/g,"/"):(x.kg+" kg")} × ${x.reps}${x.rir!=null?" @"+rirTxt(x.rir):""}`:"";
     h+=`<div class="ovt"><table class="ovtab"><thead><tr><th>Esercizio · ultima serie migliore</th><th>Tendenza</th><th>Var.</th><th>Da max</th><th>0–1 RIR</th></tr></thead><tbody>${grp.map(([g,l])=>`<tr><td class="grp" colspan="5">${esc(g)}</td></tr>${l.map(o=>`<tr data-ovid="${o.id}"><td class="nm">${esc(EX[o.id].n)}<span class="ls">${esc(sh(o.last))} · ${dateTxt(o.lastT)}${o.nM>1?` · ${o.nM} macchine`:""}</span></td><td>${sparkSvg(o.seg,58,20)}</td><td class="num ${ovCls(o.var)}">${ovSgn(o.var)}</td><td class="num ${o.dmax==null?"mut":o.dmax===0?"good":o.dmax>-0.05?"warn":"bad"}">${o.dmax==null?"—":o.dmax===0?"max":ovSgn(o.dmax)}</td><td><span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)}</span></td></tr>`).join("")}`).join("")}</tbody></table></div>`;
