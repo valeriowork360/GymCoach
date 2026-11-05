@@ -542,3 +542,4 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .okmsg{color:var(--ok);font-weight:600}
 .warn{color:#e0a526}
 .top-sess{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chartwrap .tip{box-shadow:0 6px 18px rgba(0,0,0,.45)}

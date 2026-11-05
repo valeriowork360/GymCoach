@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "82";
+const APP_VERSION = "83";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2174,7 +2174,11 @@ window.__appOk=true;
   const show=(w,x,y)=>{ const c=pick(w,x,y); if(!c) return;
     let xh=w.querySelector(".xhair"); if(!xh){ xh=document.createElement("div"); xh.className="xhair"; w.appendChild(xh); }
     const r=w.getBoundingClientRect(), cr=c.getBoundingClientRect(); xh.style.left=(cr.left-r.left+cr.width/2)+"px"; xh.hidden=false;
-    if(c!==last){ last=c; c.dispatchEvent(new MouseEvent("click",{bubbles:true})); } };
+    if(c!==last){ last=c; c.dispatchEvent(new MouseEvent("click",{bubbles:true})); }
+    // l'etichetta va sopra il grafico (non copre i punti); se sopra non c'è spazio sullo schermo, sotto
+    const tip=w.querySelector(".tip"); if(tip&&!tip.hidden){ const th=tip.offsetHeight, tw=tip.offsetWidth, sb=(w.closest("#sheetBody")||document.body).getBoundingClientRect();
+      const above=r.top-th-6>=Math.max(0,sb.top); tip.style.top=(above?-th-6:r.height+4)+"px";
+      tip.style.left=Math.min(r.width-tw,Math.max(0,cr.left-r.left+cr.width/2-tw/2))+"px"; } };
   document.addEventListener("pointerdown",ev=>{ const w=ev.target.closest&&ev.target.closest(".chartwrap"); if(!w||!w.querySelector(".hit")) return; wrap=w; last=null; show(w,ev.clientX,ev.clientY); },{passive:true});
   document.addEventListener("pointermove",ev=>{ if(wrap) show(wrap,ev.clientX,ev.clientY); },{passive:true});
   const end=()=>{ wrap=null; };
