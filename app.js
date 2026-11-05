@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "83";
+const APP_VERSION = "84";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1778,7 +1778,6 @@ function openStats(sel){
     <div class="card"><h3>Quadro esercizi</h3><div id="ovBody"></div></div>
     <div class="card"><h3>Serie allenanti per settimana, per fascia di RIR</h3><p class="muted cap">Quante serie e quanto vicine al cedimento. Target 2–3 RIR.</p><div id="rirBody"></div></div>
     <div class="card"><h3>Tonnellaggio per settimana e distretto</h3><p class="muted cap">Carico totale × ripetizioni (lb convertite in kg, bilanciere con la barra).</p><div id="tonBody"></div></div>
-    <div class="card" id="kcalCard"><h3>Calorie al giorno</h3><p class="muted cap">Colore rispetto al target del giorno · • = giorno di allenamento.</p><div id="kcalBody"><p class="muted">Carico i dati…</p></div></div>
     <div class="card"><h3>Serie per gruppo muscolare e settimana</h3><div class="heatwrap" id="heatBody"></div>
       <p class="muted" style="margin:8px 0 0">Serie allenanti ed extra di ogni settimana (da lunedì). Più scuro = più serie.</p></div>
     <div class="card" id="exCard"><h3>Andamento per esercizio</h3>
@@ -1888,10 +1887,10 @@ function drawWeekly(work){
 }
 /* calorie al giorno con colore rispetto al target + indicatori della panoramica */
 async function drawKcal(){
-  const B=$("#kcalBody"); if(!B) return;
+  const B=$("#kcalBody")||document.createElement("div"); if(!$("#kpiK")) return;
   const setK=(id,v,sub)=>{ const e=$("#"+id); if(e){ e.querySelector("b").textContent=v; e.querySelector(".s").textContent=sub; } };
   if(!st.settings.ghToken){ B.innerHTML=`<p class="muted">Collega il backup GitHub in ⚙ Impostazioni per vedere l'alimentazione.</p>`; setK("kpiK","—","collega GitHub"); setK("kpiP","—","collega GitHub"); return; }
-  const f=await loadFood(); if(!$("#kcalBody")) return;
+  const f=await loadFood(); if(!$("#kpiK")) return;
   if(!f||!f.giorni||!f.giorni.length){ B.innerHTML=`<p class="muted">Nessun dato di alimentazione.</p>`; setK("kpiK","—","nessun dato"); setK("kpiP","—","nessun dato"); return; }
   const N=v=>v===""||v==null?null:+String(v).replace(",",".");
   const days=f.giorni.map(r=>({d:r.data,t:Date.parse(r.data+"T12:00:00+07:00"),k:N(r.kcal),p:N(r.proteine_g),ok:r.giorno_completo!=="no",tg:r.target,kmin:N(r.kcal_min),kmax:N(r.kcal_max),pmin:N(r.proteine_min_g),pmax:N(r.proteine_max_g)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);
