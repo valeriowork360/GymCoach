@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "85";
+const APP_VERSION = "86";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2221,8 +2221,40 @@ function fdTargetCols(t){ const r=v=>Math.round(v*10)/10;
   return {target:`${String(t.k).replace(/\B(?=(\d{3})+(?!\d))/g,".")} kcal · ${t.p} g`,kcal_min:r(t.k*FD_LO),kcal_max:r(t.k*FD_HI),proteine_min_g:r(t.p*FD_LO),proteine_max_g:r(t.p*FD_HI),carboidrati_min_g:r(t.c*FD_LO),carboidrati_max_g:r(t.c*FD_HI),grassi_min_g:r(t.g*FD_LO),grassi_max_g:r(t.g*FD_HI)}; }
 /* stato rispetto al target, con le soglie del README: <85% molto sotto, <92,5% appena sotto, ≤105% centrato, ≤110% appena sopra */
 const fdState=(v,t)=>v==null||!t?"":v<t*0.85?"molto sotto":v<t*0.925?"appena sotto":v<=t*1.05?"centrato":v<=t*1.10?"appena sopra":"molto sopra";
+/* numeri all'italiana: "1.044" = 1044, "109,5" = 109.5, "0 (+2,7)" = 0 */
+const itNum=v=>{ v=String(v??"").trim().replace(/[~≈]/g,"").replace(/\s.*$/,""); if(!v||!/\d/.test(v)) return null;
+  if(v.includes(",")) v=v.replace(/\./g,"").replace(",","."); else if(/^\d{1,3}(\.\d{3})+$/.test(v)) v=v.replace(/\./g,""); const n=parseFloat(v); return isNaN(n)?null:n; };
+const IT_MONTHS=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+/* recap in tabelle Markdown (### Pasto, | Alimento | Quantità | kcal | P | C | F | Aff. |, riga Totale, riepilogo con Assunti e Target) */
+function parseFoodMD(txt){
+  const L=txt.split(/\r?\n/), meals=[], notes=[]; let cur=null, inSum=false, cols=null, tot=null, target=null, date=null;
+  const head=L.slice(0,4).join(" ");
+  const md=head.match(/(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})/i);
+  if(md) date=`${md[3]}-${String(IT_MONTHS.indexOf(md[2].toLowerCase())+1).padStart(2,"0")}-${md[1].padStart(2,"0")}`;
+  else { const g=head.match(/\bG\s?(\d{1,4})\b/); if(g){ const d=new Date(FD_DAY0+(+g[1]-1)*864e5); date=d.toISOString().slice(0,10); } }
+  const cells=l=>l.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(c=>c.trim());
+  const ci=(h,re)=>h.findIndex(c=>re.test(c));
+  for(const raw of L){ const l=raw.trim(); if(!l) continue;
+    if(/^#{1,4}\s/.test(l)){ const name=l.replace(/^#+\s*/,"").replace(/^[^\p{L}\d]+/u,"").trim(); cols=null;
+      if(/riepilogo|totale giornaliero|resoconto/i.test(name)){ inSum=true; cur=null; } else { inSum=false; cur={pasto:mealName(name),foods:[]}; meals.push(cur); } continue; }
+    if(l.startsWith("|")){ const c=cells(l); if(c.every(x=>/^:?-{2,}:?$/.test(x)||!x)) continue;
+      if(!cols){ cols={n:0,q:ci(c,/quant/i),k:ci(c,/^kcal|^cal/i),p:ci(c,/^p(rot\w*)?$/i),c:ci(c,/^c(arb\w*)?$/i),g:ci(c,/^(f|g|grass\w*|fat)$/i),a:ci(c,/^aff/i)}; continue; }
+      const nm=c[0]||"", v={kcal:itNum(c[cols.k]),p:itNum(c[cols.p]),c:itNum(c[cols.c]),g:itNum(c[cols.g])};
+      if(inSum){ if(/^assunt|^totale/i.test(nm)) tot=v; else if(/^target/i.test(nm)) target={k:v.kcal,p:v.p,c:v.c,g:v.g}; continue; }
+      if(!cur){ cur={pasto:"Altro",foods:[]}; meals.push(cur); }
+      if(/^totale/i.test(nm)){ Object.assign(cur,v); continue; }
+      cur.foods.push({nome:nm,q:cols.q>=0?c[cols.q]:"",...v,aff:cols.a>=0?c[cols.a]:""}); continue; }
+    // testo fuori dalle tabelle: frase finale con i totali oppure nota
+    const tm=l.match(/^totale:\s*([\d.,]+)\s*kcal\D+?([\d.,]+)\s*g\s*prot\w*\D+?([\d.,]+)\s*g\s*carb\w*\D+?([\d.,]+)\s*g\s*grass/i);
+    if(tm){ if(!tot) tot={kcal:itNum(tm[1]),p:itNum(tm[2]),c:itNum(tm[3]),g:itNum(tm[4])}; continue; }
+    if(/^ecco\b/i.test(l)&&!meals.length) continue;
+    notes.push(cur&&!inSum?`${cur.pasto}: ${l}`:l);
+  }
+  return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot,date,target,nota:notes.join(" ")};
+}
 /* lettura locale (senza AI) di un riepilogo incollato: intestazioni dei pasti, alimenti con kcal e macro */
 function parseFoodText(txt){
+  if(/^\s*\|.*\|\s*$/m.test(txt)&&/^\s*\|\s*:?-{2,}/m.test(txt)) return parseFoodMD(txt);
   const meals=[]; let cur=null, tot=null;
   const grab=(l,re)=>{ const m=l.match(re); return m?fdNum(m[1]):null; };
   const vals=l=>({kcal:grab(l,/(\d+(?:[.,]\d+)?)\s*(?:kcal|cal)\b/i),p:grab(l,/(?:\bP(?:rot\w*)?|protein\w*)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)??grab(l,/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?prot/i),
@@ -2240,7 +2272,7 @@ function parseFoodText(txt){
   });
   return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot};
 }
-function fdNormalize(meals){ return meals.map(m=>{ const foods=(m.foods||m.alimenti||[]).map(f=>({nome:String(f.nome||f.name||"").trim(),q:String(f.q||f.quantita||"").trim(),kcal:fdNum(f.kcal),p:fdNum(f.p),c:fdNum(f.c),g:fdNum(f.g)}));
+function fdNormalize(meals){ return meals.map(m=>{ const foods=(m.foods||m.alimenti||[]).map(f=>({nome:String(f.nome||f.name||"").trim(),q:String(f.q||f.quantita||"").trim(),kcal:fdNum(f.kcal),p:fdNum(f.p),c:fdNum(f.c),g:fdNum(f.g),aff:f.aff||""}));
   const sum=k=>foods.some(f=>f[k]!=null)?foods.reduce((a,f)=>a+(f[k]||0),0):null;
   return {pasto:mealName(m.pasto),foods,desc:m.desc||foods.map(f=>f.nome+(f.q&&!f.nome.includes(f.q)?" "+f.q:"")).join("; "),kcal:fdNum(m.kcal)??sum("kcal"),p:fdNum(m.p)??sum("p"),c:fdNum(m.c)??sum("c"),g:fdNum(m.g)??sum("g")}; }); }
 async function fdAI(mode,text){
@@ -2256,7 +2288,7 @@ async function fdAI(mode,text){
 function openDiary(date){
   const today=ymdLocal(Date.now()); date=date||(fdDraft&&fdDraft.date)||today;
   if(!fdDraft||fdDraft.date!==date) fdDraft={date,mode:(fdDraft&&fdDraft.mode)||"paste",meals:[],tot:null,complete:true,replace:true,text:""};
-  const D=fdDraft, t=fdTarget();
+  const D=fdDraft, t=D.target||fdTarget();
   const saved=((food&&food.pasti)||[]).filter(m=>m.data===date), day=((food&&food.giorni)||[]).find(g=>g.data===date);
   const q=(st.foodQ||[]).filter(x=>x.date===date);
   const sum=k=>D.meals.reduce((a,m)=>a+(m[k]||0),0);
@@ -2276,6 +2308,8 @@ function openDiary(date){
     ${D.meals.length?`<div class="card"><h3>Da salvare</h3>${D.meals.map(row).join("")}
       <p class="fdtot"><b>Totale: ${Math.round(tot.kcal)} kcal</b> · P ${fdR1(tot.p)} g · C ${fdR1(tot.c)} g · G ${fdR1(tot.g)} g${D.tot&&D.tot.kcal!=null&&Math.abs(D.tot.kcal-sum("kcal"))>5?` <span class="xs">(totale dell'app; somma dei pasti ${Math.round(sum("kcal"))})</span>`:""}</p>
       <p class="muted xs">Target: ${t.k} kcal · P ${t.p} · C ${t.c} · G ${t.g} g → ${fdState(tot.kcal,t.k)||"—"} (kcal), ${fdState(tot.p,t.p)||"—"} (proteine)</p>
+      ${D.target?`<p class="muted xs">Target dal recap: ${D.target.k} kcal · P ${D.target.p} · C ${D.target.c} · G ${D.target.g} g (lo uso anche come target predefinito)</p>`:""}${D.via?`<p class="muted xs">Letto ${D.via}.</p>`:""}
+      <label class="fdnl"><span class="muted xs">Note del giorno</span><textarea class="inp" id="fdNota" rows="2">${esc(D.nota||"")}</textarea></label>
       <label class="chk"><input type="checkbox" id="fdComp" ${D.complete?"checked":""}> Giornata completa</label>
       ${saved.length?`<label class="chk"><input type="checkbox" id="fdRep" ${D.replace?"checked":""}> Sostituisci i ${saved.length} pasti già salvati per questo giorno (altrimenti li aggiungo)</label>`:""}
       <div class="row"><button type="button" class="btn acc" id="fdSave">💾 Salva il giorno</button><button type="button" class="btn" id="fdClear">Svuota</button></div><p class="muted" id="fdSaveMsg"></p></div>`:""}
@@ -2292,15 +2326,20 @@ function openDiary(date){
   if($("#fdAdd")) $("#fdAdd").onclick=()=>{ D.meals.push({pasto:MEALS[Math.min(saved.length+D.meals.length,3)],desc:"",kcal:null,p:null,c:null,g:null,foods:[]}); D.complete=day?day.giorno_completo!=="no":false; D.replace=false; openDiary(date); };
   if($("#fdClear")) $("#fdClear").onclick=()=>{ D.meals=[]; D.tot=null; D.text=""; openDiary(date); };
   if($("#fdComp")) $("#fdComp").onchange=e=>D.complete=e.target.checked;
+  if($("#fdNota")) $("#fdNota").oninput=e=>D.nota=e.target.value;
   if($("#fdRep")) $("#fdRep").onchange=e=>D.replace=e.target.checked;
   $("#tSave").onclick=()=>{ const n=id=>Math.max(0,+$(id).value||0); st.settings.foodT={k:n("#tK"),p:n("#tP"),c:n("#tC"),g:n("#tG")}; save(); openDiary(date); };
   if($("#fdGo")) $("#fdGo").onclick=async()=>{
     const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg");
     let meals=[], tot=null;
     if(D.mode==="paste"){
-      if(aiReady()){ msg.textContent="Leggo il riepilogo…"; const j=await fdAI("paste",txt); if(!j.err){ meals=j.pasti||[]; tot=j.totale; if(j.data&&/^\d{4}-\d\d-\d\d$/.test(j.data)&&j.data<=today) D.date=j.data; } }
-      if(!meals.length){ const r=parseFoodText(txt); meals=r.meals; tot=r.tot; if(!meals.length){ msg.textContent="Non sono riuscito a leggere il riepilogo. Usa ✍ Manuale oppure mandami un esempio del testo che copi."; return; } }
+      // lettura sul telefono, senza AI; l'AI solo se il formato non è riconosciuto
+      let r=parseFoodText(txt), via="sul telefono";
+      if(!r.meals.length&&aiReady()){ msg.textContent="Formato non riconosciuto: provo con l'AI…"; const j=await fdAI("paste",txt); if(!j.err){ r={meals:j.pasti||[],tot:j.totale,date:j.data}; via="con l'AI"; } }
+      if(!r.meals.length){ msg.textContent="Non sono riuscito a leggere il riepilogo. Usa ✍ Manuale oppure mandami un esempio del testo che copi."; return; }
+      meals=r.meals; tot=r.tot; if(r.date&&/^\d{4}-\d\d-\d\d$/.test(r.date)&&r.date<=today) D.date=r.date;
       D.meals=fdNormalize(meals).map(m=>({...m,src:"diario"})); D.tot=tot&&fdNum(tot.kcal)!=null?{kcal:fdNum(tot.kcal),p:fdNum(tot.p),c:fdNum(tot.c),g:fdNum(tot.g)}:null; D.complete=true; D.replace=true; D.text="";
+      D.target=r.target&&r.target.k?r.target:null; D.nota=r.nota||""; D.via=via;
     } else {
       if(!aiReady()){ msg.textContent="Per la stima serve una chiave Gemini o OpenRouter in ⚙. Puoi usare ✍ Manuale."; return; }
       msg.textContent="Stimo i valori…"; const j=await fdAI("ai",txt);
@@ -2315,7 +2354,8 @@ function openDiary(date){
     let said=""; r.onresult=ev=>{ for(let k=ev.resultIndex;k<ev.results.length;k++) if(ev.results[k].isFinal) said+=" "+ev.results[k][0].transcript; ta.value=(base+" "+said).trim(); };
     r.onend=()=>{ b._rec=null; b.textContent="🎤 Detta"; b.classList.remove("on"); }; r.start(); b._rec=r; b.textContent="⏹ Fine"; b.classList.add("on"); };
   if($("#fdSave")) $("#fdSave").onclick=async()=>{
-    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(fdTarget()),tgt:fdTarget(),at:Date.now()};
+    const tg=D.target||fdTarget(); if(D.target){ st.settings.foodT={...D.target}; }
+    const job={date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:saved.length?D.replace:false,target:fdTargetCols(tg),tgt:tg,nota:D.nota||"",at:Date.now()};
     const m=$("#fdSaveMsg"); m.textContent="Salvo…";
     if(!st.settings.ghToken){ m.textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
     (st.foodQ ||= []).push(job); save();
@@ -2341,7 +2381,7 @@ async function flushFoodQ(){
         const n=dayNo(job.date); dates.push(job.date);
         if(job.replace){ P.rows=P.rows.filter(r=>r.data!==job.date); A.rows=A.rows.filter(r=>r.data!==job.date); }
         job.meals.forEach(m=>{ P.rows.push({giorno:n,data:job.date,pasto:m.pasto,descrizione:m.desc,kcal:fdR1(m.kcal),proteine_g:fdR1(m.p),carboidrati_g:fdR1(m.c),grassi_g:fdR1(m.g)});
-          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g),fonte:m.src||"diario"})); });
+          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g),fonte:m.src||"diario",affidabilita:f.aff||""})); });
         // totali del giorno: dall'app esterna se il giorno è stato incollato intero, altrimenti somma dei pasti salvati
         const dm=P.rows.filter(r=>r.data===job.date), s=k=>{ const v=dm.map(r=>fdNum(r[k])).filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)*10)/10:null; };
         const useT=job.replace&&job.tot&&job.tot.kcal!=null;
@@ -2351,8 +2391,8 @@ async function flushFoodQ(){
         const app=!job.replace&&old.data;
         const tv=(k,col)=>useT&&job.tot[k]!=null?job.tot[k]:app?add(k):s(col);
         const row={giorno:n,data:job.date,kcal:Math.round(tv("kcal","kcal")||0),proteine_g:fdR1(tv("p","proteine_g")),carboidrati_g:fdR1(tv("c","carboidrati_g")),grassi_g:fdR1(tv("g","grassi_g")),
-          giorno_completo:job.complete?"sì":"no",...(old.target?Object.fromEntries(Object.keys(job.target).map(k=>[k,old[k]??job.target[k]])):job.target),nota:old.nota||""};
-        { const tg=old.target?{k:fdNum(old.kcal_min)/FD_LO,p:fdNum(old.proteine_min_g)/FD_LO,c:fdNum(old.carboidrati_min_g)/FD_LO,g:fdNum(old.grassi_min_g)/FD_LO}:job.tgt;
+          giorno_completo:job.complete?"sì":"no",...(old.target&&!job.replace?Object.fromEntries(Object.keys(job.target).map(k=>[k,old[k]??job.target[k]])):job.target),nota:job.nota||(job.replace?"":old.nota)||""};
+        { const tg=old.target&&!job.replace?{k:fdNum(old.kcal_min)/FD_LO,p:fdNum(old.proteine_min_g)/FD_LO,c:fdNum(old.carboidrati_min_g)/FD_LO,g:fdNum(old.grassi_min_g)/FD_LO}:job.tgt;
           row.stato_kcal=fdState(fdNum(row.kcal),tg.k); row.stato_proteine=fdState(fdNum(row.proteine_g),tg.p); row.stato_carboidrati=fdState(fdNum(row.carboidrati_g),tg.c); row.stato_grassi=fdState(fdNum(row.grassi_g),tg.g); }
         G.rows=G.rows.filter(r=>r.data!==job.date); G.rows.push(row);
       }
@@ -2360,7 +2400,7 @@ async function flushFoodQ(){
       G.rows.sort(by); P.rows.sort(by); A.rows.sort(by);
       const msg="Diario alimentare: "+[...new Set(dates)].join(", ");
       await put("pasti.csv",toCSV(H(P,["giorno","data","pasto","descrizione","kcal","proteine_g","carboidrati_g","grassi_g"]),P.rows),P.sha,msg);
-      await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte"]),A.rows),A.sha,msg);
+      await put("alimenti.csv",toCSV(H(A,["giorno","data","pasto","alimento","quantita","kcal","proteine_g","carboidrati_g","grassi_g","fonte","affidabilita"]),A.rows),A.sha,msg);
       await put("giorni.csv",toCSV(H(G,["giorno","data","kcal","proteine_g","carboidrati_g","grassi_g","giorno_completo","target","kcal_min","kcal_max","proteine_min_g","proteine_max_g","carboidrati_min_g","carboidrati_max_g","grassi_min_g","grassi_max_g","stato_kcal","stato_proteine","stato_carboidrati","stato_grassi","nota"]),G.rows),G.sha,msg);
       st.foodQ=[]; save(); food=null; try{ localStorage.removeItem("gc_food"); }catch(e){}
       return true;

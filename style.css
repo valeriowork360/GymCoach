@@ -550,3 +550,4 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .fal{margin:3px 0 0 2px;font-size:12.5px;line-height:1.45}
 .fal i{font-style:normal;color:#e0a526}
 .fnote{margin:6px 0 2px;color:var(--mut)}
+.fdnl{display:flex;flex-direction:column;gap:3px;margin:8px 0}.fdnl textarea{width:100%;box-sizing:border-box;font-size:13px}
