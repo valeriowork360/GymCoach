@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "91";
+const APP_VERSION = "92";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -883,7 +883,7 @@ function startGridPlayers(){
 function makeGridPlayer(g,k){
   const card=document.querySelector(`#vgrid .vcard[data-k="${k}"]`); seekZones(card,()=>g.ready[k]?g.players[k]:null);
   g.players[k]=new YT.Player("ytG"+k,{width:"100%",height:"100%",videoId:g.ids[k],
-    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0},
     events:{ onReady:e=>{ g.ready[k]=true; applyVolV(); try{ e.target.playVideo(); }catch(_){} },
              onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ e.target.seekTo(0); e.target.playVideo(); } } }});
 }
@@ -929,7 +929,7 @@ function showExerciseVideo(id){
   $("#frame").innerHTML='<div id="ytV"></div>';
   seekZones($("#frame"),()=>yvReady?yv:null);
   yv=new YT.Player("ytV",{width:"100%",height:"100%",videoId:id,
-    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1},
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0},
     events:{
       onReady:e=>{ yvReady=true; yvId=id; if(yvWant&&yvWant!==id){ yv.loadVideoById(yvWant); yvId=yvWant; } applyVolV(); try{ e.target.playVideo(); }catch(err){} },
       onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
@@ -939,15 +939,22 @@ function showExerciseVideo(id){
 function seekZones(parent,getP,onSingle){
   if(!parent || parent.querySelector(":scope > .seekz")) return;
   const z=document.createElement("div"); z.className="seekz";
-  z.innerHTML='<div data-d="-10"><span>« 10 s</span></div><div data-d="10"><span>10 s »</span></div>';
+  z.innerHTML='<div data-d="-10"><span>« 10 s</span></div><div data-d="0" class="mid"><span></span></div><div data-d="10"><span>10 s »</span></div><b class="pz" hidden>⏸</b><i class="vprog"><i></i></i>';
+  const pz=z.querySelector(".pz"), bar=z.querySelector(".vprog>i");
+  const toggle=()=>{ if(onSingle){ onSingle(); return; } const p=getP(); if(!p) return; let playing=false; try{ playing=p.getPlayerState()===1; playing?p.pauseVideo():p.playVideo(); }catch(e){}
+    const sp=z.querySelector(".mid span"); sp.textContent=playing?"⏸":"▶"; const el=z.querySelector(".mid"); el.classList.remove("fl"); void el.offsetWidth; el.classList.add("fl"); clearTimeout(el._r); el._r=setTimeout(()=>el.classList.remove("fl"),600); };
   z.querySelectorAll("[data-d]").forEach(el=>{ let t=0, tm=null, sum=0;
     el.addEventListener("click",ev=>{ ev.stopPropagation(); ev.preventDefault(); const now=Date.now(), d=+el.dataset.d;
+      if(!d){ toggle(); return; }
       if(now-t<380){ clearTimeout(tm); t=now; const p=getP(); if(!p) return;
         try{ p.seekTo(Math.max(0,(p.getCurrentTime()||0)+d),true); }catch(e){}
         sum=(sum||0)+d; const sp=el.querySelector("span"); sp.textContent=d<0?`« ${-sum} s`:`${sum} s »`; el.classList.remove("fl"); void el.offsetWidth; el.classList.add("fl");
         clearTimeout(el._r); el._r=setTimeout(()=>{ sum=0; el.classList.remove("fl"); },700); }
-      else { t=now; sum=0; tm=setTimeout(()=>{ t=0; if(onSingle) onSingle(); else { const p=getP(); try{ p.getPlayerState()===1?p.pauseVideo():p.playVideo(); }catch(e){} } },380); }
+      else { t=now; sum=0; tm=setTimeout(()=>{ t=0; toggle(); },380); }
     }); });
+  // stato di pausa e avanzamento (i comandi di YouTube sono nascosti)
+  if(!onSingle){ const iv=setInterval(()=>{ if(!z.isConnected){ clearInterval(iv); return; } const p=getP(); if(!p) return;
+    try{ const s0=p.getPlayerState(), d=p.getDuration()||0, c=p.getCurrentTime()||0; pz.hidden=s0!==2; bar.style.width=d?Math.min(100,c/d*100)+"%":"0"; }catch(e){} },400); }
   parent.appendChild(z);
 }
 function destroyExerciseVideo(){ if(!yv) return; try{ yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }

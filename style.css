@@ -587,3 +587,12 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .scanbox video{width:100%;border-radius:12px;background:#000;max-height:50vh;object-fit:cover}
 .scanline{position:absolute;left:8%;right:8%;top:24%;height:2px;background:#e3c62b;box-shadow:0 0 10px #e3c62b}
 .scanbox .row{display:flex;gap:8px}.scanbox .row .inp{flex:1}
+/* v92 video esercizi senza comandi YouTube: tocco al centro = pausa/play, ai lati doppio tocco = ±10 s */
+.seekz>div.mid{width:32%}
+#frame .seekz,.vcard .seekz{bottom:0}
+.m-tile .seekz>div,.m-tile .seekz>div.mid{width:33.33%}
+.seekz .mid span{font-size:22px;padding:10px 14px}
+.seekz .pz{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:3px 7px;border-radius:8px;pointer-events:none}
+.seekz .vprog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.18);pointer-events:none}
+.seekz .vprog>i{display:block;height:100%;width:0;background:#e3ff3c}
+.m-tile .seekz .vprog,.m-tile .seekz .pz{display:none}
