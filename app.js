@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "94";
+const APP_VERSION = "95";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1800,6 +1800,8 @@ function openStats(sel){
 }
 /* riepilogo per esercizio: tendenza, ultima serie migliore, variazione di forza, quota a 0–1 RIR */
 const OV_GROUPS=[["Petto",["Petto"]],["Schiena",["Schiena"]],["Spalle",["Spalle"]],["Braccia",["Tricipiti","Bicipiti"]],["Gambe",["Quadricipiti","Femorali","Glutei","Polpacci"]],["Addome",["Addome"]]];
+/* nel quadro esercizi le gambe sono divise in due gruppi (troppi esercizi per una colonna sola) */
+const OV_VIEW=[...OV_GROUPS.filter(([g])=>g!=="Gambe").slice(0,4),["Quadricipiti",["Quadricipiti"]],["Femorali, glutei e polpacci",["Femorali","Glutei","Polpacci"]],...OV_GROUPS.filter(([g])=>g!=="Gambe").slice(4)];
 function ovData(){
   const {hs}=statsData(), out={};
   hs.forEach(h=>h.ex.forEach(e=>{ const id=e.ex; if(!EX[id]||EX[id].kind==="time") return;
@@ -1825,7 +1827,7 @@ const ovSgn=v=>v==null?"—":(v>0?"+":"")+Math.round(v*100)+"%", ovCls=v=>v==nul
 function drawOverview(){
   const B=$("#ovBody"); if(!B) return;
   const D=ovData(), view=st.ui.ovView||"c";
-  const grp=OV_GROUPS.map(([g,ms])=>[g,Object.values(D).filter(o=>ms.includes(MUSCLE[o.id]||(EX[o.id]&&EX[o.id].mg))).sort((a,b)=>b.lastT-a.lastT)]).filter(([,l])=>l.length);
+  const grp=OV_VIEW.map(([g,ms])=>[g,Object.values(D).filter(o=>ms.includes(MUSCLE[o.id]||(EX[o.id]&&EX[o.id].mg))).sort((a,b)=>b.lastT-a.lastT)]).filter(([,l])=>l.length);
   const altri=Object.values(D).filter(o=>!grp.some(([,l])=>l.includes(o))); if(altri.length) grp.push(["Altri",altri]);
   let h=`<div class="seg"><button type="button" data-ov="c" class="${view==="c"?"on":""}">Tabella compatta</button><button type="button" data-ov="a" class="${view==="a"?"on":""}">Colonne</button></div>
     <p class="muted" style="margin:6px 2px 8px">Tendenza = forza stimata (e1RM) della serie migliore di ogni seduta, tutte le macchine su un'unica linea (lb convertite in kg). Var. = dalla prima all'ultima seduta. Da max = quanto l'ultima è sotto la migliore di sempre (max = l'ultima è la migliore). Tocca un esercizio per il grafico.</p>`;
