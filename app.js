@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "93";
+const APP_VERSION = "94";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1413,10 +1413,7 @@ function openArchive(){
     <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">${st.settings.ghToken?`Backup automatico su GitHub attivo (${esc(st.settings.ghRepo)}): serie, master per esercizio e chat di ogni sessione. ${esc(syncStatus())}`:"I dati sono salvati solo su questo telefono: attiva il backup automatico in ⚙ oppure esporta ogni tanto un file."}</p>
     <div class="row"><button class="btn" id="exFile">⬇ Esporta file</button><button class="btn" id="exCopy">📋 Copia testo</button><label class="btn" style="display:inline-block">⬆ Importa file<input type="file" id="imFile" accept="application/json,.json" hidden></label></div><p class="muted" id="exMsg"></p></div>`);
   $("#sheetBody").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
-  $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.armed){ deleteSession(b.dataset.del); openArchive(); }
-    else { b.dataset.armed=1; b.textContent="Tocca di nuovo per eliminare"; }
-  });
+  $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>slideConfirm(e.currentTarget,"Scorri per eliminare →",()=>{ deleteSession(b.dataset.del); openArchive(); },true));
   $("#exFile").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([exportJSON()],{type:"application/json"})); a.download=`gym-coach-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
   $("#exCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(exportText()||"Nessuna sessione."); $("#exMsg").textContent="Copiato negli appunti."; }catch(e){ $("#exMsg").textContent="Copia non riuscita su questo browser."; } };
   $("#imFile").onchange=async e=>{
