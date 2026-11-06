@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "95";
+const APP_VERSION = "96";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1826,7 +1826,9 @@ function sparkSvg(seg,w,h){
 const ovSgn=v=>v==null?"—":(v>0?"+":"")+Math.round(v*100)+"%", ovCls=v=>v==null?"mut":v>0.005?"good":v<-0.005?"bad":"warn", ovLow=v=>v==null?"mut":v>=0.4?"bad":v>=0.2?"warn":"good", ovPct=v=>v==null?"—":Math.round(v*100)+"%";
 function drawOverview(){
   const B=$("#ovBody"); if(!B) return;
-  const D=ovData(), view=st.ui.ovView||"c";
+  const D0=ovData(), view=st.ui.ovView||"c", all=!!st.ui.ovAll;
+  // esercizi con meno di 3 sedute nascosti (si possono mostrare)
+  const few=Object.values(D0).filter(o=>(o.seg||[]).length<3), D=all?D0:Object.fromEntries(Object.entries(D0).filter(([,o])=>(o.seg||[]).length>=3));
   const grp=OV_VIEW.map(([g,ms])=>[g,Object.values(D).filter(o=>ms.includes(MUSCLE[o.id]||(EX[o.id]&&EX[o.id].mg))).sort((a,b)=>b.lastT-a.lastT)]).filter(([,l])=>l.length);
   const altri=Object.values(D).filter(o=>!grp.some(([,l])=>l.includes(o))); if(altri.length) grp.push(["Altri",altri]);
   let h=`<div class="seg"><button type="button" data-ov="c" class="${view==="c"?"on":""}">Tabella compatta</button><button type="button" data-ov="a" class="${view==="a"?"on":""}">Colonne</button></div>
@@ -1837,9 +1839,11 @@ function drawOverview(){
   } else {
     h+=`<div class="ovcols">${grp.map(([g,l])=>`<div class="ovcol"><h4>${esc(g)} <span>${l.length} esercizi</span></h4>${l.map(o=>`<div class="ovcard" data-ovid="${o.id}"><div class="t">${esc(stN(o.id))}</div>${sparkSvg(o.seg,190,34)}<div class="s">Ultima (${dateTxt(o.lastT)}): ${esc(setTxt(o.last))}</div><div class="row"><span class="ovchip ${ovCls(o.var)}">${ovSgn(o.var)} forza</span>${o.dmax!=null?`<span class="ovchip ${o.dmax===0?"good":"mut"}">${o.dmax===0?"max":ovSgn(o.dmax)+" da max"}</span>`:""}<span class="ovchip ${ovLow(o.lowP)}">${ovPct(o.lowP)} a 0–1 RIR</span></div></div>`).join("")}</div>`).join("")}</div>`;
   }
+  if(few.length) h+=`<p class="muted xs" style="margin:8px 2px 0">${all?`Mostro anche ${few.length} esercizi con meno di 3 sedute.`:`${few.length} esercizi con meno di 3 sedute nascosti.`} <a href="#" id="ovAll">${all?"Nascondili":"Mostrali"}</a></p>`;
   if(!grp.length) h=`<p class="muted">Ancora nessun esercizio con dati.</p>`;
   B.innerHTML=h;
   B.querySelectorAll("[data-ov]").forEach(b=>b.onclick=()=>{ st.ui.ovView=b.dataset.ov; save(); drawOverview(); });
+  const oa=$("#ovAll"); if(oa) oa.onclick=e=>{ e.preventDefault(); st.ui.ovAll=!all; save(); drawOverview(); };
   B.querySelectorAll("[data-ovid]").forEach(r=>r.onclick=()=>{ const sel=$("#stEx"); if(sel){ sel.value=r.dataset.ovid; drawExStats(r.dataset.ovid); } const c=$("#exCard"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); });
 }
 /* ---------------- panoramica: grafici settimanali (fasce di RIR, tonnellaggio, mappa per muscolo) ---------------- */
