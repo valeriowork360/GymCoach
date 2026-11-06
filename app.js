@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "96";
+const APP_VERSION = "97";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2216,7 +2216,7 @@ const csvCell=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace
 const toCSV=(head,rows,eol="\n")=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join(eol)+eol;
 const MEALS=["Colazione","Pranzo","Cena","Spuntino","Spuntino serale","Shake proteico"];
 /* nome del pasto: tengo quello scritto (es. "Spuntino 2", "Spuntino serale"), traduco solo i nomi inglesi e sistemo le maiuscole */
-function mealName(t){ t=String(t||"").replace(/[:\-–—*#•]+$/,"").trim(); const l=t.toLowerCase();
+function mealName(t){ t=String(t||"").replace(/\s+[—–]\s+.*$/,"").replace(/[:\-–—*#•]+$/,"").trim().replace(/^snack\b/i,"Spuntino").replace(/^colaz\.?$/i,"Colazione"); const l=t.toLowerCase();
   const map={breakfast:"Colazione",lunch:"Pranzo",dinner:"Cena",snack:"Spuntino",snacks:"Spuntini"}; if(map[l]) return map[l];
   return t?t[0].toUpperCase()+t.slice(1):"Altro"; }
 let fdDraft=null;   // {date, mode, meals:[{pasto,desc,kcal,p,c,g,foods:[...]}], tot, complete, replace}
@@ -2236,6 +2236,27 @@ const fdState=(v,t)=>v==null||!t?"":v<t*0.85?"molto sotto":v<t*0.925?"appena sot
 const itNum=v=>{ v=String(v??"").trim().replace(/[~≈]/g,"").replace(/\s.*$/,""); if(!v||!/\d/.test(v)) return null;
   if(v.includes(",")) v=v.replace(/\./g,"").replace(",","."); else if(/^\d{1,3}(\.\d{3})+$/.test(v)) v=v.replace(/\./g,""); const n=parseFloat(v); return isNaN(n)?null:n; };
 const IT_MONTHS=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+/* recap con le tabelle copiate una cella per riga (Alimento / Quantità / kcal / P / C / F / Aff.): lo trasformo in tabelle Markdown */
+const CELL_HEAD=/^(alimento|quantit[aà]|kcal|p|c|f|g|aff\.?|affidabilit[aà]|fonte|pasto)$/i;
+function cellsToMD(txt){
+  const L=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean), out=[]; let i=0, seenMeal=false, inSum=false;
+  const isHead=k=>CELL_HEAD.test(L[k]||""), headAt=k=>/^(alimento|pasto)$/i.test(L[k]||"")&&isHead(k+1)&&isHead(k+2);
+  while(i<L.length){
+    if(headAt(i+1)&&!isHead(i)){ // titolo del pasto (o del riepilogo) seguito dall'intestazione
+      const title=L[i]; inSum=/riepilogo/i.test(title)||/^pasto$/i.test(L[i+1]); seenMeal=true; i++;
+      const head=[]; while(i<L.length&&isHead(i)&&head.length<9){ head.push(L[i]); i++; }
+      out.push(`### ${inSum?"Riepilogo":title}`,`| ${head.join(" | ")} |`,`| ${head.map(()=>"---").join(" | ")} |`);
+      while(i+head.length<=L.length){ const row=L.slice(i,i+head.length);
+        // una riga valida ha un nome e, al posto delle kcal, un numero o "—"
+        if(headAt(i+1)||headAt(i)||!/^[\d.,~≈+\-—%]+%?$/.test(row[head.findIndex(h=>/^kcal$/i.test(h))]||"")) break;
+        out.push(`| ${row.join(" | ")} |`); i+=head.length; }
+      continue; }
+    if(inSum){ i++; continue; }                 // dopo il riepilogo: solo note di servizio
+    if(!seenMeal){ if(out.length<2) out.push(L[i]); i++; continue; } // intestazione: titolo e data
+    out.push(L[i]); i++;                        // note del pasto
+  }
+  return out.join("\n");
+}
 /* recap in tabelle Markdown (### Pasto, | Alimento | Quantità | kcal | P | C | F | Aff. |, riga Totale, riepilogo con Assunti e Target) */
 function parseFoodMD(txt){
   const L=txt.split(/\r?\n/), meals=[], notes=[]; let cur=null, inSum=false, cols=null, tot=null, target=null, date=null;
@@ -2258,7 +2279,7 @@ function parseFoodMD(txt){
     // testo fuori dalle tabelle: frase finale con i totali oppure nota
     const tm=l.match(/^totale:\s*([\d.,]+)\s*kcal\D+?([\d.,]+)\s*g\s*prot\w*\D+?([\d.,]+)\s*g\s*carb\w*\D+?([\d.,]+)\s*g\s*grass/i);
     if(tm){ if(!tot) tot={kcal:itNum(tm[1]),p:itNum(tm[2]),c:itNum(tm[3]),g:itNum(tm[4])}; continue; }
-    if(/^ecco\b/i.test(l)&&!meals.length) continue;
+    if(!meals.length&&!inSum) continue;          // righe di intestazione (titolo, data, unità)
     notes.push(cur&&!inSum?`${cur.pasto}: ${l}`:l);
   }
   return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot,date,target,nota:notes.join(" ")};
@@ -2266,6 +2287,7 @@ function parseFoodMD(txt){
 /* lettura locale (senza AI) di un riepilogo incollato: intestazioni dei pasti, alimenti con kcal e macro */
 function parseFoodText(txt){
   if(/^\s*\|.*\|\s*$/m.test(txt)&&/^\s*\|\s*:?-{2,}/m.test(txt)) return parseFoodMD(txt);
+  if(/^\s*alimento\s*$/im.test(txt)&&/^\s*quantit[aà]\s*$/im.test(txt)) return parseFoodMD(cellsToMD(txt));
   const meals=[]; let cur=null, tot=null;
   const grab=(l,re)=>{ const m=l.match(re); return m?fdNum(m[1]):null; };
   const vals=l=>({kcal:grab(l,/(\d+(?:[.,]\d+)?)\s*(?:kcal|cal)\b/i),p:grab(l,/(?:\bP(?:rot\w*)?|protein\w*)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)??grab(l,/(\d+(?:[.,]\d+)?)\s*g\s*(?:di\s*)?prot/i),
@@ -2316,7 +2338,7 @@ function openDiary(date){
     <div class="seg" id="fdMode"><button type="button" data-md="paste" class="${D.mode==="paste"?"on":""}">📋 Incolla riepilogo</button><button type="button" data-md="calc" class="${D.mode==="calc"||D.mode==="ai"?"on":""}">🧮 Alimenti</button><button type="button" data-md="man" class="${D.mode==="man"?"on":""}">✍ Manuale</button></div>
     ${D.mode==="calc"||D.mode==="ai"?fcHtml(D):D.mode==="man"?`<p class="muted cap">Aggiungi un pasto e compila i valori.</p><div class="row"><button type="button" class="btn" id="fdAdd">➕ Aggiungi pasto</button></div>`
       :`<textarea class="inp" id="fdText" rows="${D.mode==="paste"?7:3}" placeholder="${D.mode==="paste"?"Incolla qui il riepilogo della giornata copiato dall'app (pasti, alimenti, kcal e macro)":"Es. pranzo: 150 g riso basmati, 200 g petto di pollo, insalata con un cucchiaio d'olio"}">${esc(D.text||"")}</textarea>
-      <div class="row">${D.mode==="ai"&&SR?`<button type="button" class="btn" id="fdMic">🎤 Detta</button>`:""}<button type="button" class="btn acc" id="fdGo">${D.mode==="paste"?"Leggi il riepilogo":"Stima i valori"}</button></div>
+      <div class="row">${D.mode==="paste"?`<label class="btn">📄 Carica file .md / .txt<input type="file" id="fdFile" accept=".md,.txt,.markdown,text/markdown,text/plain" hidden></label>`:""}${D.mode==="ai"&&SR?`<button type="button" class="btn" id="fdMic">🎤 Detta</button>`:""}<button type="button" class="btn acc" id="fdGo">${D.mode==="paste"?"Leggi il riepilogo":"Stima i valori"}</button></div>
       <p class="muted" id="fdMsg"></p>`}
     ${D.meals.length?`<div class="card"><h3>Da salvare</h3>${D.meals.map(row).join("")}
       <p class="fdtot"><b>Totale: ${Math.round(tot.kcal)} kcal</b> · P ${fdR1(tot.p)} g · C ${fdR1(tot.c)} g · G ${fdR1(tot.g)} g${D.tot&&D.tot.kcal!=null&&Math.abs(D.tot.kcal-sum("kcal"))>5?` <span class="xs">(totale dell'app; somma dei pasti ${Math.round(sum("kcal"))})</span>`:""}</p>
@@ -2363,6 +2385,7 @@ function openDiary(date){
     fdDraft.date=D.date; openDiary(D.date);
   };
   if($("#fcText")) fcBind(D,date);
+  if($("#fdFile")) $("#fdFile").onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; const t=await f.text(); $("#fdText").value=t; D.text=t; $("#fdGo").click(); };
   if($("#fdMic")) $("#fdMic").onclick=()=>{ const ta=$("#fdText"), b=$("#fdMic");
     if(b._rec){ b._rec.stop(); return; }
     const r=new SR(); r.lang="it-IT"; r.continuous=true; r.interimResults=false; const base=ta.value;
