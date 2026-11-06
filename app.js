@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "89";
+const APP_VERSION = "90";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -672,9 +672,9 @@ ${recentSessionsTxt()}
 Ultima prestazione registrata per ogni esercizio (usala per rispondere a domande su carichi e ripetizioni passate; se un dato non c'è, dillo chiaramente invece di inventarlo):
 ${allExLastTxt()}`;
 }
-async function callGemini(sys,prompt,onDelta,img){
+async function callGemini(sys,prompt,onDelta,img,opt={}){
   const key=st.settings.apiKey; if(!key) return {err:"manca la chiave Gemini"};
-  const models=[...new Set([st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
+  const models=[...new Set([...(opt.models||[]),st.settings.model||"gemini-3.8-flash","gemini-3.8-flash","gemini-flash-latest","gemini-3.6-flash","gemini-2.5-flash"])];
   let err="", retried=false;
   // livelli di ragionamento da provare se il modello rifiuta quello scelto
   const lv0=["minimal","low","medium"].includes(st.settings.think)?st.settings.think:"low";
@@ -689,7 +689,7 @@ async function callGemini(sys,prompt,onDelta,img){
         method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
         body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[...(img?[{inlineData:{mimeType:img.mime,data:img.data}}]:[]),{text:prompt}]}],generationConfig:gc})});
       if(r.status===404){ clearTimeout(to); err="modello Gemini non trovato"; continue; }
-      if(r.status===429){ clearTimeout(to); return {err:"limite gratuito di Gemini raggiunto per ora"}; }
+      if(r.status===429){ clearTimeout(to); if(opt.models){ err="limite gratuito di Gemini raggiunto per ora"; continue; } return {err:"limite gratuito di Gemini raggiunto per ora"}; }
       if(r.status===400||r.status===401||r.status===403){ clearTimeout(to); const j=await r.json().catch(()=>({})); const m=(j.error&&j.error.message)||"";
         if(think && r.status===400 && /think/i.test(m)){ levels=levels.slice(1); models.splice(models.indexOf(model)+1,0,model); continue; }
         return {err:/API key/i.test(m)?"chiave Gemini non valida":"Gemini: "+(m||r.status)}; }
@@ -1931,10 +1931,10 @@ function parseCSV(t){
 async function loadFood(force){
   if(!food){ try{ food=JSON.parse(localStorage.getItem("gc_food")||"null"); }catch(e){} }
   if(!st.settings.ghToken||!st.settings.ghRepo) return food;
-  if(!force && food && !food.err && food.alimenti && Date.now()-(food._t||0)<10*60e3) return food;
+  if(!force && food && !food.err && food.alimenti && food.schede && Date.now()-(food._t||0)<10*60e3) return food;
   const get=async f=>{ const r=await fetch(`https://api.github.com/repos/${st.settings.ghRepo}/contents/alimentazione/${f}`,{headers:{"Authorization":"Bearer "+st.settings.ghToken,"Accept":"application/vnd.github.raw","X-GitHub-Api-Version":"2022-11-28"},cache:"no-store"}); if(r.status===404) return null; if(!r.ok) throw new Error("GitHub "+r.status); return r.text(); };
-  try{ const [g,pp,al]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv")]);
-    food={_t:Date.now(),giorni:g?parseCSV(g):[],pasti:pp?parseCSV(pp):[],alimenti:al?parseCSV(al):[],none:!g};
+  try{ const [g,pp,al,sc]=await Promise.all([get("giorni.csv"),get("pasti.csv"),get("alimenti.csv"),get("schede.csv")]);
+    food={_t:Date.now(),giorni:g?parseCSV(g):[],pasti:pp?parseCSV(pp):[],alimenti:al?parseCSV(al):[],schede:sc?parseCSV(sc):[],none:!g};
     try{ localStorage.setItem("gc_food",JSON.stringify(food)); }catch(e){} }
   catch(e){ food=food?{...food,err:String(e.message||e)}:{giorni:[],pasti:[],err:String(e.message||e)}; }
   return food;
@@ -2272,7 +2272,7 @@ function parseFoodText(txt){
   });
   return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot};
 }
-function fdNormalize(meals){ return meals.map(m=>{ const foods=(m.foods||m.alimenti||[]).map(f=>({nome:String(f.nome||f.name||"").trim(),q:String(f.q||f.quantita||"").trim(),kcal:fdNum(f.kcal),p:fdNum(f.p),c:fdNum(f.c),g:fdNum(f.g),aff:f.aff||""}));
+function fdNormalize(meals){ return meals.map(m=>{ const foods=(m.foods||m.alimenti||[]).map(f=>({nome:String(f.nome||f.name||"").trim(),q:String(f.q||f.quantita||"").trim(),kcal:fdNum(f.kcal),p:fdNum(f.p),c:fdNum(f.c),g:fdNum(f.g),aff:f.aff||"",src:f.src||""}));
   const sum=k=>foods.some(f=>f[k]!=null)?foods.reduce((a,f)=>a+(f[k]||0),0):null;
   return {pasto:mealName(m.pasto),foods,desc:m.desc||foods.map(f=>f.nome+(f.q&&!f.nome.includes(f.q)?" "+f.q:"")).join("; "),kcal:fdNum(m.kcal)??sum("kcal"),p:fdNum(m.p)??sum("p"),c:fdNum(m.c)??sum("c"),g:fdNum(m.g)??sum("g")}; }); }
 async function fdAI(mode,text){
@@ -2302,8 +2302,8 @@ function openDiary(date){
     <div class="fdtrial ${st.settings.foodTrial!==false?"on":""}"><label class="chk"><input type="checkbox" id="fdTrial" ${st.settings.foodTrial!==false?"checked":""}> <span><b>Periodo di prova</b>: salvo in <code>alimentazione/prova_app/</code> (con il testo incollato), separato dai dati principali. I grafici usano i dati principali.</span></label></div>
     <div class="fdtop"><input type="date" class="inp" id="fdDate" value="${date}" max="${today}"><span class="muted">giorno ${dayNo(date)}</span></div>
     ${saved.length||q.length?`<div class="card"><h3>${trialOn?"Nei dati principali (inseriti da Claude)":"Già salvato per questo giorno"}</h3>${trialOn?`<p class="muted xs">Solo riferimento: in prova il salvataggio va nella cartella separata e non tocca questi dati.</p>`:""}${day?`<p><b>${day.kcal||"?"} kcal</b> · P ${day.proteine_g||"?"} g${day.carboidrati_g?` · C ${day.carboidrati_g} g · G ${day.grassi_g} g`:""}${day.giorno_completo==="no"?" · parziale":""}</p>`:""}${saved.map(m=>`<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${m.kcal?Math.round(fdNum(m.kcal))+" kcal":""}${m.proteine_g?" · P "+Math.round(fdNum(m.proteine_g))+" g":""}</span><br>${esc(m.descrizione)}</div>`).join("")}${q.length?`<p class="warn">⏳ ${q.length} salvataggio in attesa di rete.</p>`:""}</div>`:""}
-    <div class="seg" id="fdMode"><button type="button" data-md="paste" class="${D.mode==="paste"?"on":""}">📋 Incolla riepilogo</button><button type="button" data-md="ai" class="${D.mode==="ai"?"on":""}">💬 Descrivi</button><button type="button" data-md="man" class="${D.mode==="man"?"on":""}">✍ Manuale</button></div>
-    ${D.mode==="man"?`<p class="muted cap">Aggiungi un pasto e compila i valori.</p><div class="row"><button type="button" class="btn" id="fdAdd">➕ Aggiungi pasto</button></div>`
+    <div class="seg" id="fdMode"><button type="button" data-md="paste" class="${D.mode==="paste"?"on":""}">📋 Incolla riepilogo</button><button type="button" data-md="calc" class="${D.mode==="calc"||D.mode==="ai"?"on":""}">🧮 Alimenti</button><button type="button" data-md="man" class="${D.mode==="man"?"on":""}">✍ Manuale</button></div>
+    ${D.mode==="calc"||D.mode==="ai"?fcHtml(D):D.mode==="man"?`<p class="muted cap">Aggiungi un pasto e compila i valori.</p><div class="row"><button type="button" class="btn" id="fdAdd">➕ Aggiungi pasto</button></div>`
       :`<textarea class="inp" id="fdText" rows="${D.mode==="paste"?7:3}" placeholder="${D.mode==="paste"?"Incolla qui il riepilogo della giornata copiato dall'app (pasti, alimenti, kcal e macro)":"Es. pranzo: 150 g riso basmati, 200 g petto di pollo, insalata con un cucchiaio d'olio"}">${esc(D.text||"")}</textarea>
       <div class="row">${D.mode==="ai"&&SR?`<button type="button" class="btn" id="fdMic">🎤 Detta</button>`:""}<button type="button" class="btn acc" id="fdGo">${D.mode==="paste"?"Leggi il riepilogo":"Stima i valori"}</button></div>
       <p class="muted" id="fdMsg"></p>`}
@@ -2351,6 +2351,7 @@ function openDiary(date){
     }
     fdDraft.date=D.date; openDiary(D.date);
   };
+  if($("#fcText")) fcBind(D,date);
   if($("#fdMic")) $("#fdMic").onclick=()=>{ const ta=$("#fdText"), b=$("#fdMic");
     if(b._rec){ b._rec.stop(); return; }
     const r=new SR(); r.lang="it-IT"; r.continuous=true; r.interimResults=false; const base=ta.value;
@@ -2359,7 +2360,7 @@ function openDiary(date){
   if($("#fdSave")) $("#fdSave").onclick=async()=>{
     const tg=D.target||fdTarget(); if(D.target){ st.settings.foodT={...D.target}; }
     const trial=st.settings.foodTrial!==false;
-    const job={dir:trial?"alimentazione/prova_app/":"alimentazione/",raw:trial&&D.rawText?D.rawText:"",date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:trial?true:(saved.length?D.replace:false),target:fdTargetCols(tg),tgt:tg,nota:D.nota||"",at:Date.now()};
+    const job={dir:trial?"alimentazione/prova_app/":"alimentazione/",raw:trial&&D.rawText?D.rawText:"",date:D.date,meals:D.meals,tot:D.tot,complete:D.complete,replace:trial?!!D.rawText:(saved.length?D.replace:false),target:fdTargetCols(tg),tgt:tg,nota:D.nota||"",at:Date.now()};
     const m=$("#fdSaveMsg"); m.textContent="Salvo…";
     if(!st.settings.ghToken){ m.textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
     (st.foodQ ||= []).push(job); save();
@@ -2385,7 +2386,7 @@ async function flushFoodQ(){
         const n=dayNo(job.date); dates.push(job.date);
         if(job.replace){ P.rows=P.rows.filter(r=>r.data!==job.date); A.rows=A.rows.filter(r=>r.data!==job.date); }
         job.meals.forEach(m=>{ P.rows.push({giorno:n,data:job.date,pasto:m.pasto,descrizione:m.desc,kcal:fdR1(m.kcal),proteine_g:fdR1(m.p),carboidrati_g:fdR1(m.c),grassi_g:fdR1(m.g)});
-          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g),fonte:m.src||"diario",affidabilita:f.aff||""})); });
+          (m.foods||[]).forEach(f=>A.rows.push({giorno:n,data:job.date,pasto:m.pasto,alimento:f.nome,quantita:f.q,kcal:fdR1(f.kcal),proteine_g:fdR1(f.p),carboidrati_g:fdR1(f.c),grassi_g:fdR1(f.g),fonte:f.src||m.src||"diario",affidabilita:f.aff||""})); });
         // totali del giorno: dall'app esterna se il giorno è stato incollato intero, altrimenti somma dei pasti salvati
         const dm=P.rows.filter(r=>r.data===job.date), s=k=>{ const v=dm.map(r=>fdNum(r[k])).filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)*10)/10:null; };
         const useT=job.replace&&job.tot&&job.tot.kcal!=null;
@@ -2509,3 +2510,219 @@ async function openFoodDash(force){
     const ms=(f.pasti||[]).filter(m=>+m.giorno===g), al=(f.alimenti||[]).filter(a=>+a.giorno===g);
     r.insertAdjacentHTML("afterend",`<tr class="fdet"><td colspan="7">${ms.map(m=>{ const fa=al.filter(a=>a.pasto===m.pasto); return `<div class="fmeal"><b>${esc(m.pasto)}</b> <span class="muted">${fmtIt(+m.kcal)} kcal${m.proteine_g?" · P "+fmtIt(+m.proteine_g,1):""}${m.carboidrati_g?" · C "+fmtIt(+m.carboidrati_g,1):""}${m.grassi_g?" · G "+fmtIt(+m.grassi_g,1):""}</span>${fa.length?`<div class="fal">${fa.map(a=>`<div>${a.fonte==="stimato"?"<i>~</i> ":""}${esc(a.alimento)} <span class="muted">${esc(a.quantita||"")} · ${fmtIt(+a.kcal)} kcal${a.affidabilita?" · "+esc(a.affidabilita):""}</span></div>`).join("")}</div>`:`<br>${esc(m.descrizione)}`}</div>`; }).join("")||"<p class='muted'>Nessun pasto.</p>"}${x.nota?`<div class="xs fnote">📝 ${esc(x.nota)}</div>`:""}</td></tr>`); });
 }
+
+/* ---------------- 🧮 alimenti scritti a mano: "40 ml baam whey", "2 cracker cioccolato", "150 g riso" ----------------
+   Schede in ordine di precedenza: nuove (etichetta, codice a barre, foto) → storico (schede.csv) → base degli alimenti comuni.
+   Le polveri misurate col misurino in ml diventano grammi con la densità della scheda. Tutto sul telefono, senza AI. */
+const fnorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").replace(/['’`]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const FSTOP=new Set("di del della dello dei degli delle al alla allo ai alle con e ed il la lo le i gli in the of a da un una uno g gr ml pz per".split(" "));
+const ftoks=s=>fnorm(s).split(" ").filter(t=>t&&!FSTOP.has(t)&&!/^\d+$/.test(t));
+function lev(a,b){ if(Math.abs(a.length-b.length)>2) return 9; const d=Array.from({length:a.length+1},(_,i)=>[i]); for(let j=1;j<=b.length;j++) d[0][j]=j;
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[a.length][b.length]; }
+function tokSim(a,b){ if(a===b) return 1; if(a.length>=4&&b.length>=4&&(a.startsWith(b)||b.startsWith(a))) return .9; if(a.length>=5&&b.length>=5){ const l=lev(a,b); if(l<=1) return .8; if(l<=2&&a.length>=7) return .65; } return 0; }
+function nameScore(inT,cT){ if(!inT.length||!cT.length) return 0; let sum=0; const used=new Set();
+  inT.forEach(t=>{ let best=0,bi=-1; cT.forEach((u,i)=>{ const v=tokSim(t,u); if(v>best){ best=v; bi=i; } }); sum+=best; if(bi>=0) used.add(bi); });
+  const rec=sum/inT.length; return {s:.75*rec+.25*used.size/cT.length,rec}; }
+function fcCards(){
+  const N=v=>v===""||v==null||isNaN(+String(v).replace(",","."))?null:+String(v).replace(",",".");
+  const mk=(o)=>({...o,names:[o.nome,...(o.alias||[])].map(ftoks).filter(t=>t.length)});
+  const out=[], seen=new Set();
+  const bd={}; (typeof FOODS_BASE!=="undefined"?FOODS_BASE:[]).forEach(f=>{ if(f[8]) [f[0],...f[1].split(";")].forEach(n=>bd[fnorm(n)]=f[8]); });
+  (st.foodCards||[]).forEach(c=>{ seen.add(fnorm(c.nome)); out.push(mk({...c,src:c.src||"etichetta"})); });
+  ((food&&food.schede)||[]).forEach(r=>{ if(seen.has(fnorm(r.nome))) return; seen.add(fnorm(r.nome));
+    out.push(mk({nome:r.nome,alias:String(r.alias||"").split(";").map(x=>x.trim()).filter(Boolean),per:r.per||"100 g",k:N(r.kcal),p:N(r.proteine_g),c:N(r.carboidrati_g),g:N(r.grassi_g),dens:N(r.densita_g_ml)||bd[fnorm(r.nome)]||null,pz_g:N(r.pezzo_g),por_g:N(r.porzione_g),por_ml:N(r.porzione_ml),por_pz:N(r.porzione_pz),por_txt:r.porzione||"",usi:+r.usi||0,ultimo:r.ultimo||"",ean:r.codice||"",src:/storico/.test(r.fonte||"")?"storico":"etichetta",stim:/stimat/.test(r.fonte||"")})); });
+  (typeof FOODS_BASE!=="undefined"?FOODS_BASE:[]).forEach(([nome,al,k,p,c,g,por,pz,dens])=>{ if(seen.has(fnorm(nome))) return;
+    out.push(mk({nome,alias:al.split(";"),per:"100 g",k,p,c,g,por_g:por||null,pz_g:pz||null,dens:dens||null,src:"base"})); });
+  return out;
+}
+function fcMatch(text,cards){ const t=ftoks(text); if(!t.length) return [];
+  return cards.map(c=>{ let best={s:0,rec:0}; c.names.forEach(n=>{ const r=nameScore(t,n); if(r.s>best.s) best=r; });
+      return {c,s:best.s+(c.src==="base"?0:.03+Math.min(.04,(c.usi||0)/400)),auto:best.rec>=.66}; })
+    .filter(x=>x.s>=.5).sort((a,b)=>b.s-a.s).slice(0,6); }
+/* quantità scritta nella riga */
+function fcQty(line){
+  const s=" "+line.replace(/½/g," 0,5 ").replace(/¼/g," 0,25 ")+" ";
+  const U="kg|g|gr|grammi|ml|cl|l|lt|litri?|pz|pezz[io]|x|cucchiai[on]?[io]?|cucchiain[io]|fett[ae]|vasett[io]|confezion[ei]|bustin[ae]|barrett[ae]|scoop|misurin[io]|tazz[ae]|bicchier[ei]";
+  const num="(\\d+(?:[.,]\\d+)?(?:\\/\\d+)?)";
+  let m=s.match(new RegExp(`[\\s(]${num}\\s*(${U})(?=[\\s).,;:]|$)`,"i")), unitless=false;
+  if(!m){ m=line.trim().match(new RegExp(`^${num}(?=\\s)`)); unitless=!!m; }
+  if(!m) return {q:null,rest:line};
+  const n0=m[1].includes("/")?m[1].split("/").reduce((a,b)=>+String(a).replace(",",".")/+b):+m[1].replace(",",".");
+  const u=(unitless?"":m[2]||"").toLowerCase(); let n=n0, unit="pz";
+  if(/^kg$/.test(u)){ n=n0*1000; unit="g"; } else if(/^(g|gr|grammi)$/.test(u)) unit="g";
+  else if(/^ml$/.test(u)) unit="ml"; else if(/^cl$/.test(u)){ n=n0*10; unit="ml"; } else if(/^(l|lt|litr)/.test(u)){ n=n0*1000; unit="ml"; }
+  else if(/^cucchiain/.test(u)){ n=n0*5; unit="ml"; } else if(/^cucchia/.test(u)){ n=n0*15; unit="ml"; } else if(/^(tazz|bicchier)/.test(u)){ n=n0*200; unit="ml"; }
+  else if(/^(scoop|misurin)/.test(u)) unit="dose";
+  const rest=(unitless?line.trim().replace(m[0],""):s.replace(m[0].trim(),"")).replace(/\s+/g," ").trim();
+  return {q:{n,unit,txt:m[0].trim()},rest};
+}
+const fcR=(v,d=1)=>v==null?null:Math.round(v*10**d)/10**d;
+function fcCalc(card,q){
+  if(card.src==="ai") return {kcal:card.k,p:card.p,c:card.c,g:card.g,qt:q?q.txt:"porzione stimata",notes:["stima AI"],def:!q};
+  let grams=null, ml=null, pcs=null; const notes=[];
+  if(!q){ if(card.por_ml){ ml=card.por_ml; } else if(card.por_g){ grams=card.por_g; } else if(card.por_pz){ pcs=card.por_pz; } else if(card.pz_g||card.per==="1 pz"){ pcs=1; } else grams=100; notes.push("porzione solita"); }
+  else if(q.unit==="g") grams=q.n; else if(q.unit==="ml") ml=q.n; else if(q.unit==="dose"){ if(card.por_ml) ml=q.n*card.por_ml; else if(card.por_g) grams=q.n*card.por_g; else grams=q.n*30; notes.push("dose = porzione solita"); } else pcs=q.n;
+  let mult, qt;
+  if(card.per==="1 pz"){ if(pcs==null){ pcs=card.pz_g&&grams!=null?grams/card.pz_g:1; if(!card.pz_g) notes.push("contato come 1 pezzo"); } mult=pcs; qt=`${fcR(pcs)} pz`; }
+  else if(card.per==="100 ml"){ if(ml==null){ ml=grams!=null?(card.dens?grams/card.dens:grams):pcs*(card.por_ml||card.pz_g||100); } mult=ml/100; qt=`${fcR(ml,0)} ml`; }
+  else { if(grams==null){ if(ml!=null){ if(card.dens){ grams=ml*card.dens; notes.push(`densità ${String(card.dens).replace(".",",")} g/ml`); } else { grams=ml; notes.push("1 ml ≈ 1 g"); } qt=`${fcR(ml,0)} ml ≈${String(fcR(grams)).replace(".",",")} g`; }
+      else { const w=card.pz_g||card.por_g; grams=pcs*(w||100); if(!w) notes.push("peso del pezzo non noto: 100 g"); qt=`${fcR(pcs)} pz = ${String(fcR(grams)).replace(".",",")} g`; } }
+    else qt=`${String(fcR(grams)).replace(".",",")} g`; mult=grams/100; }
+  const v=x=>x==null?null:fcR(x*mult);
+  return {kcal:v(card.k),p:v(card.p),c:v(card.c),g:v(card.g),qt,notes,def:!q};
+}
+function fcMealNow(){ const h=new Date().getHours(); return h<10?"Colazione":h<12?"Spuntino":h<15?"Pranzo":h<19?"Spuntino":"Cena"; }
+function fcLines(D){ const cards=fcCards(); let meal=D.fcMeal||fcMealNow(); const out=[];
+  String(D.fcText||"").split(/\r?\n/).forEach(raw=>{ const l=raw.replace(/^[\s\-•*·]+/,"").trim(); if(!l) return;
+    if(/:$/.test(l)||/^(colazione|pranzo|cena|merenda|spuntin\w*( \d+)?|snack\w*|shake\w*( serale)?|pre.?allen\w*|post.?allen\w*)$/i.test(l)){ meal=mealName(l.replace(/:$/,"")); return; }
+    const {q,rest}=fcQty(l), cands=fcMatch(rest,cards), pick=D.fcPick&&D.fcPick[l], ai=D.fcAi&&D.fcAi[l];
+    let card=null; if(pick==="—") card=null; else if(pick) card=(cands.find(x=>x.c.nome===pick)||{c:cards.find(c=>c.nome===pick)}).c||null; else if(ai) card=ai; else if(cands[0]&&cands[0].auto) card=cands[0].c;
+    if(ai&&!pick) card=ai;
+    out.push({raw:l,meal,q,rest,cands,card,calc:card?fcCalc(card,q):null}); });
+  return out; }
+function fcFav(){ return fcCards().filter(c=>c.src!=="base"&&(c.usi>=2||c.src==="etichetta")&&(c.por_g||c.por_ml||c.por_pz))
+  .sort((a,b)=>(b.ultimo||"").localeCompare(a.ultimo||"")||(b.usi||0)-(a.usi||0)).slice(0,14); }
+const fcPorTxt=c=>c.por_ml?`${fcR(c.por_ml,0)} ml`:c.por_g?`${String(fcR(c.por_g)).replace(".",",")} g`:c.por_pz?`${fcR(c.por_pz)}`:"";
+function fcHtml(D){
+  const tpl=st.settings.mealTpl||[];
+  return `<div class="fcbar"><label class="muted xs">Pasto</label><select class="inp" id="fcMeal">${[...new Set([D.fcMeal||fcMealNow(),...MEALS])].map(x=>`<option ${x===(D.fcMeal||fcMealNow())?"selected":""}>${esc(x)}</option>`).join("")}</select></div>
+    ${tpl.length?`<div class="fcchips">${tpl.map((t,i)=>`<button type="button" class="chip tpl" data-tpl="${i}">⭐ ${esc(t.name)}</button>`).join("")}</div>`:""}
+    <div class="fcchips">${fcFav().map(c=>`<button type="button" class="chip" data-fav="${esc(c.nome)}">${esc(c.nome.length>26?c.nome.slice(0,24)+"…":c.nome)} <span class="muted">${esc(fcPorTxt(c))}</span></button>`).join("")||`<span class="muted xs">I tuoi prodotti più usati compariranno qui.</span>`}</div>
+    <textarea class="inp" id="fcText" rows="4" placeholder="Un alimento per riga, quantità facoltativa:&#10;40 ml baam whey&#10;2 cracker cioccolato&#10;150 g riso">${esc(D.fcText||"")}</textarea>
+    <div class="row"><button type="button" class="btn" id="fcScan">📷 Codice a barre</button><button type="button" class="btn" id="fcPhoto">📸 Foto etichetta</button><button type="button" class="btn" id="fcNew">✍ Nuovo prodotto</button></div>
+    <input type="file" id="fcFile" accept="image/*" capture="environment" hidden>
+    <div id="fcForm"></div><div id="fcRes"></div>`;
+}
+function fcRender(D){
+  const B=$("#fcRes"); if(!B) return; const L=fcLines(D);
+  if(!L.length){ B.innerHTML=""; return; }
+  const tot=k=>L.reduce((a,x)=>a+(x.calc&&x.calc[k]||0),0);
+  let cur="", h="";
+  L.forEach((x,i)=>{ if(x.meal!==cur){ cur=x.meal; h+=`<div class="fcmeal">${esc(cur)}</div>`; }
+    if(!x.card){ h+=`<div class="fcr miss"><div class="fcn">${esc(x.raw)}</div><div class="muted xs">Non lo trovo tra le tue schede né tra gli alimenti comuni.</div>
+      <div class="fcact"><button type="button" class="btn sm" data-fca="scan" data-i="${i}">📷 Codice</button><button type="button" class="btn sm" data-fca="photo" data-i="${i}">📸 Etichetta</button><button type="button" class="btn sm" data-fca="label" data-i="${i}">✍ Valori</button>${aiReady()?`<button type="button" class="btn sm" data-fca="ai" data-i="${i}">🤖 Stima</button>`:""}</div>
+      ${x.cands.length?`<select class="inp" data-fcpick="${i}"><option value="">Oppure scegli…</option>${x.cands.map(c=>`<option>${esc(c.c.nome)}</option>`).join("")}</select>`:""}</div>`; return; }
+    const c=x.calc, src=x.card.src==="base"?"alimento comune":x.card.src==="ai"?"stima AI":x.card.src==="storico"?"dal tuo storico":"etichetta";
+    h+=`<div class="fcr"><div class="fcn">${esc(x.raw)}</div>
+      <select class="inp" data-fcpick="${i}">${[x.card,...x.cands.map(z=>z.c).filter(z=>z.nome!==x.card.nome)].map(z=>`<option ${z.nome===x.card.nome?"selected":""}>${esc(z.nome)}</option>`).join("")}<option value="—">— nessuno di questi —</option></select>
+      <div class="fcv"><b>${esc(c.qt)}</b> · ${fcR(c.kcal,0)??"?"} kcal · P ${c.p??"?"} · C ${c.c??"?"} · G ${c.g??"?"}</div>
+      <div class="fcb"><span class="fcsrc ${x.card.src}">${src}</span>${c.notes.map(n=>`<span class="fcnote ${/porzione|non noto|1 ml|1 pezzo/.test(n)?"warn":""}">${esc(n)}</span>`).join("")}</div></div>`; });
+  const miss=L.filter(x=>!x.card).length;
+  h+=`<p class="fdtot"><b>${fcR(tot("kcal"),0)} kcal</b> · P ${fcR(tot("p"))} · C ${fcR(tot("c"))} · G ${fcR(tot("g"))}${miss?` <span class="warn xs">· ${miss} da completare</span>`:""}</p>
+    <div class="row"><button type="button" class="btn acc" id="fcAdd" ${miss?"disabled":""}>➕ Aggiungi al giorno</button><button type="button" class="btn" id="fcTpl">⭐ Salva come pasto preferito</button></div><div id="fcTplBox"></div>`;
+  B.innerHTML=h; fcBindRes(D);
+}
+let fcT=null;
+function fcBind(D,date){
+  const ta=$("#fcText");
+  ta.oninput=()=>{ D.fcText=ta.value; clearTimeout(fcT); fcT=setTimeout(()=>fcRender(D),300); };
+  $("#fcMeal").onchange=e=>{ D.fcMeal=e.target.value; fcRender(D); };
+  document.querySelectorAll("#sheetBody [data-fav]").forEach(b=>b.onclick=()=>{ const c=fcCards().find(z=>z.nome===b.dataset.fav); if(!c) return;
+    ta.value=(ta.value.trim()?ta.value.trim()+"\n":"")+`${fcPorTxt(c)} ${c.nome}`.trim(); ta.oninput(); });
+  document.querySelectorAll("#sheetBody [data-tpl]").forEach(b=>b.onclick=()=>{ const t=(st.settings.mealTpl||[])[+b.dataset.tpl]; if(!t) return;
+    ta.value=(ta.value.trim()?ta.value.trim()+"\n":"")+t.text; ta.oninput(); });
+  $("#fcScan").onclick=()=>fcScan(D,null);
+  $("#fcPhoto").onclick=()=>{ D.fcFor=null; $("#fcFile").click(); };
+  $("#fcNew").onclick=()=>fcForm(D,{});
+  $("#fcFile").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) fcPhoto(D,f); };
+  fcRender(D);
+}
+function fcBindRes(D){
+  const B=$("#fcRes"), L=fcLines(D);
+  B.querySelectorAll("[data-fcpick]").forEach(sel=>sel.onchange=()=>{ const x=L[+sel.dataset.fcpick]; (D.fcPick ||= {})[x.raw]=sel.value||undefined; if(!sel.value) delete D.fcPick[x.raw]; fcRender(D); });
+  B.querySelectorAll("[data-fca]").forEach(b=>b.onclick=async()=>{ const x=L[+b.dataset.i], a=b.dataset.fca; D.fcFor=x.raw;
+    if(a==="scan") fcScan(D,x); else if(a==="photo") $("#fcFile").click(); else if(a==="label") fcForm(D,{nome:x.rest,alias:x.rest});
+    else if(a==="ai"){ b.textContent="…"; const j=await fdAI("ai",x.raw); const al=j&&!j.err&&j.pasti&&j.pasti[0]&&(j.pasti[0].alimenti||[])[0];
+      if(!al){ b.textContent="🤖 Non riesco"; return; }
+      (D.fcAi ||= {})[x.raw]={nome:al.nome||x.rest,k:fdNum(al.kcal),p:fdNum(al.p),c:fdNum(al.c),g:fdNum(al.g),src:"ai",names:[]};
+      fcRender(D); } });
+  const add=$("#fcAdd"); if(add) add.onclick=()=>{
+    L.forEach(x=>{ if(!x.card) return; const c=x.calc, src=x.card.src==="base"||x.card.src==="ai"||x.card.stim?"stimato":"diario", aff=x.card.src==="ai"?"Bassa":(x.card.src==="base"||x.card.stim||c.def)?"Media":"Alta";
+      let m=D.meals.find(z=>z.pasto===x.meal); if(!m){ m={pasto:x.meal,foods:[],desc:"",kcal:0,p:0,c:0,g:0,src:"diario"}; D.meals.push(m); }
+      m.foods.push({nome:x.card.nome,q:c.qt,kcal:c.kcal,p:c.p,c:c.c,g:c.g,aff,src});
+      ["kcal","p","c","g"].forEach(k=>m[k]=fcR((m[k]||0)+(c[k]||0)));
+      m.desc=m.foods.map(f=>`${f.nome} ${f.q}`).join("; "); });
+    D.tot=null; D.fcText=""; D.fcPick={}; D.fcAi={}; D.rawText=""; D.complete=false;
+    if(!D.meals.length) return; openDiary(D.date); };
+  const tp=$("#fcTpl"); if(tp) tp.onclick=()=>{ $("#fcTplBox").innerHTML=`<div class="row"><input class="inp" id="fcTplName" placeholder="Nome, es. Colazione solita" value="${esc((D.fcMeal||fcMealNow())+" solita")}"><button type="button" class="btn" id="fcTplOk">Salva</button></div>`;
+    $("#fcTplOk").onclick=()=>{ const n=$("#fcTplName").value.trim(); if(!n) return; const text=String(D.fcText||"").trim(); if(!text) return;
+      st.settings.mealTpl=[...(st.settings.mealTpl||[]).filter(t=>t.name!==n),{name:n,text}]; save(); openDiary(D.date); }; };
+}
+/* nuova scheda: modulo (precompilato da codice a barre o foto) */
+function fcForm(D,v){
+  const F=$("#fcForm"); if(!F) return;
+  F.innerHTML=`<div class="card fcform"><h3>${v.ean?"Prodotto dal codice a barre":v.fromPhoto?"Etichetta letta dalla foto":"Nuovo prodotto"}</h3>${v.msg?`<p class="muted xs">${esc(v.msg)}</p>`:""}
+    <label class="fdnl"><span class="muted xs">Nome</span><input class="inp" id="ffN" value="${esc(v.nome||"")}"></label>
+    <label class="fdnl"><span class="muted xs">Come lo scrivi di solito (alias, separati da ;)</span><input class="inp" id="ffA" value="${esc(v.alias||"")}"></label>
+    <div class="fcbar"><span class="muted xs">Valori per</span><select class="inp" id="ffPer"><option ${v.per!=="100 ml"?"selected":""}>100 g</option><option ${v.per==="100 ml"?"selected":""}>100 ml</option></select></div>
+    <div class="fdv"><label><span>kcal</span><input class="inp" inputmode="decimal" id="ffK" value="${v.k??""}"></label><label><span>Proteine</span><input class="inp" inputmode="decimal" id="ffP" value="${v.p??""}"></label><label><span>Carbo</span><input class="inp" inputmode="decimal" id="ffC" value="${v.c??""}"></label><label><span>Grassi</span><input class="inp" inputmode="decimal" id="ffG" value="${v.g??""}"></label></div>
+    <div class="fdv fd3"><label><span>Porzione solita (g)</span><input class="inp" inputmode="decimal" id="ffPor" value="${v.por_g??""}"></label><label><span>Polvere: ml del misurino</span><input class="inp" inputmode="decimal" id="ffMl" value="${v.dml??""}" placeholder="es. 30"></label><label><span>= grammi</span><input class="inp" inputmode="decimal" id="ffMg" value="${v.dg??""}" placeholder="es. 12,5"></label></div>
+    <p class="muted xs">Per le polveri: misura col misurino e pesa una volta (es. 30 ml = 12,5 g) così i ml diventano grammi. Per un pezzo (barretta, uovo) metti il peso nella porzione.</p>
+    <div class="row"><button type="button" class="btn acc" id="ffSave">Salva scheda</button><button type="button" class="btn" id="ffX">Annulla</button></div><p class="muted" id="ffMsg"></p></div>`;
+  F.scrollIntoView({behavior:"smooth",block:"start"});
+  $("#ffX").onclick=()=>{ F.innerHTML=""; };
+  $("#ffSave").onclick=()=>{ const n=x=>fdNum($(x).value), nome=$("#ffN").value.trim(); if(!nome||n("#ffK")==null){ $("#ffMsg").textContent="Servono almeno nome e kcal."; return; }
+    const ml=n("#ffMl"), g=n("#ffMg"), dens=ml&&g?Math.round(g/ml*1000)/1000:(v.dens||null), por=n("#ffPor");
+    const card={nome,alias:$("#ffA").value.split(";").map(x=>x.trim()).filter(Boolean),per:$("#ffPer").value,k:n("#ffK"),p:n("#ffP"),c:n("#ffC"),g:n("#ffG"),dens,por_g:por,por_ml:ml&&!por?ml:null,pz_g:null,ean:v.ean||"",src:"etichetta",fonte:v.ean?"codice a barre (Open Food Facts)":v.fromPhoto?"foto etichetta":"etichetta",usi:0,ultimo:ymdLocal(Date.now())};
+    st.foodCards=[...(st.foodCards||[]).filter(c=>fnorm(c.nome)!==fnorm(nome)),card]; (st.cardQ ||= []).push(card); save(); flushCards();
+    if(D.fcFor){ (D.fcPick ||= {})[D.fcFor]=nome; D.fcFor=null; }
+    F.innerHTML=`<p class="okmsg">✓ Scheda "${esc(nome)}" salvata: la riconosco anche le prossime volte.</p>`; fcRender(D); };
+}
+/* codice a barre: fotocamera (BarcodeDetector) oppure codice scritto; valori da Open Food Facts */
+async function fcScan(D,line){
+  const ov=document.createElement("div"); ov.className="scanov";
+  const BD=window.BarcodeDetector;
+  ov.innerHTML=`<div class="scanbox">${BD?`<video playsinline muted></video><div class="scanline"></div>`:""}<p>${BD?"Inquadra il codice a barre":"Questo browser non legge i codici dalla fotocamera: scrivi il numero sotto il codice a barre."}</p>
+    <div class="row"><input class="inp" id="scCode" inputmode="numeric" placeholder="Numero del codice (8–13 cifre)"><button type="button" class="btn acc" id="scGo">Cerca</button></div><button type="button" class="btn" id="scX">Chiudi</button><p class="muted" id="scMsg"></p></div>`;
+  document.body.appendChild(ov);
+  let stream=null, stop=false;
+  const close=()=>{ stop=true; if(stream) stream.getTracks().forEach(t=>t.stop()); ov.remove(); };
+  ov.querySelector("#scX").onclick=close;
+  const look=async code=>{ stop=true; const msg=ov.querySelector("#scMsg"); msg.textContent=`Cerco ${code}…`;
+    const known=fcCards().find(c=>c.ean&&String(c.ean)===String(code)); if(known){ close(); if(line){ (D.fcPick ||= {})[line.raw]=known.nome; fcRender(D); } else { const ta=$("#fcText"); ta.value=(ta.value.trim()?ta.value.trim()+"\n":"")+`${fcPorTxt(known)} ${known.nome}`.trim(); ta.oninput(); } return; }
+    try{ const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_it,product_name_en,brands,nutriments,serving_quantity,serving_size,quantity`); const j=await r.json();
+      const p=j&&j.status===1&&j.product; const nu=p&&p.nutriments||{};
+      if(!p||nu["energy-kcal_100g"]==null&&nu["energy-kcal_100ml"]==null){ close(); D.fcFor=line?line.raw:null; fcForm(D,{nome:line?line.rest:"",alias:line?line.rest:"",ean:code,msg:`Il codice ${code} non è su Open Food Facts (o non ha i valori): inseriscili dall'etichetta oppure usa 📸 Foto etichetta.`}); return; }
+      const ml=nu["energy-kcal_100g"]==null; const v=k=>nu[`${k}_${ml?"100ml":"100g"}`];
+      close(); D.fcFor=line?line.raw:null;
+      fcForm(D,{nome:[p.brands&&p.brands.split(",")[0],p.product_name_it||p.product_name||p.product_name_en].filter(Boolean).join(" "),alias:line?line.rest:"",per:ml?"100 ml":"100 g",k:fcR(v("energy-kcal")),p:fcR(v("proteins")),c:fcR(v("carbohydrates")),g:fcR(v("fat")),por_g:p.serving_quantity?fcR(+p.serving_quantity):"",ean:code,msg:`Da Open Food Facts${p.serving_size?` · porzione indicata: ${p.serving_size}`:""}. Controlla i valori con l'etichetta e salva.`});
+    }catch(e){ msg.textContent="Serve la rete per cercare il codice. Puoi inserire i valori a mano con ✍ Nuovo prodotto."; stop=false; } };
+  ov.querySelector("#scGo").onclick=()=>{ const c=ov.querySelector("#scCode").value.replace(/\D/g,""); if(c.length>=8) look(c); };
+  if(!BD) return;
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}); const vid=ov.querySelector("video"); vid.srcObject=stream; await vid.play();
+    const det=new BD({formats:["ean_13","ean_8","upc_a","upc_e","code_128"]});
+    const tick=async()=>{ if(stop) return; try{ const r=await det.detect(vid); if(r&&r[0]&&r[0].rawValue){ look(r[0].rawValue); return; } }catch(e){} setTimeout(tick,250); }; tick();
+  }catch(e){ ov.querySelector("#scMsg").textContent="Fotocamera non disponibile: scrivi il numero del codice."; }
+}
+/* foto dell'etichetta letta dall'AI (Gemini Flash-Lite, poi gli altri modelli): una volta per prodotto */
+async function fcPhoto(D,file){
+  const line=D.fcFor?fcLines(D).find(x=>x.raw===D.fcFor):null;
+  if(!aiReady()){ fcForm(D,{nome:line?line.rest:"",alias:line?line.rest:"",msg:"Per leggere la foto serve una chiave Gemini o OpenRouter in ⚙. Intanto puoi copiare i valori dall'etichetta qui."}); return; }
+  const F=$("#fcForm"); if(F) F.innerHTML=`<p class="muted">Leggo l'etichetta…</p>`;
+  const img=await new Promise(res=>{ const im=new Image(); im.onload=()=>{ const k=Math.min(1,1280/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=im.width*k; c.height=im.height*k; c.getContext("2d").drawImage(im,0,0,c.width,c.height); res({mime:"image/jpeg",data:c.toDataURL("image/jpeg",0.85).split(",")[1]}); URL.revokeObjectURL(im.src); }; im.src=URL.createObjectURL(file); });
+  const sys='Leggi la tabella nutrizionale nella foto di un\'etichetta. Rispondi SOLO con JSON: {"nome":"marca e prodotto se visibili","per":"100 g" o "100 ml","kcal":n,"p":n,"c":n,"g":n,"porzione_g":n o null,"porzione_testo":"come scritta" o null}. Usa la colonna per 100 g/100 ml; se c\'è solo quella per porzione, ricava i valori per 100 g dalla porzione. Non inventare: null se non leggibile.';
+  let res=null; const errs=[];
+  if(st.settings.apiKey){ res=await callGemini(sys,"Estrai i valori.",null,img,{models:["gemini-flash-lite-latest","gemini-2.5-flash-lite"]}); if(!res.out){ errs.push(res.err); res=null; } }
+  if(!res&&st.settings.orKey){ res=await callOpenRouter(sys,"Estrai i valori.",null,img); if(!res.out){ errs.push(res.err); res=null; } }
+  let j=null; try{ j=res&&JSON.parse(res.out.replace(/^[\s\S]*?(\{)/,"$1").replace(/\}[^}]*$/,"}")); }catch(e){}
+  fcForm(D,j?{nome:j.nome||(line?line.rest:""),alias:line?line.rest:"",per:j.per==="100 ml"?"100 ml":"100 g",k:j.kcal,p:j.p,c:j.c,g:j.g,por_g:j.porzione_g||"",fromPhoto:true,msg:`Letta dalla foto${j.porzione_testo?` · porzione: ${j.porzione_testo}`:""}. Controlla i numeri prima di salvare.`}
+    :{nome:line?line.rest:"",alias:line?line.rest:"",msg:`Non sono riuscito a leggere la foto (${errs.join("; ")||"risposta non valida"}). Copia i valori dall'etichetta qui.`});
+}
+/* salvataggio delle schede nuove in alimentazione/schede.csv */
+let cardFlushing=null;
+async function flushCards(){
+  if(cardFlushing) return cardFlushing;
+  cardFlushing=(async()=>{ if(!(st.cardQ||[]).length||!st.settings.ghToken||!st.settings.ghRepo) return false;
+    try{ const path="alimentazione/schede.csv"; const r=await gh(path); let rows=[],sha=null,head=[],eol="\r\n";
+      if(r.ok){ const j=await r.json(), txt=unb64(j.content); rows=parseCSV(txt); sha=j.sha; head=(txt.split(/\r?\n/)[0]||"").split(",").map(x=>x.trim()).filter(Boolean); eol=txt.includes("\r\n")?"\r\n":"\n"; } else if(r.status!==404) throw r.status;
+      st.cardQ.forEach(c=>{ rows=rows.filter(x=>fnorm(x.nome)!==fnorm(c.nome));
+        rows.unshift({nome:c.nome,alias:(c.alias||[]).join("; "),per:c.per,kcal:c.k,proteine_g:c.p??"",carboidrati_g:c.c??"",grassi_g:c.g??"",densita_g_ml:c.dens??"",pezzo_g:c.pz_g??"",porzione:c.por_g?`${c.por_g} g`:c.por_ml?`${c.por_ml} ml`:"",porzione_g:c.por_g??"",porzione_ml:c.por_ml??"",porzione_pz:"",usi:c.usi||0,fonte:c.fonte||"etichetta",ultimo:c.ultimo||"",codice:c.ean||""}); });
+      const base=["nome","alias","per","kcal","proteine_g","carboidrati_g","grassi_g","densita_g_ml","pezzo_g","porzione","porzione_g","porzione_ml","porzione_pz","usi","fonte","ultimo","codice"];
+      const H=[...head,...base.filter(k=>!head.includes(k))];
+      const p=await gh(path,{method:"PUT",body:JSON.stringify({message:"Schede alimenti: "+st.cardQ.map(c=>c.nome).join(", "),content:b64(toCSV(H,rows,eol)),...(sha?{sha}:{})})}); if(!p.ok) throw p.status;
+      st.cardQ=[]; save(); if(food) food.schede=rows; return true;
+    }catch(e){ return false; } })();
+  try{ return await cardFlushing; } finally{ cardFlushing=null; }
+}
+window.addEventListener("online",()=>{ if((st.cardQ||[]).length) flushCards(); });
+if((st.cardQ||[]).length) setTimeout(flushCards,5000);

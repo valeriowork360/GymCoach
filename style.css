@@ -563,3 +563,27 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .fdays tr[data-fg]{cursor:pointer}
 .fdays td.num{text-align:right;border-radius:4px}
 .fdet td{white-space:normal;background:var(--panel2)}
+/* v90 alimenti calcolati, schede, scanner */
+.fcbar{display:flex;align-items:center;gap:8px;margin:4px 0 8px}.fcbar select{flex:1}
+.fcchips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.fcchips .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:6px 11px;font-size:12.5px;white-space:nowrap;color:var(--text)}
+.fcchips .chip.tpl{border-color:#e3c62b}
+.fcchips .chip .muted{font-size:11.5px}
+#fcText{width:100%;box-sizing:border-box;font-size:14px;resize:vertical}
+.fcmeal{font:700 15px "Barlow Condensed",sans-serif;text-transform:uppercase;color:#7fb0f0;margin:12px 0 2px}
+.fcr{border-bottom:1px solid var(--line);padding:8px 0;display:grid;gap:5px}
+.fcr.miss{border-left:3px solid #e0a526;padding-left:8px}
+.fcn{font-size:12px;color:var(--mut)}
+.fcr select{font-size:13.5px;padding:6px}
+.fcv{font-size:13.5px;font-variant-numeric:tabular-nums}
+.fcb,.fcact{display:flex;flex-wrap:wrap;gap:5px}
+.fcsrc,.fcnote{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--panel2);color:var(--mut)}
+.fcsrc.storico,.fcsrc.etichetta{color:var(--ok)} .fcsrc.base{color:#7fb0f0} .fcsrc.ai{color:#e0a526}
+.fcnote.warn{color:#e0a526}
+.fcform{border-color:#7fb0f0}
+.fdv.fd3{grid-template-columns:repeat(3,1fr)}
+.scanov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+.scanbox{width:100%;max-width:420px;display:grid;gap:10px;position:relative}
+.scanbox video{width:100%;border-radius:12px;background:#000;max-height:50vh;object-fit:cover}
+.scanline{position:absolute;left:8%;right:8%;top:24%;height:2px;background:#e3c62b;box-shadow:0 0 10px #e3c62b}
+.scanbox .row{display:flex;gap:8px}.scanbox .row .inp{flex:1}
