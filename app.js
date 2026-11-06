@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "92";
+const APP_VERSION = "93";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1369,7 +1369,7 @@ function finishSession(){
     <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
   $("#keep").onclick=closeSheet;
   $("#discardAll").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
-  $("#confirmEnd").onclick=e=>slideConfirm(e.target,"Scorri per salvare e chiudere →",saveEnd);
+  $("#confirmEnd").onclick=()=>saveEnd();   // conferma diretta: un tocco salva e chiude
   const saveEnd=()=>{
     st.history.push({id:st.cur.id,session:st.cur.session,start:st.cur.start,end:Date.now(),ex,chat:chatPlain(st.cur.chat)});
     st.history.slice(0,-15).forEach(h=>{ if(h.chat && h.chatSynced) delete h.chat; });   // sul telefono restano le chat delle ultime 15 sessioni
