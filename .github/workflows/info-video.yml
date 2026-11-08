@@ -18,5 +18,8 @@ jobs:
           URLS: ${{ inputs.urls }}
         run: |
           for u in $URLS; do
-            yt-dlp --skip-download --no-warnings --print "INFO|%(id)s|%(duration)s|%(channel)s|%(title)s|%(width)sx%(height)s" "$u" || echo "INFO|errore|$u"
+            curl -s "https://www.youtube.com/oembed?format=json&url=$u" | sed 's/^/OEMBED|/'; echo
+            for c in tv_embedded ios android web_safari mweb; do
+              out=$(yt-dlp --skip-download --no-warnings --extractor-args "youtube:player_client=$c" --print "INFO|%(id)s|%(duration)s|%(channel)s|%(title)s|%(width)sx%(height)s" "$u" 2>/dev/null) && { echo "$out"; break; } || echo "INFO|client $c non riuscito"
+            done
           done
