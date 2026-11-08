@@ -1,0 +1,22 @@
+name: Info video
+
+# Strumento di servizio: titolo, canale e durata di uno o più video YouTube (per aggiungerli agli esercizi).
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Link dei video, separati da spazi"
+        required: true
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install -U yt-dlp
+      - name: Info
+        env:
+          URLS: ${{ inputs.urls }}
+        run: |
+          for u in $URLS; do
+            yt-dlp --skip-download --no-warnings --print "INFO|%(id)s|%(duration)s|%(channel)s|%(title)s|%(width)sx%(height)s" "$u" || echo "INFO|errore|$u"
+          done
