@@ -139,6 +139,8 @@ Object.assign(EX,{
   st_follow:{kind:"time",sec:300,n:"Stretching parte alta — 5 min",s:"Stretching · segui il video",cue:"Segui il video dall'inizio alla fine: movimenti lenti, respirazione profonda, allungamento senza dolore.",v:[["bgMNXt88RQ8","Vitality · 5 min upper body"]]},
   st_legs:{kind:"time",sec:60,n:"Stretching gambe dopo l'allenamento",s:"Stretching · segui il video (short)",cue:"Segui le posizioni del video per ridurre l'indolenzimento dopo le gambe: allungamento dolce, respirazione lenta.",v:[["AfBdxBqRc0g","Lean Physique Lab · gambe"]]},
   st_total:{kind:"time",sec:600,n:"Stretching total body — 10 min",s:"Stretching · segui il video",cue:"Routine completa per tutto il corpo: segui il video dall'inizio alla fine senza forzare.",v:[["COO2S7lPBzA","Tone and Tighten · 10 min"]]},
+  st_bed_lower:{kind:"time",sec:600,n:"Stretching gambe a letto — 10 min",s:"Stretching · segui il video",cue:"Routine per la parte bassa da fare sdraiato: segui il video senza parlare, allungamenti lenti e respirazione profonda, mai fino al dolore.",v:[["fyfEtviR90s","EDR Fitness · 10 min parte bassa a letto"]]},
+  st_full30:{kind:"time",sec:1800,n:"Stretching total body — 30 min",s:"Stretching · segui il video",cue:"Sessione lunga per tutto il corpo: segui il video dall'inizio alla fine, tieni ogni posizione rilassato e respira lentamente.",v:[["vbQqEaX8e_w","EDR Fitness · 30 min total body"]]},
   st_pec:{kind:"time",sec:30,sides:true,n:"Allungamento pettorali alla porta",s:"Stretching parte alta · per lato",cue:"Avambraccio sullo stipite, gomito all'altezza della spalla, ruota il busto lontano.",v:[]},
   st_lat:{kind:"time",sec:30,sides:true,n:"Allungamento dorsali",s:"Stretching parte alta · per lato",cue:"Spingi i fianchi indietro e allunga il fianco, respira nell'allungamento.",v:[]},
   st_rdelt:{kind:"time",sec:30,sides:true,n:"Spalla posteriore (cross-body)",s:"Stretching parte alta · per lato",cue:"Porta il braccio davanti al petto tenendo la scapola bassa, senza ruotare il busto.",v:[]},
@@ -156,7 +158,7 @@ Object.assign(EX,{
 // [esercizio, giri, secondi per giro (per lato), -, pausa in secondi]
 Object.assign(SESSIONS,{
   "MOBILITÀ":[["mob_lowwarm",1,300,null,0],["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20]],
-  "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0]]
+  "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0],["st_bed_lower",1,600,null,0],["st_full30",1,1800,null,0]]
 });
 const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
 
