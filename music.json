@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-07T22:00:28+00:00",
+ "updated": "2026-11-08T09:10:31+00:00",
  "playlists": [
   {
    "title": "Esercizi fissi",
@@ -1173,6 +1173,12 @@
    "id": "UCPGrgwfbkjTIgPoOh2q1BAg",
    "videos": [
     {
+     "id": "us6SRuWuqWc",
+     "title": "The Ultimate Linux Tutorial for AI Agents (watch before 2027)",
+     "dur": 1528,
+     "date": "2026-11-07T23:03:41+00:00"
+    },
+    {
      "id": "hlZ0nJwDGOE",
      "title": "The AI bubble is popping",
      "dur": 3200,
@@ -1237,12 +1243,6 @@
      "title": "Vercel CEO reveals his Agentic Engineering Workflow",
      "dur": 5869,
      "date": "2026-10-02T14:48:25+00:00"
-    },
-    {
-     "id": "A-JBaNvv3Tk",
-     "title": "Ex-Apple dev reveals his Agentic Engineering Workflow",
-     "dur": 4265,
-     "date": "2026-09-27T05:01:00+00:00"
     }
    ]
   },
@@ -2031,8 +2031,14 @@
    "id": "UC4yFUEcq0SGs3_BHxF9q5Ww",
    "videos": [
     {
+     "id": "hBYTsbASXr0",
+     "title": "Topview T1 just NUKED Seedance 2.5...",
+     "dur": 672,
+     "date": "2026-11-08T01:49:18+00:00"
+    },
+    {
      "id": "vru9hs8Ktws",
-     "title": "Faceless AI Video Creation Just Got WAY Cheaper…",
+     "title": "I Tested Higgsfield’s New Content Factory so You Don’t Have to…",
      "dur": 991,
      "date": "2026-11-04T19:30:21+00:00"
     },
@@ -2095,12 +2101,6 @@
      "title": "Nano Banana 2.1 vs 2.0 - The Upgrade is HUGE",
      "dur": 528,
      "date": "2026-10-07T00:04:11+00:00"
-    },
-    {
-     "id": "E9OeMEh8bJ0",
-     "title": "I Tested OpenArt Director So You Don't Have to...",
-     "dur": 691,
-     "date": "2026-10-01T12:37:08+00:00"
     }
    ]
   },
@@ -2890,7 +2890,7 @@
    "videos": [
     {
      "id": "hWGNlPTJIwg",
-     "title": "⁠Se Dovessi Imparare l'Al da Zero, Farei QUESTO",
+     "title": "Se Dovessi Imparare l'AI DA ZERO nel 2027, Farei Così!",
      "dur": 1614,
      "date": "2026-11-06T16:30:13+00:00"
     },
