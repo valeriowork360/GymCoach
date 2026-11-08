@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-08T09:10:31+00:00",
+ "updated": "2026-11-08T16:05:37+00:00",
  "playlists": [
   {
    "title": "Esercizi fissi",
@@ -1017,6 +1017,12 @@
    "id": "UCRCWJCFoZUvkkWzIqzfBy6g",
    "videos": [
     {
+     "id": "pXWiyAM2wUY",
+     "title": "Si stava davvero meglio quando si stava peggio?",
+     "dur": 1295,
+     "date": "2026-11-08T11:24:59+00:00"
+    },
+    {
      "id": "2yiZw7QJSOg",
      "title": "La disfatta di Trump alle Midterm: cosa succede ora negli USA?",
      "dur": 823,
@@ -1081,12 +1087,6 @@
      "title": "Perché gli affitti sono diventati insostenibili",
      "dur": 1721,
      "date": "2026-09-26T10:32:55+00:00"
-    },
-    {
-     "id": "r0dJn6bRN-4",
-     "title": "L’Irlanda tornerà mai davvero unita?",
-     "dur": 3877,
-     "date": "2026-09-22T10:30:12+00:00"
     }
    ]
   },
@@ -3279,6 +3279,12 @@
    "id": "UC1e1Xt2nsUy9lqP_R7ES5yA",
    "videos": [
     {
+     "id": "hgxpjXu7kCs",
+     "title": "Come Creare un Agente Vocale AI con Claude Code (GUIDA COMPLETA)",
+     "dur": 1757,
+     "date": "2026-11-08T11:09:36+00:00"
+    },
+    {
      "id": "Ewk6TwWI41s",
      "title": "Ho Fatto Lavorare Kimi K3.1 Pro per 2 Ore: Ha Creato Questo…",
      "dur": 1204,
@@ -3343,12 +3349,6 @@
      "title": "Claude Code + Codex: Il Setup di cui NESSUNO Parla",
      "dur": 1852,
      "date": "2026-08-29T11:01:52+00:00"
-    },
-    {
-     "id": "acw0mfK1cB8",
-     "title": "I Migliori Tool AI di Google (Li Ho Provati Tutti)",
-     "dur": 2003,
-     "date": "2026-08-27T09:48:59+00:00"
     }
    ]
   },
