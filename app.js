@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "98";
+const APP_VERSION = "99";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2216,7 +2216,7 @@ const csvCell=v=>{ v=v==null?"":String(v); return /[",\n]/.test(v)?`"${v.replace
 const toCSV=(head,rows,eol="\n")=>[head.join(","),...rows.map(r=>head.map(k=>csvCell(r[k])).join(","))].join(eol)+eol;
 const MEALS=["Colazione","Pranzo","Cena","Spuntino","Spuntino serale","Shake proteico"];
 /* nome del pasto: tengo quello scritto (es. "Spuntino 2", "Spuntino serale"), traduco solo i nomi inglesi e sistemo le maiuscole */
-function mealName(t){ t=String(t||"").replace(/\s+[—–]\s+.*$/,"").replace(/[:\-–—*#•]+$/,"").trim().replace(/^snack\b/i,"Spuntino").replace(/^colaz\.?$/i,"Colazione"); const l=t.toLowerCase();
+function mealName(t){ t=String(t||"").replace(/\s+[—–]\s+.*$/,"").replace(/[:\-–—*#•]+$/,"").trim().replace(/^snack\b/i,"Spuntino").replace(/\bN\.$/,"notturno").replace(/^colaz\.?$/i,"Colazione"); const l=t.toLowerCase();
   const map={breakfast:"Colazione",lunch:"Pranzo",dinner:"Cena",snack:"Spuntino",snacks:"Spuntini"}; if(map[l]) return map[l];
   return t?t[0].toUpperCase()+t.slice(1):"Altro"; }
 let fdDraft=null;   // {date, mode, meals:[{pasto,desc,kcal,p,c,g,foods:[...]}], tot, complete, replace}
@@ -2260,8 +2260,8 @@ function cellsToMD(txt){
 /* recap in tabelle Markdown (### Pasto, | Alimento | Quantità | kcal | P | C | F | Aff. |, riga Totale, riepilogo con Assunti e Target) */
 function parseFoodMD(txt){
   txt=String(txt).replace(/<[^>]+>/g,"").replace(/\*\*/g,"");   // grassetto e celle colorate
-  const L=txt.split(/\r?\n/), meals=[], notes=[]; let cur=null, inSum=false, cols=null, tot=null, target=null, date=null;
-  const head=L.slice(0,4).join(" ");
+  const L=txt.split(/\r?\n/), meals=[], notes=[]; let cur=null, inSum=false, cols=null, tot=null, target=null, date=null, pending=null;
+  const head=L.filter(l=>l.trim()).slice(0,8).join(" ");
   const md=head.match(/(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})/i);
   if(md) date=`${md[3]}-${String(IT_MONTHS.indexOf(md[2].toLowerCase())+1).padStart(2,"0")}-${md[1].padStart(2,"0")}`;
   else { const g=head.match(/\bG\s?(\d{1,4})\b/); if(g){ const d=new Date(FD_DAY0+(+g[1]-1)*864e5); date=d.toISOString().slice(0,10); } }
@@ -2271,19 +2271,19 @@ function parseFoodMD(txt){
     if(/^#{1,4}\s/.test(l)){ if(inSum) break;      // dopo il riepilogo: solo note di servizio
       const name=l.replace(/^#+\s*/,"").replace(/^[^\p{L}\d]+/u,"").trim(); cols=null;
       if(!meals.length&&/\bG\s?\d+\b|diario alimentare/i.test(name)&&!/riepilogo/i.test(name)) continue;
-      if(/riepilogo|totale giornaliero|resoconto/i.test(name)){ inSum=true; cur=null; } else { inSum=false; cur={pasto:mealName(name),foods:[]}; meals.push(cur); } continue; }
+      // un pasto nasce solo se dopo il titolo c'è una tabella (i titoli del cruscotto iniziale non sono pasti)
+      if(/riepilogo|totale giornaliero|resoconto/i.test(name)){ inSum=true; cur=null; pending=null; } else { inSum=false; cur=null; pending=mealName(name.replace(/^\d+\\?\.\s*/,"")); } continue; }
     if(l.startsWith("|")){ const c=cells(l); if(c.every(x=>/^:?-{2,}:?$/.test(x)||!x)) continue;
-      if(!cols){ cols={n:0,q:ci(c,/quant/i),k:ci(c,/^kcal|^cal/i),p:ci(c,/^p(rot\w*)?$/i),c:ci(c,/^c(arb\w*)?$/i),g:ci(c,/^(f|g|grass\w*|fat)$/i),a:ci(c,/^aff/i)}; continue; }
+      if(!cols){ if(!inSum&&pending){ cur={pasto:pending,foods:[]}; meals.push(cur); pending=null; } cols={n:0,q:ci(c,/quant/i),k:ci(c,/^kcal|^cal/i),p:ci(c,/^p(rot\w*)?$/i),c:ci(c,/^c(arb\w*)?$/i),g:ci(c,/^(f|g|grass\w*|fat)$/i),a:ci(c,/^aff/i)}; continue; }
       const nm=c[0]||"", v={kcal:itNum(c[cols.k]),p:itNum(c[cols.p]),c:itNum(c[cols.c]),g:itNum(c[cols.g])};
       if(inSum){ if(/^assunt|^totale/i.test(nm)) tot=v; else if(/^target/i.test(nm)) target={k:v.kcal,p:v.p,c:v.c,g:v.g}; continue; }
-      if(!cur){ cur={pasto:"Altro",foods:[]}; meals.push(cur); }
+      if(!cur) continue;
       if(/^totale/i.test(nm)){ Object.assign(cur,v); continue; }
       cur.foods.push({nome:nm,q:cols.q>=0?c[cols.q]:"",...v,aff:cols.a>=0?c[cols.a]:""}); continue; }
     // testo fuori dalle tabelle: frase finale con i totali oppure nota
     const tm=l.match(/^totale:\s*([\d.,]+)\s*kcal\D+?([\d.,]+)\s*g\s*prot\w*\D+?([\d.,]+)\s*g\s*carb\w*\D+?([\d.,]+)\s*g\s*grass/i);
     if(tm){ if(!tot) tot={kcal:itNum(tm[1]),p:itNum(tm[2]),c:itNum(tm[3]),g:itNum(tm[4])}; continue; }
-    if(!meals.length&&!inSum) continue;          // righe di intestazione (titolo, data, unità)
-    if(inSum) continue;
+    if(inSum||!cur) continue;                    // intestazione, cruscotto iniziale, note di servizio
     notes.push((cur?`${cur.pasto}: `:"")+l.replace(/^[-•*]\s+/,""));
   }
   return {meals:meals.filter(m=>m.foods.length||m.kcal!=null),tot,date,target,nota:notes.join(" ")};
