@@ -127,6 +127,8 @@ Object.assign(EX,{
   russian_twist:{n:"Russian twist",s:"",eq:"bw",cue:"Busto inclinato indietro, ruota dalle costole e non solo dalle braccia.",v:[["BhJG7ji4dC8", "Fit With elmira"]]},
   plank:{kind:"time",sec:45,n:"Plank",s:"Addome · a tempo",cue:"Corpo in linea, glutei e addome contratti, non far cadere il bacino.",v:[["xe2MXatLTUw", "DeltaBolic"], ["y3sxQUJ3Qsk", "DeltaBolic · errori"], ["v3V6iyQfKzY", "DeltaBolic · progressioni"]]},
   mob_lowwarm:{kind:"time",sec:300,n:"Riscaldamento gambe — 5 min",s:"Mobilità · segui il video",cue:"Segui il video dall'inizio alla fine: movimenti fluidi e progressivi, senza forzare il fine corsa.",v:[["QLkLKfL_7F0","Tom Peto Training · 5 min lower body"]]},
+  mob_flow20:{kind:"time",sec:1200,n:"Mobilità e flessibilità — flow 20 min",s:"Mobilità · segui il video",cue:"Flow completo di mobilità: segui il video senza parlare, passaggi fluidi da una posizione all'altra, ampiezza progressiva senza forzare.",v:[["aRQ76vbF2q8","EDR Fitness · 20 min mobility flow"]]},
+  mob_morning10:{kind:"time",sec:600,n:"Mobilità del mattino — 10 min",s:"Mobilità · segui il video",cue:"Routine di risveglio: movimenti lenti e controllati per articolazioni e colonna, respirazione regolare.",v:[["AM_lVBx1f6Q","EDR Fitness · 10 min morning mobility"]]},
   mob_post:{kind:"time",sec:60,n:"Postura e colonna",s:"Mobilità",cue:"Segui il video con calma, movimento lento e respirazione regolare.",v:[["MIFQK7cllo8","Markour"],["zs5oDFJ7ieU","Low Back Ability"]]},
   mob_back:{kind:"time",sec:60,n:"Sblocco schiena e spalle",s:"Mobilità",cue:"Ampiezza progressiva, senza forzare il fine corsa.",v:[["9NokgyI76ak","Rash Elagin"],["m7dOrLxxXVs","Flow with Mira · pilates schiena"]]},
   mob_hip:{kind:"time",sec:75,n:"Flow mobilità anche",s:"Mobilità · 4 movimenti",cue:"Esegui i 4 movimenti in sequenza controllando bacino e schiena.",v:[["ttKfbFqocY8","Limitless Sapiens"],["t7rOppk6y3w","João Pedro"],["xOAZ-uqq3yA","Sam Johnston · 5 drill"]]},
@@ -157,7 +159,7 @@ Object.assign(EX,{
 
 // [esercizio, giri, secondi per giro (per lato), -, pausa in secondi]
 Object.assign(SESSIONS,{
-  "MOBILITÀ":[["mob_lowwarm",1,300,null,0],["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20]],
+  "MOBILITÀ":[["mob_lowwarm",1,300,null,0],["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20],["mob_flow20",1,1200,null,0],["mob_morning10",1,600,null,0]],
   "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0],["st_bed_lower",1,600,null,0],["st_full30",1,1800,null,0]]
 });
 const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
