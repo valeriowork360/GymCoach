@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "103";
+const APP_VERSION = "104";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1631,7 +1631,8 @@ function setPickW(on){ pickW=!!on; const b=$("#btnW"); b.classList.toggle("on",p
 $("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } setPickW(!pickW); drawChips(); };
 setComposer(!!st.ui.composer);
 /* banda verticale tra musica e video: sceglie la larghezza del riquadro musica */
-function applyMW(){ ["#mTile","#mTile2"].forEach(q=>{ const t=$(q); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }); }
+function applyMW(){ const col=$("#mCol"); if(col) col.style.maxWidth=st.ui.mw&&!st.ui.videoHidden?"none":"";   // la colonna non deve limitare la larghezza scelta
+  ["#mTile","#mTile2"].forEach(q=>{ const t=$(q); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }); }
 (function(){
   const hd=$("#mresize"); let x0=0,w0=0,drag=false,raf=0,want=0;
   hd.addEventListener("pointerdown",e=>{ if(st.ui.videoHidden) return; drag=true; x0=e.clientX; w0=$("#mTile").getBoundingClientRect().width; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
