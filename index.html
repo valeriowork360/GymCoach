@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="101">
+<meta name="app-version" content="102">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=101">
+<link rel="stylesheet" href="style.css?v=102">
 </head>
 <body>
 <div id="app">
@@ -40,7 +40,8 @@
    <div class="wtop" id="wtop">
     <div class="player" id="player">
       <div class="stage">
-        <div class="m-tile" id="mTile"><div class="m-screen"><div id="ytM"></div></div><span class="m-ph" id="mPh">🎵</span><button class="m-tap" id="mPlay" type="button" aria-label="Riproduci o metti in pausa la musica">▶</button><div class="mresize" id="mresize" role="separator" aria-label="Trascina per cambiare la larghezza del riquadro musica" title="Trascina per allargare o stringere · doppio tocco per ripristinare"><i></i></div></div>
+        <div class="m-col" id="mCol"><div class="m-tile" id="mTile"><div class="m-screen"><div id="ytM"></div></div><span class="m-ph" id="mPh">🎵</span><button class="m-tap" id="mPlay" type="button" aria-label="Riproduci o metti in pausa la musica">▶</button><div class="mresize" id="mresize" role="separator" aria-label="Trascina per cambiare la larghezza del riquadro musica" title="Trascina per allargare o stringere · doppio tocco per ripristinare"><i></i></div></div>
+        <div class="m-tile m2" id="mTile2" hidden><div class="m-screen" id="mScr2"><div id="ytM2"></div></div><button class="m-tap" id="mPlay2" type="button" aria-label="Riproduci o metti in pausa il secondo video">▶</button></div></div>
         <div class="frame" id="frame"></div>
       </div>
       <div class="vresize" id="vresize" role="separator" aria-label="Trascina per cambiare l'altezza dei video" title="Trascina per cambiare l'altezza dei video · doppio tocco per ripristinare"><i></i></div>
@@ -50,6 +51,7 @@
       <div class="m-vols">
         <div class="vol"><button type="button" class="vbtn" id="muteV" aria-label="Audio video esercizio acceso/spento">🔇</button><input type="range" id="volV" min="0" max="100" step="5" aria-label="Volume video esercizio"><output id="oV">0</output></div>
         <div class="vol"><button type="button" class="vbtn" id="muteM" aria-label="Musica acceso/spento">🎵</button><input type="range" id="volM" min="0" max="100" step="5" aria-label="Volume musica"><output id="oM">35</output></div>
+        <div class="vol" id="vol2" hidden><button type="button" class="vbtn" id="muteM2" aria-label="Secondo video acceso/spento">🎶</button><input type="range" id="volM2" min="0" max="100" step="5" aria-label="Volume secondo video"><output id="oM2">35</output></div>
         <button class="vbtn" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
       </div>
       <div class="m-seek" id="mSeek" hidden>
@@ -58,11 +60,13 @@
         <button type="button" class="vbtn" data-sk="10" aria-label="Avanti 10 secondi">+10</button><button type="button" class="vbtn" data-sk="30" aria-label="Avanti 30 secondi">+30</button>
       </div>
       <div class="m-more" id="mPanel" hidden>
+        <div class="m-slot" id="mSlot"><span class="muted xs">Carica in</span><button type="button" class="vchip" data-slot="1">🎵 Riquadro 1</button><button type="button" class="vchip" data-slot="2">🎶 Riquadro 2</button><button type="button" class="vchip" id="m2Off" hidden>✕ Togli il 2°</button></div>
         <div class="m-info"><b id="mTitle">Musica</b> <span id="mSub">Aggiungi un link YouTube</span></div>
+        <div class="m-info" id="m2Info" hidden><b id="m2Title">2° video</b> <span id="m2Sub"></span></div>
         <form class="m-form" id="mForm" autocomplete="off"><input class="inp" id="mIn" placeholder="Incolla un link YouTube (brano o playlist)" inputmode="url"><button class="btn acc" type="submit">Carica</button></form>
         <div class="m-recent" id="mRecent"></div>
         <label class="m-loop"><input type="checkbox" id="mLoop"> Ripeti brano / playlist</label>
-        <div class="m-lib"><div class="m-libh">📺 Autori di Duetto <span class="muted" id="dlUpd"></span></div><div class="m-recent" id="dlTabs"></div><div class="dl-list" id="dlList"></div></div>
+        <div class="m-lib"><div class="m-libh">📺 I tuoi canali <span class="muted" id="dlUpd"></span></div><div class="m-recent" id="dlTabs"></div><div class="dl-list" id="dlList"></div></div>
       </div>
     </div>
    </div>
@@ -120,8 +124,8 @@
   };
 })();
 </script>
-<script src="data.js?v=101"></script>
-<script src="foods_base.js?v=101"></script>
-<script src="app.js?v=101"></script>
+<script src="data.js?v=102"></script>
+<script src="foods_base.js?v=102"></script>
+<script src="app.js?v=102"></script>
 </body>
 </html>

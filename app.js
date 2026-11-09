@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "101";
+const APP_VERSION = "102";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -905,6 +905,9 @@ st.ui.volV ??= 0;
 st.ui.music = {src:null,raw:"",title:"",vol:35,loop:true,recent:[],...(st.ui.music||{})};
 const apiOk=()=>!!(window.YT&&YT.Player);
 let yv=null,yvReady=false,yvId=null,yvWant=null, ym=null,ymReady=false,ymPlaying=false,ymWant=false;
+st.ui.music2={src:null,raw:"",title:"",vol:35,loop:true,...(st.ui.music2||{})};
+let ym2=null,ym2Ready=false,ym2Playing=false,ym2Want=false;
+
 function parseYT(s){
   s=(s||"").trim(); if(!s) return null;
   if(/^[\w-]{11}$/.test(s)) return {id:s,list:null};
@@ -1009,8 +1012,9 @@ function drawMusic(msg){
   $("#volM").value=m.vol; $("#oM").textContent=m.vol;
   $("#mLoop").checked=!!m.loop;
   $("#mMore").textContent = $("#mPanel").hidden ? "⌄" : "⌃";
+  if(typeof drawMusic2==="function") drawMusic2();
   $("#mRecent").innerHTML = m.recent.map((r,k)=>`<button class="vchip ${r.raw===m.raw?"on":""}" data-r="${k}">${r.list?"☰ ":"♪ "}${esc(r.title.length>28?r.title.slice(0,27)+"…":r.title)}</button>`).join("");
-  $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadMusic(m.recent[+b.dataset.r].raw,true); $("#mPanel").hidden=true; drawMusic(); });
+  $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadInto(m.recent[+b.dataset.r].raw); $("#mPanel").hidden=true; drawMusic(); });
 }
 $("#mPlay").onclick=toggleMusic;
 /* avanti/indietro nella musica (il riquadro non accetta tocchi, quindi comandi nostri) */
@@ -1054,17 +1058,82 @@ function drawDuetto(){
   if(!duetto) return;
   const ch=duetto.channels||[], pl=(duetto.playlists||[]).filter(p=>p.videos&&p.videos.length);
   $("#dlUpd").textContent=duetto.updated?`· agg. ${new Date(duetto.updated).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`:"";
-  const tabs=[["new","🆕 Più recenti"],...pl.map((p,k)=>["p"+k,"☰ "+p.title]),...ch.map((c,k)=>["c"+k,c.name])];
+  const tabs=[["new","🆕 Più recenti"],["ex","🏋 Esercizi"],...pl.map((p,k)=>["p"+k,"☰ "+p.title]),...ch.map((c,k)=>["c"+k,c.name])];
   $("#dlTabs").innerHTML=tabs.map(([k,l])=>`<button class="vchip ${k===dlTab?"on":""}" data-dl="${k}">${esc(l.length>26?l.slice(0,25)+"…":l)}</button>`).join("");
   $("#dlTabs").querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>{ dlTab=b.dataset.dl; drawDuetto(); });
   let vids=[];
   if(dlTab==="new") vids=ch.flatMap(c=>c.videos.map(v=>({...v,ch:c.name}))).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,30);
+  else if(dlTab==="ex") vids=exVideoList();
   else if(dlTab[0]==="p") vids=(pl[+dlTab.slice(1)]||{videos:[]}).videos.map(v=>({...v,ch:pl[+dlTab.slice(1)].title}));
   else { const c=ch[+dlTab.slice(1)]; vids=c?c.videos.map(v=>({...v,ch:c.name})):[]; }
-  $("#dlList").innerHTML=vids.map(v=>`<button class="dl-it ${st.ui.music.src&&st.ui.music.src.id===v.id?"on":""}" data-v="${v.id}" data-t="${esc(v.title)}"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt=""><span><b>${esc(v.title)}</b><i>${esc(v.ch)}${v.dur?" · "+durTxt(v.dur):""}${v.date?" · "+dateTxt(Date.parse(v.date)):""}</i></span></button>`).join("")||`<p class="muted">Nessun video.</p>`;
-  $("#dlList").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ if(loadMusic("https://www.youtube.com/watch?v="+b.dataset.v,true)){ st.ui.music.title=b.dataset.t; save(); $("#mPanel").hidden=true; drawMusic(); } });
+  const sm=mSlotObj();
+  $("#dlList").innerHTML=vids.map(v=>`<button class="dl-it ${sm.src&&sm.src.id===v.id?"on":""}" data-v="${v.id}" data-t="${esc(v.title)}"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt=""><span><b>${esc(v.title)}</b><i>${esc(v.ch)}${v.dur?" · "+durTxt(v.dur):""}${v.date?" · "+dateTxt(Date.parse(v.date)):""}</i></span></button>`).join("")||`<p class="muted">Nessun video.</p>`;
+  $("#dlList").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ if(loadInto("https://www.youtube.com/watch?v="+b.dataset.v)){ mSlotObj().title=b.dataset.t; save(); $("#mPanel").hidden=true; drawMusic(); drawMusic2(); } });
 }
-$("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadMusic($("#mIn").value,true)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
+/* ---------------- secondo riquadro: due video insieme (come Duetto), ognuno col suo volume ---------------- */
+const mSlotObj=()=>st.ui.mSlot===2?st.ui.music2:st.ui.music;
+function loadInto(raw){ return st.ui.mSlot===2?loadMusic2(raw,true):loadMusic(raw,true); }
+/* video dei tutorial: esercizio corrente prima, poi tutti gli altri per gruppo */
+function exVideoList(){
+  const cur=st.cur?curList().map(x=>x[0]):[], ids=Object.keys(EX).filter(id=>(EX[id].v||[]).length||(st.myVid&&st.myVid[id]&&st.myVid[id].length));
+  ids.sort((a,b)=>(cur.includes(b)-cur.includes(a))||MUSCLE_ORDER.indexOf(MUSCLE[a]||"Z")-MUSCLE_ORDER.indexOf(MUSCLE[b]||"Z")||EX[a].n.localeCompare(EX[b].n));
+  const out=[], seen=new Set();
+  ids.forEach(id=>{ [...((st.myVid&&st.myVid[id])||[]).map(v=>[v.id||v[0],v.t||v[1]||"mio video"]),...(EX[id].v||[])].forEach(v=>{ const vid=Array.isArray(v)?v[0]:v; if(!vid||seen.has(vid)) return; seen.add(vid);
+    out.push({id:vid,title:`${EX[id].n}${v[1]?" · "+v[1]:""}`,ch:(cur.includes(id)?"▶ sessione di oggi · ":"")+(MUSCLE[id]||EX[id].s||"")}); }); });
+  return out;
+}
+function ensureMusic2(){
+  const m=st.ui.music2; if(!apiOk()||ym2||!m.src) return;
+  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
+  const resume = m.pos>3 && (m.src.list ? true : m.posId===m.src.id) ? Math.floor(m.pos) : 0; if(resume) pv.start=resume;
+  ym2=new YT.Player("ytM2",{width:"100%",height:"100%",videoId:m.src.list?undefined:m.src.id,playerVars:pv,
+    events:{
+      onReady:()=>{ ym2Ready=true; ym2.setVolume(m.vol); if(resume){ try{ ym2.seekTo(resume,true); if(!ym2Want) ym2.pauseVideo(); }catch(e){} } if(ym2Want) ym2.playVideo(); drawMusic2(); },
+      onStateChange:e=>{ const S=YT.PlayerState;
+        if(e.data===S.ENDED && m.loop){ if(m.src&&m.src.list) ym2.playVideoAt(0); else { ym2.seekTo(0); ym2.playVideo(); } return; }
+        ym2Playing=(e.data===S.PLAYING||e.data===S.BUFFERING);
+        if(e.data===S.PLAYING){ ym2Want=false; let t=""; try{ t=(ym2.getVideoData()||{}).title||""; }catch(_){} if(t){ m.title=t; const r=st.ui.music.recent; st.ui.music.recent=[{raw:m.raw,title:t,list:!!m.src.list},...r.filter(x=>x.raw!==m.raw)].slice(0,8); save(); } keepAwake(); }
+        if(e.data===S.PAUSED) saveMusicPos2(true);
+        drawMusic2(); },
+      onError:e=>{ ym2Playing=false; ym2Want=false; drawMusic2(e.data===101||e.data===150?"Questo video non si può riprodurre fuori da YouTube":"Link non disponibile"); }
+    }});
+}
+function loadMusic2(raw,autoplay=true){
+  const src=parseYT(raw); if(!src){ drawMusic("Link non valido: copialo da YouTube (Condividi → Copia link)"); return false; }
+  const m=st.ui.music2; m.src=src; m.raw=raw.trim(); m.title=""; m.pos=0; m.posId=null; m.plIdx=0; save();
+  ym2Want=autoplay; unlockAudio(); drawMusic2();
+  if(!ym2) ensureMusic2();
+  else if(ym2Ready){ if(src.list) ym2.loadPlaylist({list:src.list,listType:"playlist",index:0}); else ym2.loadVideoById(src.id); ym2.setVolume(m.vol); if(!autoplay) ym2.pauseVideo(); }
+  drawMusic2(); return true;
+}
+function toggleMusic2(){ const m=st.ui.music2; unlockAudio(); if(!m.src) return;
+  if(!ym2){ ym2Want=true; ensureMusic2(); drawMusic2(); return; } if(!ym2Ready){ ym2Want=!ym2Want; drawMusic2(); return; }
+  if(ym2Playing) ym2.pauseVideo(); else ym2.playVideo(); }
+function closeMusic2(){ saveMusicPos2(true); if(ym2){ try{ ym2.destroy(); }catch(e){} } ym2=null; ym2Ready=false; ym2Playing=false; ym2Want=false;
+  $("#mScr2").innerHTML='<div id="ytM2"></div>'; st.ui.music2.src=null; st.ui.music2.title=""; st.ui.mSlot=1; save(); drawMusic2(); drawMusic(); }
+function saveMusicPos2(force){ if(!ym2||!ym2Ready||!st.ui.music2.src) return;
+  try{ const m=st.ui.music2, t=ym2.getCurrentTime()||0; if(t<1) return; m.pos=t; m.posId=(ym2.getVideoData()||{}).video_id||m.src.id; if(m.src.list&&ym2.getPlaylistIndex) m.plIdx=Math.max(0,ym2.getPlaylistIndex()||0); if(force) save(); }catch(e){} }
+function drawMusic2(msg){
+  if(!st.ui.music2||!$("#mTile2")) return;
+  const m=st.ui.music2, on=!!m.src, slot=st.ui.mSlot===2?2:1;
+  $("#mTile2").hidden=!on; $("#mCol").classList.toggle("duo",on); $("#vol2").hidden=!on; $("#m2Off").hidden=!on; $("#m2Info").hidden=!on;
+  $("#mPlay2").textContent=(ym2Playing||ym2Want)?"❚❚":"▶"; $("#mPlay2").classList.toggle("on",ym2Playing);
+  $("#volM2").value=m.vol; $("#oM2").textContent=m.vol; $("#muteM2").textContent=m.vol>0?"🎶":"🔕"; $("#muteM2").classList.toggle("on",m.vol>0&&ym2Playing);
+  $("#m2Title").textContent=m.title||"2° video"; $("#m2Sub").textContent=msg||(on?(ym2Playing?"In riproduzione":ym2Want?"Avvio…":"In pausa"):"");
+  document.querySelectorAll("#mSlot [data-slot]").forEach(b=>b.classList.toggle("on",+b.dataset.slot===slot));
+  if(msg && st.cur) sys("🎶 "+msg);
+  applyMW();
+}
+document.querySelectorAll("#mSlot [data-slot]").forEach(b=>b.onclick=()=>{ st.ui.mSlot=+b.dataset.slot; save(); drawMusic2(); drawDuetto(); $("#mIn").placeholder=st.ui.mSlot===2?"Link YouTube per il 2° riquadro":"Incolla un link YouTube (brano o playlist)"; });
+$("#m2Off").onclick=closeMusic2;
+$("#mPlay2").onclick=toggleMusic2;
+seekZones($("#mTile2"),()=>ym2Ready&&ym2?ym2:null,()=>toggleMusic2());
+$("#volM2").oninput=e=>{ const v=+e.target.value; st.ui.music2.vol=v; if(v>0) st.ui.lastVolM2=v; if(ym2Ready) ym2.setVolume(v); save(); drawMusic2(); };
+$("#muteM2").onclick=()=>{ const m=st.ui.music2, v=m.vol>0?0:(st.ui.lastVolM2||35); m.vol=v; if(ym2Ready) ym2.setVolume(v); save(); drawMusic2(); };
+setInterval(()=>{ if(ym2Playing) saveMusicPos2(false); },1000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") saveMusicPos2(true); });
+window.addEventListener("pagehide",()=>saveMusicPos2(true));
+$("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadInto($("#mIn").value)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
 function setVolV(v){ st.ui.volV=v; if(v>0) st.ui.lastVolV=v; save(); applyVolV(); if(grid) setGridActive(grid.active,false); drawMusic(); }
 function setVolM(v){ st.ui.music.vol=v; if(v>0) st.ui.lastVolM=v; if(ymReady) ym.setVolume(v); save(); drawMusic(); }
@@ -1072,7 +1141,7 @@ $("#volV").oninput=e=>setVolV(+e.target.value);
 $("#volM").oninput=e=>setVolM(+e.target.value);
 $("#muteV").onclick=()=>{ unlockAudio(); setVolV(st.ui.volV>0?0:(st.ui.lastVolV||60)); };
 $("#muteM").onclick=()=>{ setVolM(st.ui.music.vol>0?0:(st.ui.lastVolM||35)); };
-window.onYouTubeIframeAPIReady=()=>{ if(grid) startGridPlayers(); else if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); drawMusic(); };
+window.onYouTubeIframeAPIReady=()=>{ if(grid) startGridPlayers(); else if(st.cur&&!st.ui.videoHidden&&yvWant) showExerciseVideo(yvWant); ensureMusic(); ensureMusic2(); drawMusic(); };
 function loadYTApi(){ const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true; document.head.appendChild(sc); }
 loadYTApi();
 setTimeout(()=>{ if(!apiOk()) loadYTApi(); },8000);
@@ -1550,7 +1619,7 @@ function setPickW(on){ pickW=!!on; const b=$("#btnW"); b.classList.toggle("on",p
 $("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } setPickW(!pickW); drawChips(); };
 setComposer(!!st.ui.composer);
 /* banda verticale tra musica e video: sceglie la larghezza del riquadro musica */
-function applyMW(){ const t=$("#mTile"); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }
+function applyMW(){ ["#mTile","#mTile2"].forEach(q=>{ const t=$(q); if(!t) return; if(st.ui.mw && !st.ui.videoHidden){ t.style.width=st.ui.mw+"px"; t.style.maxWidth="none"; } else { t.style.width=""; t.style.maxWidth=""; } }); }
 (function(){
   const hd=$("#mresize"); let x0=0,w0=0,drag=false,raf=0,want=0;
   hd.addEventListener("pointerdown",e=>{ if(st.ui.videoHidden) return; drag=true; x0=e.clientX; w0=$("#mTile").getBoundingClientRect().width; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });

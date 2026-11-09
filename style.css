@@ -596,3 +596,12 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .seekz .vprog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.18);pointer-events:none}
 .seekz .vprog>i{display:block;height:100%;width:0;background:#e3ff3c}
 .m-tile .seekz .vprog,.m-tile .seekz .pz{display:none}
+/* v102 secondo riquadro musica */
+.m-col{display:flex;flex-direction:column;gap:6px;flex:none;margin:6px 0 6px 6px;max-width:42%}
+.m-col .m-tile{margin:0;max-width:none}
+.m-col.duo .m-tile{height:calc((var(--fh) - 18px)/2)}
+.player.collapsed .m-col{margin:4px 0 4px 10px}
+.player.collapsed .m-col .m-tile{margin:0}
+.player.collapsed .m-col.duo .m-tile{height:22px}
+.m-tile.m2{border-color:#3b3550}
+.m-slot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
