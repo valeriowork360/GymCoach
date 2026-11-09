@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "104";
+const APP_VERSION = "105";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -124,7 +124,7 @@ const valOf  = s => s.u==="lb" ? s.v : s.kg;
 const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
 const fromKg = (k,u) => u==="lb" ? k/LB : k;
 const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
-const setW   = s => s.raw ? s.raw : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
+const setW   = s => s.raw ? s.raw : s.rp>1 ? `${kgTxt(Math.round(valOf(s)*100)/100)} ${unitOf(s)} [${kgTxt(s.pv)} sul pacco, ${s.rp}:1]` : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
 // peso con l'altra unità tra parentesi (l'originale resta per primo)
 const r1 = x => kgTxt(Math.round(x*10)/10);
 const setWB  = s => { const w=setW(s); if(s.kg==null) return w; const lb=/\blb\b/.test(w), kg=/\bkg\b/.test(w);
@@ -135,7 +135,7 @@ function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setWB(s)} × ${s.
 /* riga di dettaglio con tipo di serie, macchina e note (per archivio e storico) */
 function setLine(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setTxt(s)}${s.tipo?` · ${s.tipo}`:s.extra?" · extra":""}${s.m?` · ${s.m}`:""}${s.note?` · ${s.note}`:""}`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
-function cleanSet({kg,reps,rir,extra,sec,u,v}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(extra?{extra:true}:{})}; }
+function cleanSet({kg,reps,rir,extra,sec,u,v,rp,pv}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(rp>1?{rp,pv}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
 const rirTxt = r => r==null ? "?" : r%1 ? `${Math.floor(r)}–${Math.ceil(r)}` : String(r);
 /* serie che contano nei grafici: allenanti + extra vere (non riscaldamento, avvicinamento o prove) */
@@ -311,6 +311,7 @@ function quickWeights(id,focusV,focusU){
   const R=v=>Math.round(v*100)/100, snap=v=>R(Math.max(inc,Math.round(v/inc)*inc));
   const inU=(v,vu)=>vu===u?v:snap(fromKg(toKg(v,vu),u));
   let c = focusV!=null&&focusV!=="__vals" ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
+  { const rr=(st.cur.rat||{})[st.cur.exIdx]||1; if(rr>1&&c!=null&&(focusV==null||focusV==="__vals")) c=snap(c*rr); }
   if(c==null && p){ const ls=p.sets.filter(x=>x.kg!=null&&!x.extra); if(ls.length) c=inU(valOf(ls[ls.length-1]),unitOf(ls[ls.length-1])); }
   if(c==null) c=e.eq==="bw"?0:u==="lb"?45:20;
   c=R(c);
@@ -471,6 +472,7 @@ function logSet(p){
   st.cur.pending=null;
   const extra = ws.length>=n || !!st.cur.nextExtra; st.cur.nextExtra=false;
   const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,...(p.rir%1?{rt:`${Math.floor(p.rir)}–${Math.ceil(p.rir)}`}:{}),t:Date.now(),...(extra?{extra:true}:{})};
+  { const rr=(st.cur.rat||{})[i]||1; if(rr>1) applyRatio(set,rr); }   // carrucola: il numero sul pacco diventa carico reale
   sets.push(set); save();
   const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
   let txt = extra ? `Serie extra su <b>${esc(EX[id].n)}</b> registrata: ${setW(set)} × ${set.reps}, RIR ${rirTxt(set.rir)} <span class="muted">(non conta nelle serie allenanti)</span>.`
@@ -1166,7 +1168,8 @@ function drawExbar(){
   const list=curList(), tm=isTimeIt(it), wide=!tm && (lo>8||hi>12);
   const tgt = tm ? `<span class="xt-g">${n} giri × ${holdTxt(it)}</span>` : wide ? `<span class="xt-w">⚠ Target ${lo}–${hi} rip.</span>` : `<span class="xt-g">${lo}–${hi} rip.</span>`;
   const sub = tm ? `pausa ${rest} s` : `${n} serie · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}`;
-  const load = g ? `<div class="xl"><small>Oggi</small><b>${esc(sk)}</b><i>≈ ${g.u==="lb"?r1(g.v*LB)+" kg":r1(g.v/LB)+" lb"} · ${esc(modeOf(it[0]))}</i></div>` : (!tm?`<div class="xl"><small>Oggi</small><b>—</b><i>${esc(modeOf(it[0]))}</i></div>`:"");
+  const rr=(st.cur.rat||{})[st.cur.exIdx]||1;
+  const load = g ? `<div class="xl"><small>Oggi${rr>1?` · carrucola ${rr}:1`:""}</small><b>${esc(rr>1?wTxt(Math.round(g.v*rr*10)/10,g.u):sk)}</b><i>${rr>1?`sul pacco = ${esc(sk)} reali`:`≈ ${g.u==="lb"?r1(g.v*LB)+" kg":r1(g.v/LB)+" lb"} · ${esc(modeOf(it[0]))}`}</i></div>` : (!tm?`<div class="xl"><small>Oggi</small><b>—</b><i>${esc(modeOf(it[0]))}</i></div>`:"");
   $("#exbar").innerHTML=`<div class="nm"><span class="xn">${st.cur.exIdx+1}/${list.length} — ${esc(e.n)}</span>${tgt}<span class="rx">${sub}</span></div><div class="xr">${load}<div class="dots">${dots}</div></div>`;
   drawTop();
 }
@@ -1467,13 +1470,40 @@ function closeSheet(){ $("#sheet").hidden=true; }
 $("#sheetClose").onclick=closeSheet;
 $("#sheet").onclick=e=>{ if(e.target.id==="sheet") closeSheet(); };
 
-function openList(){
+/* carrucola: il carico reale è il numero sul pacco diviso il rapporto (2:1 = metà) */
+function applyRatio(x,r){ if(x.kg==null||x.sec!=null) return; const pv=x.rp>1?x.pv:valOf(x); x.pv=pv; x.rp=r; x.kg=Math.round(toKg(pv,unitOf(x))/r*100)/100; if(x.u==="lb") x.v=Math.round(pv/r*100)/100; delete x.raw; }
+function clearRatio(x){ if(!(x.rp>1)) return; x.kg=toKg(x.pv,unitOf(x)); if(x.u==="lb") x.v=x.pv; delete x.rp; delete x.pv; }
+function setRatio(k,r){ (st.cur.rat ||= {}); if(r>1) st.cur.rat[k]=r; else delete st.cur.rat[k];
+  setsOf(k).forEach(x=>{ if(x.sec!=null||x.kg==null) return; if(r>1) applyRatio(x,r); else clearRatio(x); }); save(); }
+function openList(edit){
   if(!st.cur){ openSheet("Esercizi","<p class='muted'>Inizia una sessione per vedere l'elenco.</p>"); return; }
   const list=curList();
-  openSheet(st.cur.session+" · esercizi", list.map((x,k)=>{ const d=workSets(k).length, full=d>=x[1];
-    return `<button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${isTimeIt(x)?holdTxt(x):`${x[2]}–${x[3]}`}${x[0]!==origId(k)?" · 🔁":""}</span></button>`; }).join("")
-    +`<button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
-  $("#sheetBody").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ closeSheet(); goEx(+b.dataset.k); });
+  const setRow=(k,x,j,lab)=>{ const ed=edit&&edit.k===k&&edit.j===j;
+    if(ed&&x.sec==null){ const u=unitOf(x), val=x.rp>1?x.pv:valOf(x);
+      return `<div class="lset ed"><span class="sl">${lab}</span><label>${x.rp>1?"Pacco":"Carico"}<input class="inp" inputmode="decimal" id="eV" value="${kgTxt(val)}"></label><select class="inp" id="eU"><option ${u==="kg"?"selected":""}>kg</option><option ${u==="lb"?"selected":""}>lb</option></select><label>Rip.<input class="inp" inputmode="numeric" id="eR" value="${x.reps??""}"></label><label>RIR<input class="inp" inputmode="decimal" id="eI" value="${x.rir??""}"></label><button type="button" class="btn acc sm" data-esave="${k}|${j}">Salva</button><button type="button" class="btn sm" data-ecancel>✕</button></div>`; }
+    return `<div class="lset ${x.extra?"xr":""}"><span class="sl">${lab}</span><span class="sv">${esc(setTxt(x))}</span>${x.sec==null?`<button type="button" class="ib" data-edit="${k}|${j}" aria-label="Modifica">✏️</button>`:""}<button type="button" class="ib" data-del="${k}|${j}" aria-label="Cancella">🗑</button></div>`; };
+  openSheet(st.cur.session+" · esercizi", list.map((x,k)=>{ const d=workSets(k).length, full=d>=x[1], ss=setsOf(k), rr=(st.cur.rat||{})[k]||1, tm=isTimeIt(x);
+    let n=0;
+    return `<div class="liw"><button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${tm?holdTxt(x):`${x[2]}–${x[3]}`}${x[0]!==origId(k)?" · 🔁":""}</span></button>
+      ${ss.length||(!tm&&!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<div class="lsets">${ss.map((y,j)=>setRow(k,y,j,y.extra?"extra":String(++n))).join("")}${!tm&&(rr>1||!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<button type="button" class="vchip rat ${rr>1?"on":""}" data-rat="${k}">⚙ Carrucola ${rr>1?rr+":1 · carico ÷"+rr:"1:1"}</button>`:""}</div>`:""}</div>`; }).join("")
+    +`<p class="muted xs">⚙ Carrucola 2:1: se il cavo passa da una carrucola mobile, il carico reale è metà del numero sul pacco. Vale per le serie di questo esercizio in questa sessione, anche quelle già registrate.</p><button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
+  const B=$("#sheetBody"), refresh=()=>{ save(); drawExbar(); drawTop(); drawChips(); };
+  B.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ closeSheet(); goEx(+b.dataset.k); });
+  B.querySelectorAll("[data-rat]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.rat, r=((st.cur.rat||{})[k]||1)>1?1:2; setRatio(k,r); refresh();
+    sys(`⚙ ${EX[curList()[k][0]].n}: carrucola ${r}:1${r>1?" — il carico reale è metà del numero sul pacco":""}.`); openList(); });
+  B.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.edit.split("|").map(Number); openList({k,j}); });
+  B.querySelectorAll("[data-ecancel]").forEach(b=>b.onclick=()=>openList());
+  B.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.esave.split("|").map(Number), x=setsOf(k)[j]; if(!x) return;
+    const v=fdNum($("#eV").value), u=$("#eU").value, r=parseInt($("#eR").value), ri=fdNum($("#eI").value);
+    if(v==null||isNaN(r)){ $("#eV").focus(); return; }
+    const rp=x.rp>1?x.rp:0; delete x.rp; delete x.pv; delete x.raw;
+    x.kg=toKg(v,u); if(u==="lb"){ x.u="lb"; x.v=v; } else { delete x.u; delete x.v; }
+    if(rp) applyRatio(x,rp);
+    x.reps=r; x.rir=ri; if(ri!=null&&ri%1) x.rt=`${Math.floor(ri)}–${Math.ceil(ri)}`; else delete x.rt;
+    refresh(); sys(`✏️ Serie modificata — ${EX[curList()[k][0]].n}: ${setTxt(x)}.`); openList(); });
+  B.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(!b.dataset.armed){ b.dataset.armed=1; b.textContent="Elimina?"; b.classList.add("arm"); return; }
+    const [k,j]=b.dataset.del.split("|").map(Number), x=setsOf(k)[j]; if(!x) return; setsOf(k).splice(j,1);
+    refresh(); sys(`🗑 Serie cancellata — ${EX[curList()[k][0]].n}: ${setTxt(x)}.`); openList(); });
   $("#endFromList").onclick=()=>{ closeSheet(); finishSession(); };
 }
 $("#btnList").onclick=openList;
