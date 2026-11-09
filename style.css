@@ -605,3 +605,4 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .player.collapsed .m-col.duo .m-tile{height:22px}
 .m-tile.m2{border-color:#3b3550}
 .m-slot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+.m-seek .sk-lab{font-size:15px;flex:none;width:20px;text-align:center}

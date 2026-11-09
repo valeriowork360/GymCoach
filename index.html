@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Allenamento</title>
 <meta name="theme-color" content="#0e0f11">
-<meta name="app-version" content="102">
+<meta name="app-version" content="103">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=102">
+<link rel="stylesheet" href="style.css?v=103">
 </head>
 <body>
 <div id="app">
@@ -55,9 +55,14 @@
         <button class="vbtn" id="mMore" type="button" aria-label="Opzioni musica">⌄</button>
       </div>
       <div class="m-seek" id="mSeek" hidden>
-        <button type="button" class="vbtn" data-sk="-30" aria-label="Indietro 30 secondi">−30</button><button type="button" class="vbtn" data-sk="-10" aria-label="Indietro 10 secondi">−10</button>
+        <span class="sk-lab" id="skLab1" hidden>🎵</span>        <button type="button" class="vbtn" data-sk="-30" aria-label="Indietro 30 secondi">−30</button><button type="button" class="vbtn" data-sk="-10" aria-label="Indietro 10 secondi">−10</button>
         <input type="range" id="mPos" min="0" max="100" step="1" value="0" aria-label="Posizione nel video musica"><output id="mTime">0:00</output>
         <button type="button" class="vbtn" data-sk="10" aria-label="Avanti 10 secondi">+10</button><button type="button" class="vbtn" data-sk="30" aria-label="Avanti 30 secondi">+30</button>
+      </div>
+      <div class="m-seek" id="mSeek2" hidden>
+        <span class="sk-lab">🎶</span><button type="button" class="vbtn" data-sk2="-30" aria-label="2° video indietro 30 secondi">−30</button><button type="button" class="vbtn" data-sk2="-10" aria-label="2° video indietro 10 secondi">−10</button>
+        <input type="range" id="mPos2" min="0" max="100" step="1" value="0" aria-label="Posizione nel secondo video"><output id="mTime2">0:00</output>
+        <button type="button" class="vbtn" data-sk2="10" aria-label="2° video avanti 10 secondi">+10</button><button type="button" class="vbtn" data-sk2="30" aria-label="2° video avanti 30 secondi">+30</button>
       </div>
       <div class="m-more" id="mPanel" hidden>
         <div class="m-slot" id="mSlot"><span class="muted xs">Carica in</span><button type="button" class="vchip" data-slot="1">🎵 Riquadro 1</button><button type="button" class="vchip" data-slot="2">🎶 Riquadro 2</button><button type="button" class="vchip" id="m2Off" hidden>✕ Togli il 2°</button></div>
@@ -124,8 +129,8 @@
   };
 })();
 </script>
-<script src="data.js?v=102"></script>
-<script src="foods_base.js?v=102"></script>
-<script src="app.js?v=102"></script>
+<script src="data.js?v=103"></script>
+<script src="foods_base.js?v=103"></script>
+<script src="app.js?v=103"></script>
 </body>
 </html>

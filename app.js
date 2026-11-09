@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "102";
+const APP_VERSION = "103";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1119,12 +1119,24 @@ function drawMusic2(msg){
   $("#mTile2").hidden=!on; $("#mCol").classList.toggle("duo",on); $("#vol2").hidden=!on; $("#m2Off").hidden=!on; $("#m2Info").hidden=!on;
   $("#mPlay2").textContent=(ym2Playing||ym2Want)?"❚❚":"▶"; $("#mPlay2").classList.toggle("on",ym2Playing);
   $("#volM2").value=m.vol; $("#oM2").textContent=m.vol; $("#muteM2").textContent=m.vol>0?"🎶":"🔕"; $("#muteM2").classList.toggle("on",m.vol>0&&ym2Playing);
-  $("#m2Title").textContent=m.title||"2° video"; $("#m2Sub").textContent=msg||(on?(ym2Playing?"In riproduzione":ym2Want?"Avvio…":"In pausa"):"");
+  $("#m2Title").textContent=m.title||"2° video"; drawSeek2(); $("#m2Sub").textContent=msg||(on?(ym2Playing?"In riproduzione":ym2Want?"Avvio…":"In pausa"):"");
   document.querySelectorAll("#mSlot [data-slot]").forEach(b=>b.classList.toggle("on",+b.dataset.slot===slot));
   if(msg && st.cur) sys("🎶 "+msg);
   applyMW();
 }
 document.querySelectorAll("#mSlot [data-slot]").forEach(b=>b.onclick=()=>{ st.ui.mSlot=+b.dataset.slot; save(); drawMusic2(); drawDuetto(); $("#mIn").placeholder=st.ui.mSlot===2?"Link YouTube per il 2° riquadro":"Incolla un link YouTube (brano o playlist)"; });
+/* barra di avanzamento del 2° riquadro: −30/−10/+10/+30 e cursore */
+let seekDrag2=false;
+function drawSeek2(){
+  const ok=!!(ym2&&ym2Ready&&st.ui.music2.src); $("#mSeek2").hidden=!ok; $("#skLab1").hidden=!ok; if(!ok) return;
+  let d=0,c=0; try{ d=ym2.getDuration()||0; c=ym2.getCurrentTime()||0; }catch(e){}
+  if(!seekDrag2){ $("#mPos2").max=Math.max(1,Math.round(d)); $("#mPos2").value=Math.round(c); }
+  $("#mTime2").textContent=`${hms(seekDrag2?+$("#mPos2").value:c)} / ${hms(d)}`;
+}
+document.querySelectorAll("[data-sk2]").forEach(b=>b.onclick=()=>{ if(!ym2||!ym2Ready) return; try{ ym2.seekTo(Math.max(0,(ym2.getCurrentTime()||0)+(+b.dataset.sk2)),true); }catch(e){} setTimeout(drawSeek2,200); });
+$("#mPos2").addEventListener("input",()=>{ seekDrag2=true; drawSeek2(); });
+$("#mPos2").addEventListener("change",()=>{ seekDrag2=false; try{ ym2.seekTo(+$("#mPos2").value,true); }catch(e){} setTimeout(drawSeek2,200); });
+setInterval(()=>{ if(!document.hidden) drawSeek2(); },1000);
 $("#m2Off").onclick=closeMusic2;
 $("#mPlay2").onclick=toggleMusic2;
 seekZones($("#mTile2"),()=>ym2Ready&&ym2?ym2:null,()=>toggleMusic2());
