@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-10T02:16:52+00:00",
+ "updated": "2026-11-10T05:10:18+00:00",
  "playlists": [
   {
    "title": "Esercizi fissi",
@@ -34,6 +34,37 @@
      "id": "CU9jn-VN4QU",
      "title": "No Time To Workout? Do This Efficient 15 Min Workout!",
      "dur": 0
+    }
+   ]
+  },
+  {
+   "title": "GymCoach",
+   "id": "PLNG--5Jlp_O4",
+   "videos": [
+    {
+     "id": "IS-YEZcruuc",
+     "title": "Trump LOST: how my portfolio is changing FOREVER (with @quantaste)",
+     "dur": 2327
+    },
+    {
+     "id": "2yiZw7QJSOg",
+     "title": "La disfatta di Trump alle Midterm: cosa succede ora negli USA?",
+     "dur": 823
+    },
+    {
+     "id": "exIKv9QHz2s",
+     "title": "Master Meta Static Ads In 25 Minutes",
+     "dur": 1530
+    },
+    {
+     "id": "d_2lvrt78hE",
+     "title": "WHAT HAPPENED to THE LINE? The $8,000,000,000,000 mega city in the DESERT?",
+     "dur": 1195
+    },
+    {
+     "id": "yH3EVbkz4Bs",
+     "title": "Historic Crash + Rebound: Real Bottom or Relief Rally? Killer Entries🚀 + Jobs Shock!",
+     "dur": 1433
     }
    ]
   },
@@ -496,7 +527,7 @@
     },
     {
      "id": "WOR1srHK4OA",
-     "title": "ALPHA FISCALE per utenti DEFI (guarda entro il 30 luglio)",
+     "title": "TAX ALPHA for DeFi users (watch before July 30th)",
      "dur": 1049,
      "date": null
     },
@@ -514,7 +545,7 @@
     },
     {
      "id": "x-svwPosvmQ",
-     "title": "Come far crescere un account su X",
+     "title": "How to grow an account on X",
      "dur": 1039,
      "date": null
     },
@@ -1186,7 +1217,7 @@
     },
     {
      "id": "us6SRuWuqWc",
-     "title": "Linux, clearly explained (the ultimate AI-first tutorial)",
+     "title": "The Ultimate Linux Tutorial for AI Agents (watch before 2027)",
      "dur": 1528,
      "date": null
     },
@@ -1338,73 +1369,73 @@
      "id": "JIJqrR9uzpc",
      "title": "SHOPIFY dalla A alla Z 🛒 CORSO COMPLETO per aprire il tuo NEGOZIO ONLINE (anche con l'AI)",
      "dur": 8419,
-     "date": "2026-11-09T16:24:45+00:00"
+     "date": null
     },
     {
      "id": "fRBNbky0NzE",
      "title": "POWERPOINT dalla A alla Z 📽️ CORSO COMPLETO per fare SLIDE BELLE ed EFFICACI (anche con COPILOT)",
      "dur": 10169,
-     "date": "2026-10-22T13:22:39+00:00"
+     "date": null
     },
     {
      "id": "YZFObutR3iw",
      "title": "AIRTABLE dalla A alla Z 📊 CORSO COMPLETO al DATABASE per ORGANIZZARE il LAVORO e la VITA",
      "dur": 8296,
-     "date": "2026-10-19T13:52:02+00:00"
+     "date": null
     },
     {
      "id": "QMUHTuLFbks",
      "title": "PAPERCLIP 📎 Come creare un'AZIENDA di AGENTI AI - CORSO COMPLETO",
      "dur": 8527,
-     "date": "2026-10-08T13:22:55+00:00"
+     "date": null
     },
     {
      "id": "mIhqfoVq59Y",
-     "title": "KLING 4.0 per GENERARE VIDEO con l'AI 🎬 CORSO COMPLETO",
+     "title": "KLING 4.0 for GENERATING VIDEOS with AI 🎬 COMPLETE COURSE",
      "dur": 4612,
-     "date": "2026-09-30T11:07:57+00:00"
+     "date": null
     },
     {
      "id": "0uNXaHKCitc",
      "title": "CHATGPT dalla A alla Z 🤖 CORSO COMPLETO sull'AI AGENTICA che USA IL COMPUTER al POSTO TUO!",
      "dur": 7669,
-     "date": "2026-09-23T11:01:27+00:00"
+     "date": null
     },
     {
      "id": "35t1Sf1-by0",
      "title": "Come iniziare su YouTube partendo da zero",
      "dur": 3197,
-     "date": "2026-09-17T04:00:13+00:00"
+     "date": null
     },
     {
      "id": "RWKD8U0HzpQ",
      "title": "L'AGENTE AI che LAVORA al POSTO TUO ✨ Strategia, organizzazione, sito, contenuti... tutto!",
      "dur": 2693,
-     "date": "2026-09-16T11:08:56+00:00"
+     "date": null
     },
     {
      "id": "agAkBFZcu68",
-     "title": "GROK BOT 🤖 CORSO COMPLETO sull'AGENTE AI di X che LAVORA AL POSTO TUO",
+     "title": "GROK BOT 🤖 COMPLETE COURSE on the X AI AGENT that WORKS FOR YOU",
      "dur": 4790,
-     "date": "2026-09-11T15:07:39+00:00"
+     "date": null
     },
     {
      "id": "n1kjls1glTY",
-     "title": "MONETIZZAZIONE YOUTUBE: come raggiungere 1000 iscritti e 8000 ore di visualizzazione",
+     "title": "YOUTUBE MONETIZATION: How to reach 1,000 subscribers and 8,000 watch hours",
      "dur": 2830,
-     "date": "2026-09-10T04:00:37+00:00"
+     "date": null
     },
     {
      "id": "iNeZXW29nYo",
      "title": "CAPCUT dalla A alla Z 🎬 CORSO COMPLETO sul VIDEO EDITOR GRATIS dove l'AI MONTA AL POSTO TUO",
      "dur": 8835,
-     "date": "2026-08-24T04:00:20+00:00"
+     "date": null
     },
     {
      "id": "F24rPTsp2LI",
-     "title": "CLAUDE CODE su VPS: il mio ASSISTENTE AI che lavora 24/7 su TELEGRAM",
+     "title": "CLAUDE CODE on VPS: My 24/7 AI ASSISTANT on TELEGRAM",
      "dur": 3366,
-     "date": "2026-08-12T12:19:20+00:00"
+     "date": null
     }
    ]
   },
@@ -1491,76 +1522,76 @@
    "id": "UCIb34uXDsfTq4PJKW0eztkA",
    "videos": [
     {
+     "id": "cn_xARVOK6E",
+     "title": "This Stock Market Bottom Is Different (trap revealed)",
+     "dur": 1569,
+     "date": "2026-11-10T03:19:13+00:00"
+    },
+    {
      "id": "1o99gIM1R-s",
      "title": "Bitcoin: Sellers Are Taking Back Control (critical time ahead)",
      "dur": 1826,
-     "date": null
+     "date": "2026-11-09T01:18:10+00:00"
     },
     {
      "id": "8jwjhM5mtDQ",
      "title": "Shock Reversal Reveals They're Running Out Of Money (this must happen next)",
      "dur": 1255,
-     "date": null
+     "date": "2026-11-05T01:35:02+00:00"
     },
     {
      "id": "4WhdYFEviJA",
      "title": "Bitcoin: Last Time This Happened Price Pumped (but there's a catch)",
      "dur": 1487,
-     "date": null
+     "date": "2026-11-04T01:25:35+00:00"
     },
     {
      "id": "MxijKJomDTI",
      "title": "Why Are Investors Running For The Exit? (Q4 Crash)",
      "dur": 1464,
-     "date": null
+     "date": "2026-11-03T00:59:56+00:00"
     },
     {
      "id": "WYoM2YhdNXQ",
      "title": "The Market Crashed Last Time This Happened… (it just triggered)",
      "dur": 1666,
-     "date": null
+     "date": "2026-11-02T01:20:14+00:00"
     },
     {
      "id": "DFXb-Qt_JdI",
      "title": "It’s Make or Break Time (SP500 & Nasdaq Price Targets for 2027)",
      "dur": 1401,
-     "date": null
+     "date": "2026-10-29T01:24:07+00:00"
     },
     {
      "id": "es_I-z8Pnek",
      "title": "The Market Top Rotation Begins (gold, stocks, oil, bitcoin)",
      "dur": 1834,
-     "date": null
+     "date": "2026-10-27T01:58:59+00:00"
     },
     {
      "id": "dH-Y0pxOPD8",
      "title": "Bitcoin Breaks $80,000: Is The Bear Market Back?",
      "dur": 1831,
-     "date": null
+     "date": "2026-10-26T01:44:54+00:00"
     },
     {
      "id": "GaHjNt91mPU",
      "title": "The Writing Is On The Wall (But Don’t Panic yet)",
      "dur": 1784,
-     "date": null
+     "date": "2026-10-23T01:48:04+00:00"
     },
     {
      "id": "JTbBJ-OhDN0",
      "title": "Bitcoin: This Phase Is Brutal (how we’re preparing)",
      "dur": 1307,
-     "date": null
+     "date": "2026-10-22T01:27:33+00:00"
     },
     {
      "id": "v_Aw5x7Hsns",
      "title": "This Is The Final Move Before Our Generational Reset",
      "dur": 1831,
-     "date": null
-    },
-    {
-     "id": "iZisjh6Dags",
-     "title": "The Bubble’s Final Phase Is Here (but it won't be easy)",
-     "dur": 1680,
-     "date": null
+     "date": "2026-10-21T01:25:21+00:00"
     }
    ]
   },
@@ -1725,6 +1756,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "GlZD3slJcOk",
+     "title": "I Tested The New Claude Fable 5.2 on 5 Real Use Cases",
+     "dur": 877,
+     "date": null
+    },
+    {
      "id": "KeOKEYEIutQ",
      "title": "6 ways to print $$$ with grok bot + claude",
      "dur": 2232,
@@ -1789,12 +1826,6 @@
      "title": "6 free GitHub repos to print $$$ with Claude",
      "dur": 1222,
      "date": null
-    },
-    {
-     "id": "_H1JsAkIJZQ",
-     "title": "This is HANDS DOWN the best ai biz to start in Sep 2026 (no skill)",
-     "dur": 2748,
-     "date": null
     }
    ]
   },
@@ -1806,73 +1837,73 @@
      "id": "yuckuVqd01k",
      "title": "8 free AI trading repos that make f*ck you money",
      "dur": 861,
-     "date": null
+     "date": "2026-11-01T15:36:07+00:00"
     },
     {
      "id": "ikE6BAjZUiA",
      "title": "I Tested The #1 Viral AI Trading Repo (Claude Hedge Fund)",
      "dur": 1265,
-     "date": null
+     "date": "2026-10-21T17:58:16+00:00"
     },
     {
      "id": "DMYQlk9ybj0",
      "title": "Claude + Telegram = The Most Insane AI Trading Bot Yet",
      "dur": 989,
-     "date": null
+     "date": "2026-09-29T12:52:26+00:00"
     },
     {
      "id": "tAHktukPQt4",
      "title": "Claude + Quiver: How I Use AI To Insider Trade (Legally)",
      "dur": 1158,
-     "date": null
+     "date": "2026-09-26T15:27:58+00:00"
     },
     {
      "id": "Pk7W7BKMwqo",
      "title": "Jev + Claude Opus 5.5 = The Most Powerful AI Trading Bot Ever",
      "dur": 1132,
-     "date": null
+     "date": "2026-09-24T15:24:35+00:00"
     },
     {
      "id": "sNy_ql7pJQ0",
      "title": "How I Made My AI Trading Bot Invest Like Warren Buffett (full guide)",
      "dur": 722,
-     "date": null
+     "date": "2026-09-22T21:43:13+00:00"
     },
     {
      "id": "Z3CUdMYXZm8",
      "title": "3 free Github repos to print $$$ AI trading",
      "dur": 756,
-     "date": null
+     "date": "2026-09-21T18:14:56+00:00"
     },
     {
      "id": "_b9ArkvED0A",
      "title": "Claude + GitHub = The Most OVERPOWERED AI Trader I've Ever Seen",
      "dur": 971,
-     "date": null
+     "date": "2026-09-21T01:02:25+00:00"
     },
     {
      "id": "me5uegV7vOU",
      "title": "7 Free GitHub Repos That Turn Claude Into a $500K Quant Trader",
      "dur": 1571,
-     "date": null
+     "date": "2026-09-16T18:27:49+00:00"
     },
     {
      "id": "2NwO-4KD8KA",
      "title": "I Tested 50 AI Trading Bots With Claude. One DOMINATED.",
      "dur": 1045,
-     "date": null
+     "date": "2026-09-15T21:12:44+00:00"
     },
     {
      "id": "SzE4nhaYLkQ",
      "title": "I Replaced My $6k/mo Financial Advisor With This Claude System",
      "dur": 1091,
-     "date": null
+     "date": "2026-09-14T21:06:00+00:00"
     },
     {
      "id": "6P-RTHjGEZQ",
      "title": "GPT-6 Astra + TradingView = F*cking Insane (Top 7 Prompts)",
      "dur": 1360,
-     "date": null
+     "date": "2026-09-11T13:08:13+00:00"
     }
    ]
   },
@@ -1978,7 +2009,7 @@
     },
     {
      "id": "63V404OubS0",
-     "title": "On-chain Portfolio | Episode 0.5",
+     "title": "Portfolio on-chain I Episodio 0.5",
      "dur": 1232,
      "date": null
     },
@@ -1996,7 +2027,7 @@
     },
     {
      "id": "Ecz8kFuZOZI",
-     "title": "On-chain Portfolio | Episode 1",
+     "title": "Portfolio on-chain I Episodio 1",
      "dur": 958,
      "date": null
     },
@@ -2350,7 +2381,7 @@
    "videos": [
     {
      "id": "qs9WWtB0id0",
-     "title": "BAMBU LAB HA SBAGLIATO IL SUO PRIMO LASER?",
+     "title": "2.500€ DI LASER E NON È PRONTO - Bambu Lab R1",
      "dur": 2112,
      "date": null
     },
@@ -2742,73 +2773,73 @@
      "id": "uJuxenfe-NU",
      "title": "AI Agents are too good at marketing now",
      "dur": 3120,
-     "date": null
+     "date": "2026-11-09T18:15:17+00:00"
     },
     {
      "id": "b3tMAOFB71o",
      "title": "8 Businesses for the AI Age",
      "dur": 1328,
-     "date": null
+     "date": "2026-11-04T20:30:20+00:00"
     },
     {
      "id": "67BmkptgTms",
      "title": "The $1M+ Solo Grok Bot Business (Full Course)",
      "dur": 2972,
-     "date": null
+     "date": "2026-11-02T19:15:08+00:00"
     },
     {
      "id": "AqqjH_uv-_w",
      "title": "SaaS is dead?",
      "dur": 673,
-     "date": null
+     "date": "2026-10-29T19:25:16+00:00"
     },
     {
      "id": "st61aKW8P5A",
      "title": "$100M ARR Founder: The Next Big AI Opportunity",
      "dur": 2961,
-     "date": null
+     "date": "2026-10-28T17:40:18+00:00"
     },
     {
      "id": "HKNpCwG3nlc",
      "title": "The $1,000/hour 1-person AI business",
      "dur": 2660,
-     "date": null
+     "date": "2026-10-26T18:35:28+00:00"
     },
     {
      "id": "nRl-7Yhmbog",
      "title": "The 9 Stages of AI Agent Adoption, Explained",
      "dur": 1873,
-     "date": null
+     "date": "2026-10-21T19:15:33+00:00"
     },
     {
      "id": "tpZOU1ugODQ",
      "title": "Meta Muse Will Create 1,000 Millionaires",
      "dur": 1475,
-     "date": null
+     "date": "2026-10-19T17:50:26+00:00"
     },
     {
      "id": "jEOUUAPC1sc",
      "title": "Make cool things with AI that people buy (Gemini 4 Argon)",
      "dur": 1850,
-     "date": null
+     "date": "2026-10-15T20:40:35+00:00"
     },
     {
      "id": "rkK8ZyzYyEA",
      "title": "8 GitHub Repos To Go Viral and Make Money",
      "dur": 1469,
-     "date": null
+     "date": "2026-10-08T18:30:11+00:00"
     },
     {
      "id": "bQPU6UJ4iCw",
      "title": "13 Businesses for the Age of AI",
      "dur": 1517,
-     "date": null
+     "date": "2026-10-06T14:30:39+00:00"
     },
     {
      "id": "1a5HxU52vCQ",
      "title": "Masterclass: How FDEs make $1M/yr deploying AI agents",
      "dur": 3239,
-     "date": null
+     "date": "2026-10-01T20:30:04+00:00"
     }
    ]
   },
@@ -2974,75 +3005,21 @@
    "videos": [
     {
      "id": "Q2g10hBylDg",
-     "title": "The New Era of AI Agents Is Called Harness",
+     "title": "La Nuova Era degli Agenti AI si chiama Harness",
      "dur": 1117,
-     "date": null
+     "date": "2026-11-06T16:00:06+00:00"
     },
     {
      "id": "2tDzuwMKVAM",
-     "title": "6 New Rules for Using Claude",
+     "title": "Come gli Ingegneri di Anthropic usano DAVVERO Claude (6 nuove regole)",
      "dur": 716,
-     "date": null
+     "date": "2026-11-03T16:15:28+00:00"
     },
     {
      "id": "Qc4QQNkUXXs",
-     "title": "Claude Just Changed: The 5 Big New Features You Need to Know",
+     "title": "Claude è appena Cambiato: Le 5 Grandi Novità da sapere",
      "dur": 1089,
-     "date": null
-    },
-    {
-     "id": "KOlw5fE26Vw",
-     "title": "How AI Really Works",
-     "dur": 951,
-     "date": null
-    },
-    {
-     "id": "mY6Cep75dJA",
-     "title": "Claude Just Launched DUET (Full Analysis)",
-     "dur": 607,
-     "date": null
-    },
-    {
-     "id": "mgXboWXfpYY",
-     "title": "Claude Just Launched MOTION (Learn 99% in 13 Minutes)",
-     "dur": 832,
-     "date": null
-    },
-    {
-     "id": "ah1dEYkrq3E",
-     "title": "Everything you know about Claude Skills is OUTDATED (7 new rules)",
-     "dur": 870,
-     "date": null
-    },
-    {
-     "id": "W0WG2H9FCws",
-     "title": "CLAUDE 2.0: The BIGGEST Claude Code Update EVER",
-     "dur": 1175,
-     "date": null
-    },
-    {
-     "id": "EHqC9IsNSrg",
-     "title": "La nuova era dell’AI è appena Iniziata (PREPARATI)",
-     "dur": 680,
-     "date": null
-    },
-    {
-     "id": "0XqBLKTcF54",
-     "title": "How to Create INSANE Animated Graphics with Claude Opus 3.5",
-     "dur": 569,
-     "date": null
-    },
-    {
-     "id": "caXAokWKMfw",
-     "title": "Claude Mods: The Biggest Update to Claude Code Since Skills",
-     "dur": 964,
-     "date": null
-    },
-    {
-     "id": "x3oEHThfWOQ",
-     "title": "JEV - La nuova era dell’AI 400x più economico di Claude e Chatgpt",
-     "dur": 1240,
-     "date": null
+     "date": "2026-10-29T16:25:03+00:00"
     }
    ]
   },
@@ -3334,7 +3311,7 @@
     },
     {
      "id": "prhQaUZRFWc",
-     "title": "Un CRM da 30.000€ in 3 Ore con Claude Code (CASO STUDIO)",
+     "title": "A €30,000 CRM in 3 Hours with Claude Code (CASE STUDY)",
      "dur": 3033,
      "date": null
     },
@@ -3364,75 +3341,75 @@
    "videos": [
     {
      "id": "lW7n6-wBwFc",
-     "title": "NVIDIA and Paraguay SCANDALS. BTC Suffers but Holds Up 🚨 CryptoMonday NEWS w45/'26",
+     "title": "SCANDALI NVIDIA e Paraguay. BTC Soffre ma Salva 🚨 CryptoMonday NEWS w45/'26",
      "dur": 1419,
-     "date": null
+     "date": "2026-11-09T11:00:06+00:00"
     },
     {
      "id": "PdVWAYTZPZk",
-     "title": "Bitcoin, History Repeats Itself. Really?",
+     "title": "Bitcoin, la Storia si Ripete. Davvero?",
      "dur": 809,
-     "date": null
+     "date": "2026-11-05T12:00:26+00:00"
     },
     {
      "id": "Gg5AINlGyxI",
-     "title": "The BIGGEST THEFT in HISTORY 🚨 CryptoMonday NEWS w44/'26",
+     "title": "Il FURTO più GRANDE della STORIA 🚨 CryptoMonday NEWS w44/'26",
      "dur": 1250,
-     "date": null
+     "date": "2026-11-02T09:59:50+00:00"
     },
     {
      "id": "6bQmbo8Nvas",
-     "title": "I've got a BAD feeling about BITCOIN. Stablecoin Season 💸 CryptoMonday NEWS w43/'26",
+     "title": "La vedo MALE su BITCOIN. Stablecoin Season 💸 CryptoMonday NEWS w43/'26",
      "dur": 2190,
-     "date": null
+     "date": "2026-10-26T11:13:10+00:00"
     },
     {
      "id": "9tiqtckPIvE",
-     "title": "Crypto in a Bear Market? Here's WHERE the MONEY is made",
+     "title": "Crypto in Bear Market? Ecco DOVE si fanno i SOLDI",
      "dur": 1180,
-     "date": null
+     "date": "2026-10-23T11:00:04+00:00"
     },
     {
      "id": "KyP7gqf5kKM",
-     "title": "Have We Already Seen the Bitcoin Bottom? Inflation, FED, and FUD Strategy 👀 CryptoMonday NEWS w42...",
+     "title": "Bitcoin abbiamo già visto il Bottom? Inflazione, FED e FUD Strategy 👀 CryptoMonday NEWS w42/'26",
      "dur": 2292,
-     "date": null
+     "date": "2026-10-19T10:22:41+00:00"
     },
     {
      "id": "Qju_zxCv5ZU",
-     "title": "I Needed a Break.. Where We Stand with DeFi, Crypto, and AI",
+     "title": "La Pausa mi serviva.. Dove siamo con DeFi, Crypto ed IA",
      "dur": 1671,
-     "date": null
+     "date": "2026-10-15T17:00:25+00:00"
     },
     {
      "id": "9TqfW0OaHAk",
      "title": "NO PANIC! IA vs crittografia, allarme Ledger: cosa succede? 🔙 CryptoMonday NEWS w41/'26",
      "dur": 3440,
-     "date": null
+     "date": "2026-10-12T11:04:34+00:00"
     },
     {
      "id": "8XwJbLwCO_A",
      "title": "Doppia Delusione Crypto",
      "dur": 1006,
-     "date": null
+     "date": "2026-09-17T08:29:41+00:00"
     },
     {
      "id": "CZw_rp41sfo",
-     "title": "CRYPTO: The Week That Defines 2026 ⁉️ CryptoMonday NEWS w37/'26",
+     "title": "CRYPTO: La Settimana che Segna il 2026 ⁉️ CryptoMonday NEWS w37/'26",
      "dur": 2065,
-     "date": null
+     "date": "2026-09-14T10:18:43+00:00"
     },
     {
      "id": "BUGVo9pzk_k",
-     "title": "BITCOIN and CRYPTO: What Happens Now with the Fed, Clarity, and AI?",
+     "title": "BITCOIN e CRYPTO: cosa succede ora con FED, CLARITY ed IA?",
      "dur": 1608,
-     "date": null
+     "date": "2026-09-10T11:15:39+00:00"
     },
     {
      "id": "pIBHGpP_rcg",
-     "title": "BITCOIN: GOLDEN CROSS reverses the TREND 🔥 CryptoMonday NEWS w36/'26",
+     "title": "BITCOIN: il GOLDEN CROSS inverte il TREND 🔥 CryptoMonday NEWS w36/'26",
      "dur": 1728,
-     "date": null
+     "date": "2026-09-07T10:17:27+00:00"
     }
    ]
   },
@@ -3676,7 +3653,7 @@
    "videos": [
     {
      "id": "RK3NtGf-cPk",
-     "title": "The Market Is Showing Strength… But Something Is Missing",
+     "title": "The Stock Market Is Bouncing… But Is This a Trap?",
      "dur": 785,
      "date": null
     },
@@ -3688,7 +3665,7 @@
     },
     {
      "id": "WHH4qSfCCyM",
-     "title": "The Market Is Running Out of Time… Is This the Final Low?",
+     "title": "Everyone Is Panicking… Are We Closer to a Bottom?",
      "dur": 797,
      "date": null
     },
@@ -3706,7 +3683,7 @@
     },
     {
      "id": "E0O5_gy_iXo",
-     "title": "Bitcoin & Stocks: The First Signs of a Major Market Bottom?",
+     "title": "Buyers Are Quietly Returning… Is the Market About to Turn?",
      "dur": 739,
      "date": null
     },
