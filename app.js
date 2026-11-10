@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "112";
+const APP_VERSION = "113";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2397,6 +2397,23 @@ const fdState=(v,t)=>v==null||!t?"":v<t*0.85?"molto sotto":v<t*0.925?"appena sot
 const itNum=v=>{ v=String(v??"").trim().replace(/[~≈]/g,"").replace(/\s.*$/,""); if(!v||!/\d/.test(v)) return null;
   if(v.includes(",")) v=v.replace(/\./g,"").replace(",","."); else if(/^\d{1,3}(\.\d{3})+$/.test(v)) v=v.replace(/\./g,""); const n=parseFloat(v); return isNaN(n)?null:n; };
 const IT_MONTHS=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+/* recap con le tabelle copiate con le tabulazioni (Alimento⇥Quantità⇥kcal…) e più giorni nello stesso testo («G79 — 08/11/2026») */
+const DAYHEAD=/^\W*G(\d+)\s*[—–-]\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/u;
+function splitDays(txt){ const out=[]; let cur=[];
+  txt.split(/\r?\n/).forEach(l=>{ if(DAYHEAD.test(l.trim()) && cur.some(x=>DAYHEAD.test(x.trim()))){ out.push(cur.join("\n")); cur=[]; } cur.push(l); });
+  if(cur.length) out.push(cur.join("\n")); return out; }
+function tsvToMD(txt){ const out=[];
+  txt.split(/\r?\n/).forEach(l=>{ const t=l.trim(), m=t.match(DAYHEAD);
+    if(m){ out.push(`G${m[1]} — ${+m[2]} ${IT_MONTHS[+m[3]-1]} ${m[4]}`); return; }
+    if(l.includes("\t")){ const c=l.split("\t").map(x=>x.trim());
+      if(/^(alimento|pasto)$/i.test(c[0])){ let k=out.length-1; while(k>=0&&!out[k].trim()) k--;
+        const title=/^pasto$/i.test(c[0])?"Riepilogo":(k>=0?out[k]:"Pasto");
+        if(k>=0&&!/^(\||G\d)/.test(out[k])) out[k]="### "+title; else out.push("### "+title);
+        out.push(`| ${c.join(" | ")} |`,`| ${c.map(()=>"---").join(" | ")} |`); }
+      else out.push(`| ${c.join(" | ")} |`);
+      return; }
+    out.push(t); });
+  return out.join("\n"); }
 /* recap con le tabelle copiate una cella per riga (Alimento / Quantità / kcal / P / C / F / Aff.): lo trasformo in tabelle Markdown */
 const CELL_HEAD=/^(alimento|quantit[aà]|kcal|p|c|f|g|aff\.?|affidabilit[aà]|fonte|pasto)$/i;
 function cellsToMD(txt){
@@ -2451,6 +2468,7 @@ function parseFoodMD(txt){
 }
 /* lettura locale (senza AI) di un riepilogo incollato: intestazioni dei pasti, alimenti con kcal e macro */
 function parseFoodText(txt){
+  if(/\t/.test(txt)&&/^\s*alimento\t/im.test(txt)) return parseFoodMD(tsvToMD(txt));
   if(/^\s*\|.*\|\s*$/m.test(txt)&&/^\s*\|\s*:?-{2,}/m.test(txt)) return parseFoodMD(txt);
   if(/^\s*alimento\s*$/im.test(txt)&&/^\s*quantit[aà]\s*$/im.test(txt)) return parseFoodMD(cellsToMD(txt));
   const meals=[]; let cur=null, tot=null;
@@ -2505,6 +2523,9 @@ function openDiary(date){
       :`<textarea class="inp" id="fdText" rows="${D.mode==="paste"?7:3}" placeholder="${D.mode==="paste"?"Incolla qui il riepilogo della giornata copiato dall'app (pasti, alimenti, kcal e macro)":"Es. pranzo: 150 g riso basmati, 200 g petto di pollo, insalata con un cucchiaio d'olio"}">${esc(D.text||"")}</textarea>
       <div class="row">${D.mode==="paste"?`<label class="btn">📄 Carica file .md / .txt<input type="file" id="fdFile" accept=".md,.txt,.markdown,text/markdown,text/plain" hidden></label>`:""}${D.mode==="ai"&&SR?`<button type="button" class="btn" id="fdMic">🎤 Detta</button>`:""}<button type="button" class="btn acc" id="fdGo">${D.mode==="paste"?"Leggi il riepilogo":"Stima i valori"}</button></div>
       <p class="muted" id="fdMsg"></p>`}
+    ${D.multi&&D.multi.length?`<div class="card"><h3>${D.multi.length} giorni trovati</h3>${D.multi.map(d=>{ const sm=k=>d.meals.reduce((a,m)=>a+(m[k]||0),0), t=d.tot||{kcal:sm("kcal"),p:sm("p"),c:sm("c"),g:sm("g")};
+        return `<div class="fmeal"><b>G${dayNo(d.date)} · ${dateTxt(Date.parse(d.date+"T12:00:00+07:00"))}</b> <span class="muted">${d.meals.length} pasti · ${d.meals.reduce((a,m)=>a+(m.foods||[]).length,0)} alimenti</span><br>${Math.round(t.kcal)} kcal · P ${fdR1(t.p)} · C ${fdR1(t.c)} · G ${fdR1(t.g)}${d.target?` <span class="muted xs">· target ${d.target.k}/${d.target.p}/${d.target.c}/${d.target.g}</span>`:""}</div>`; }).join("")}
+      <div class="row"><button type="button" class="btn acc" id="fdSaveAll">💾 Salva tutti i giorni${st.settings.foodTrial!==false?" nella prova":""}</button><button type="button" class="btn" id="fdMultiX">Annulla</button></div><p class="muted" id="fdAllMsg"></p></div>`:""}
     ${D.meals.length?`<div class="card"><h3>Da salvare</h3>${D.meals.map(row).join("")}
       <p class="fdtot"><b>Totale: ${Math.round(tot.kcal)} kcal</b> · P ${fdR1(tot.p)} g · C ${fdR1(tot.c)} g · G ${fdR1(tot.g)} g${D.tot&&D.tot.kcal!=null&&Math.abs(D.tot.kcal-sum("kcal"))>5?` <span class="xs">(totale dell'app; somma dei pasti ${Math.round(sum("kcal"))})</span>`:""}</p>
       <p class="muted xs">Target: ${t.k} kcal · P ${t.p} · C ${t.c} · G ${t.g} g → ${fdState(tot.kcal,t.k)||"—"} (kcal), ${fdState(tot.p,t.p)||"—"} (proteine)</p>
@@ -2534,6 +2555,11 @@ function openDiary(date){
     const txt=$("#fdText").value.trim(); D.text=txt; if(!txt) return; const msg=$("#fdMsg"); if(D.mode==="paste") D.rawText=txt;
     let meals=[], tot=null;
     if(D.mode==="paste"){
+      // più giorni nello stesso testo: li leggo tutti e propongo di salvarli insieme
+      const parts=splitDays(txt);
+      if(parts.length>1){ const days=parts.map(t=>({raw:t,...parseFoodText(t)})).filter(r=>r.meals.length&&r.date);
+        if(days.length>1){ D.multi=days.map(r=>({date:r.date,raw:r.raw,meals:fdNormalize(r.meals).map(m=>({...m,src:"diario"})),tot:r.tot&&fdNum(r.tot.kcal)!=null?{kcal:fdNum(r.tot.kcal),p:fdNum(r.tot.p),c:fdNum(r.tot.c),g:fdNum(r.tot.g)}:null,target:r.target&&r.target.k?r.target:null,nota:r.nota||""}));
+          D.text=""; openDiary(D.date); return; } }
       // lettura sul telefono, senza AI; l'AI solo se il formato non è riconosciuto
       let r=parseFoodText(txt), via="sul telefono";
       if(!r.meals.length&&aiReady()){ msg.textContent="Formato non riconosciuto: provo con l'AI…"; const j=await fdAI("paste",txt); if(!j.err){ r={meals:j.pasti||[],tot:j.totale,date:j.data}; via="con l'AI"; } }
@@ -2556,6 +2582,14 @@ function openDiary(date){
     const r=new SR(); r.lang="it-IT"; r.continuous=true; r.interimResults=false; const base=ta.value;
     let said=""; r.onresult=ev=>{ for(let k=ev.resultIndex;k<ev.results.length;k++) if(ev.results[k].isFinal) said+=" "+ev.results[k][0].transcript; ta.value=(base+" "+said).trim(); };
     r.onend=()=>{ b._rec=null; b.textContent="🎤 Detta"; b.classList.remove("on"); }; r.start(); b._rec=r; b.textContent="⏹ Fine"; b.classList.add("on"); };
+  if($("#fdMultiX")) $("#fdMultiX").onclick=()=>{ D.multi=null; openDiary(date); };
+  if($("#fdSaveAll")) $("#fdSaveAll").onclick=async()=>{
+    if(!st.settings.ghToken){ $("#fdAllMsg").textContent="Collega prima il backup GitHub in ⚙ Impostazioni."; return; }
+    const trial=st.settings.foodTrial!==false; $("#fdAllMsg").textContent="Salvo…";
+    D.multi.forEach(d=>{ const tg=d.target||fdTarget(); (st.foodQ ||= []).push({dir:trial?"alimentazione/prova_app/":"alimentazione/",raw:trial?d.raw:"",date:d.date,meals:d.meals,tot:d.tot,complete:true,replace:true,target:fdTargetCols(tg),tgt:tg,nota:d.nota,at:Date.now()}); });
+    const last=D.multi[D.multi.length-1]; if(last.target) st.settings.foodT={...last.target}; save();
+    const ok=await flushFoodQ(), n=D.multi.length; fdDraft=null; if(ok) await loadFood(true); openDiary(last.date);
+    const sb=$("#sheetBody"); if(sb) sb.insertAdjacentHTML("afterbegin",ok?`<p class="okmsg">✓ ${n} giorni salvati${trial?" nella cartella di prova":""}.</p>`:`<p class="warn">⏳ Non riesco a raggiungere GitHub: i ${n} giorni restano in coda e li salvo appena c'è rete.</p>`); };
   if($("#fdSave")) $("#fdSave").onclick=async()=>{
     const tg=D.target||fdTarget(); if(D.target){ st.settings.foodT={...D.target}; }
     const trial=st.settings.foodTrial!==false;
