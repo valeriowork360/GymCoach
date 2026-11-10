@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "107";
+const APP_VERSION = "108";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1118,7 +1118,7 @@ function saveMusicPos2(force){ if(!ym2||!ym2Ready||!st.ui.music2.src) return;
 function drawMusic2(msg){
   if(!st.ui.music2||!$("#mTile2")) return;
   const m=st.ui.music2, on=!!m.src, slot=st.ui.mSlot===2?2:1;
-  $("#mTile2").hidden=!on; $("#mCol").classList.toggle("duo",on); $("#vol2").hidden=!on; $("#m2Off").hidden=!on; $("#m2Info").hidden=!on;
+  $("#mTile2").hidden=!on; $("#msplit").hidden=!on; $("#mCol").classList.toggle("duo",on); applyMSplit(); $("#vol2").hidden=!on; $("#m2Off").hidden=!on; $("#m2Info").hidden=!on;
   $("#mPlay2").textContent=(ym2Playing||ym2Want)?"❚❚":"▶"; $("#mPlay2").classList.toggle("on",ym2Playing);
   $("#volM2").value=m.vol; $("#oM2").textContent=m.vol; $("#muteM2").textContent=m.vol>0?"🎶":"🔕"; $("#muteM2").classList.toggle("on",m.vol>0&&ym2Playing);
   $("#m2Title").textContent=m.title||"2° video"; drawSeek2(); $("#m2Sub").textContent=msg||(on?(ym2Playing?"In riproduzione":ym2Want?"Avvio…":"In pausa"):"");
@@ -1139,6 +1139,17 @@ document.querySelectorAll("[data-sk2]").forEach(b=>b.onclick=()=>{ if(!ym2||!ym2
 $("#mPos2").addEventListener("input",()=>{ seekDrag2=true; drawSeek2(); });
 $("#mPos2").addEventListener("change",()=>{ seekDrag2=false; try{ ym2.seekTo(+$("#mPos2").value,true); }catch(e){} setTimeout(drawSeek2,200); });
 setInterval(()=>{ if(!document.hidden) drawSeek2(); },1000);
+/* barra tra i due riquadri: sposta l'altezza dall'uno all'altro */
+function applyMSplit(){ const f=st.ui.msplit??0.5; $("#mCol").style.setProperty("--ms",f); }
+(function(){
+  const hd=$("#msplit"); let y0=0,f0=0.5,h=0,drag=false;
+  hd.addEventListener("pointerdown",e=>{ drag=true; y0=e.clientY; f0=st.ui.msplit??0.5; h=$("#mCol").getBoundingClientRect().height-12; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
+  hd.addEventListener("pointermove",e=>{ if(!drag||h<=0) return; st.ui.msplit=Math.max(0.1,Math.min(0.9,f0+(e.clientY-y0)/h)); applyMSplit(); });
+  const end=()=>{ if(!drag) return; drag=false; hd.classList.remove("on"); document.body.classList.remove("resizing"); save(); };
+  hd.addEventListener("pointerup",end); hd.addEventListener("pointercancel",end);
+  hd.addEventListener("dblclick",()=>{ st.ui.msplit=0.5; save(); applyMSplit(); });
+  applyMSplit();
+})();
 $("#m2Off").onclick=closeMusic2;
 $("#mPlay2").onclick=toggleMusic2;
 seekZones($("#mTile2"),()=>ym2Ready&&ym2?ym2:null,()=>toggleMusic2());

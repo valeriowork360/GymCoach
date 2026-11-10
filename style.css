@@ -630,3 +630,11 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
   .composer .icon-btn{height:32px;width:34px}
   .composer input{padding:5px 9px;font-size:15px}
 }
+/* v108 divisione regolabile tra i due riquadri */
+.m-col.duo{gap:0}
+.m-col.duo #mTile{height:calc((var(--fh) - 24px) * var(--ms,.5))}
+.m-col.duo #mTile2{height:calc((var(--fh) - 24px) * (1 - var(--ms,.5)))}
+.msplit{flex:none;height:12px;display:grid;place-items:center;cursor:ns-resize;touch-action:none}
+.msplit i{display:block;width:56px;height:5px;border-radius:3px;background:#5a6070}
+.msplit.on i,.msplit:active i{background:var(--acc);width:80px}
+.player.collapsed .msplit{display:none}
