@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-10T17:58:30+00:00",
+ "updated": "2026-11-10T23:31:37+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "aRiGQPd2YUc",
+     "title": "I Tested Fable 5.2 vs GPT-6 Astra. I Was Shocked.",
+     "dur": 639,
+     "date": "2026-11-10T19:33:20+00:00"
+    },
+    {
      "id": "GlZD3slJcOk",
      "title": "5 INSANE Fable 5.2 Use Cases (actually AGI)",
      "dur": 877,
@@ -1831,12 +1837,6 @@
      "title": "Claude + Instagram = $15,000/month",
      "dur": 1609,
      "date": "2026-09-21T15:05:18+00:00"
-    },
-    {
-     "id": "T7T9f9aNTmo",
-     "title": "6 free GitHub repos to print $$$ with Claude",
-     "dur": 1222,
-     "date": "2026-09-20T15:35:47+00:00"
     }
    ]
   },
@@ -2001,6 +2001,12 @@
    "id": "UC9X2f4pVXSNzsJ2c6ZQVqBQ",
    "videos": [
     {
+     "id": "Fkb5TmkIwkw",
+     "title": "BITCOIN STA MORENDO?",
+     "dur": 1723,
+     "date": "2026-11-10T20:40:50+00:00"
+    },
+    {
      "id": "im-4e8CCTow",
      "title": "PRELEVA SUBITO TUTTO QUELLO CHE HAI SU BINANCE (URGENTE!!!)",
      "dur": 877,
@@ -2065,12 +2071,6 @@
      "title": "HO CHIESTO MENO TASSE SULLE CRYPTO ALLA CAMERA DEI DEPUTATI",
      "dur": 231,
      "date": "2026-09-24T14:30:38+00:00"
-    },
-    {
-     "id": "MZYrg1eWlCE",
-     "title": "BITCOIN, CRYPTO: SIAMO AL TEST FINALE! (ORA SI DECIDE TUTTO)",
-     "dur": 922,
-     "date": "2026-09-23T19:05:43+00:00"
     }
    ]
   },
@@ -3484,7 +3484,7 @@
    "videos": [
     {
      "id": "xr_CXrd6Wpk",
-     "title": "Claude Fable e Mythos 5.2: è la nuova AI più potente?",
+     "title": "Ma cosa ha combinato Anthropic?! (Mythos/Fable 5.2)",
      "dur": 1291,
      "date": "2026-11-10T17:44:04+00:00"
     },
