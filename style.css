@@ -648,3 +648,4 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .m-col.duo #mTile{height:calc((var(--fh) - 28px) * var(--ms,.5))}
 .m-col.duo #mTile2{height:calc((var(--fh) - 28px) * (1 - var(--ms,.5)))}
 .lacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+.cwbox:empty{display:none}

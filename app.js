@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "110";
+const APP_VERSION = "111";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -124,7 +124,7 @@ const valOf  = s => s.u==="lb" ? s.v : s.kg;
 const toKg   = (v,u) => u==="lb" ? Math.round(v*LB*100)/100 : v;
 const fromKg = (k,u) => u==="lb" ? k/LB : k;
 const wTxt   = (v,u) => `${kgTxt(v)} ${u}`;
-const setW   = s => s.raw ? s.raw : s.rp>1 ? `${kgTxt(Math.round(valOf(s)*100)/100)} ${unitOf(s)} [${kgTxt(s.pv)} sul pacco, ${s.rp}:1]` : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
+const setW   = s => s.raw ? s.raw : s.pv!=null ? `${kgTxt(Math.round(valOf(s)*100)/100)} ${unitOf(s)} [${kgTxt(s.pv)} sul pacco${s.rp>1?`, ${s.rp}:1`:""}${s.cw?`, attacco −${kgTxt(s.cw)} kg`:""}]` : s.u==="lb" ? `${kgTxt(s.v)} lb` : `${kgTxt(s.kg)} kg`;
 // peso con l'altra unità tra parentesi (l'originale resta per primo)
 const r1 = x => kgTxt(Math.round(x*10)/10);
 const setWB  = s => { const w=setW(s); if(s.kg==null) return w; const lb=/\blb\b/.test(w), kg=/\bkg\b/.test(w);
@@ -135,7 +135,7 @@ function setTxt(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setWB(s)} × ${s.
 /* riga di dettaglio con tipo di serie, macchina e note (per archivio e storico) */
 function setLine(s){ return s.sec!=null ? `${s.sec} s ✓` : `${setTxt(s)}${s.tipo?` · ${s.tipo}`:s.extra?" · extra":""}${s.m?` · ${s.m}`:""}${s.note?` · ${s.note}`:""}`; }
 function perfTxt(sets){ const ws=sets.filter(s=>!s.extra); if(ws.length && ws[0].sec!=null) return `${ws.length} giri da ${ws[0].sec} s`; return ws.map(setTxt).join(" · "); }
-function cleanSet({kg,reps,rir,extra,sec,u,v,rp,pv}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(rp>1?{rp,pv}:{}),...(extra?{extra:true}:{})}; }
+function cleanSet({kg,reps,rir,extra,sec,u,v,rp,pv,cw}){ return sec!=null ? {sec,...(extra?{extra:true}:{})} : {kg,reps,rir,...(u==="lb"?{u,v}:{}),...(pv!=null?{pv,...(rp>1?{rp}:{}),...(cw?{cw}:{})}:{}),...(extra?{extra:true}:{})}; }
 const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
 const rirTxt = r => r==null ? "?" : r%1 ? `${Math.floor(r)}–${Math.ceil(r)}` : String(r);
 /* serie che contano nei grafici: allenanti + extra vere (non riscaldamento, avvicinamento o prove) */
@@ -311,7 +311,7 @@ function quickWeights(id,focusV,focusU){
   const R=v=>Math.round(v*100)/100, snap=v=>R(Math.max(inc,Math.round(v/inc)*inc));
   const inU=(v,vu)=>vu===u?v:snap(fromKg(toKg(v,vu),u));
   let c = focusV!=null&&focusV!=="__vals" ? inU(focusV,focusU||u) : g ? inU(g.v,g.u) : cur.length ? inU(valOf(cur[cur.length-1]),unitOf(cur[cur.length-1])) : null;
-  { const rr=(st.cur.rat||{})[st.cur.exIdx]||1; if(rr>1&&c!=null&&(focusV==null||focusV==="__vals")) c=snap(c*rr); }
+  { const a=adjOf(st.cur.exIdx); if((a.r>1||a.cw)&&c!=null&&(focusV==null||focusV==="__vals")) c=snap(c*a.r+fromKg(a.cw,u)); }
   if(c==null && p){ const ls=p.sets.filter(x=>x.kg!=null&&!x.extra); if(ls.length) c=inU(valOf(ls[ls.length-1]),unitOf(ls[ls.length-1])); }
   if(c==null) c=e.eq==="bw"?0:u==="lb"?45:20;
   c=R(c);
@@ -472,7 +472,7 @@ function logSet(p){
   st.cur.pending=null;
   const extra = ws.length>=n || !!st.cur.nextExtra; st.cur.nextExtra=false;
   const set={kg:toKg(val,u),...(u==="lb"?{u:"lb",v:val}:{}),reps:p.reps,rir:p.rir,...(p.rir%1?{rt:`${Math.floor(p.rir)}–${Math.ceil(p.rir)}`}:{}),t:Date.now(),...(extra?{extra:true}:{})};
-  { const rr=(st.cur.rat||{})[i]||1; if(rr>1) applyRatio(set,rr); }   // carrucola: il numero sul pacco diventa carico reale
+  { const a=adjOf(i); if(a.r>1||a.cw) adjustSet(set,a.r,a.cw); }   // carrucola / attacco: il numero sul pacco diventa carico reale
   sets.push(set); save();
   const c=coachSet(it,set), num=ws.length+1, conv=u==="lb"?` <span class="muted">(≈${kgTxt(Math.round(set.kg*10)/10)} kg)</span>`:"";
   let txt = extra ? `Serie extra su <b>${esc(EX[id].n)}</b> registrata: ${setW(set)} × ${set.reps}, RIR ${rirTxt(set.rir)} <span class="muted">(non conta nelle serie allenanti)</span>.`
@@ -1187,8 +1187,8 @@ function drawExbar(){
   const list=curList(), tm=isTimeIt(it), wide=!tm && (lo>8||hi>12);
   const tgt = tm ? `<span class="xt-g">${n} giri × ${holdTxt(it)}</span>` : wide ? `<span class="xt-w">⚠ Target ${lo}–${hi} rip.</span>` : `<span class="xt-g">${lo}–${hi} rip.</span>`;
   const sub = tm ? `pausa ${rest} s` : `${n} serie · RIR ${RIR_MIN}–${RIR_MAX} · rec ${restTxt(rest)}`;
-  const rr=(st.cur.rat||{})[st.cur.exIdx]||1;
-  const load = g ? `<div class="xl"><small>Oggi${rr>1?` · carrucola ${rr}:1`:""}</small><b>${esc(rr>1?wTxt(Math.round(g.v*rr*10)/10,g.u):sk)}</b><i>${rr>1?`sul pacco = ${esc(sk)} reali`:`≈ ${g.u==="lb"?r1(g.v*LB)+" kg":r1(g.v/LB)+" lb"} · ${esc(modeOf(it[0]))}`}</i></div>` : (!tm?`<div class="xl"><small>Oggi</small><b>—</b><i>${esc(modeOf(it[0]))}</i></div>`:"");
+  const adj=adjOf(st.cur.exIdx), rr=adj.r>1||adj.cw?adj.r:1, onAdj=adj.r>1||adj.cw>0;
+  const load = g ? `<div class="xl"><small>Oggi${adj.r>1?` · carrucola ${adj.r}:1`:""}${adj.cw?` · attacco ${kgTxt(adj.cw)} kg`:""}</small><b>${esc(onAdj?wTxt(Math.round((g.v*adj.r+fromKg(adj.cw,g.u))*10)/10,g.u):sk)}</b><i>${onAdj?`sul pacco = ${esc(sk)} reali`:`≈ ${g.u==="lb"?r1(g.v*LB)+" kg":r1(g.v/LB)+" lb"} · ${esc(modeOf(it[0]))}`}</i></div>` : (!tm?`<div class="xl"><small>Oggi</small><b>—</b><i>${esc(modeOf(it[0]))}</i></div>`:"");
   $("#exbar").innerHTML=`<div class="nm"><span class="xn">${st.cur.exIdx+1}/${list.length} — ${esc(e.n)}</span>${tgt}<span class="rx">${sub}</span></div><div class="xr">${load}<div class="dots">${dots}</div></div>`;
   drawTop();
 }
@@ -1495,25 +1495,37 @@ $("#sheetClose").onclick=closeSheet;
 $("#sheet").onclick=e=>{ if(e.target.id==="sheet") closeSheet(); };
 
 /* carrucola: il carico reale è il numero sul pacco diviso il rapporto (2:1 = metà) */
-function applyRatio(x,r){ if(x.kg==null||x.sec!=null) return; const pv=x.rp>1?x.pv:valOf(x); x.pv=pv; x.rp=r; x.kg=Math.round(toKg(pv,unitOf(x))/r*100)/100; if(x.u==="lb") x.v=Math.round(pv/r*100)/100; delete x.raw; }
-function clearRatio(x){ if(!(x.rp>1)) return; x.kg=toKg(x.pv,unitOf(x)); if(x.u==="lb") x.v=x.pv; delete x.rp; delete x.pv; }
-function setRatio(k,r){ (st.cur.rat ||= {}); if(r>1) st.cur.rat[k]=r; else delete st.cur.rat[k];
-  setsOf(k).forEach(x=>{ if(x.sec!=null||x.kg==null) return; if(r>1) applyRatio(x,r); else clearRatio(x); }); save(); }
+/* carrucola e attacco: carico reale = (numero sul pacco − peso dell'attacco) ÷ rapporto. La barra appesa nei cavi tirati verso il basso aiuta: va sottratta. */
+function adjOf(k){ return {r:((st.cur&&st.cur.rat)||{})[k]||1, cw:((st.cur&&st.cur.cw)||{})[k]||0}; }
+function adjustSet(x,r,cw){ if(x.kg==null||x.sec!=null) return; const u=unitOf(x), pv=x.pv!=null?x.pv:valOf(x);
+  if(!(r>1)&&!cw){ x.kg=toKg(pv,u); if(u==="lb") x.v=pv; delete x.pv; delete x.rp; delete x.cw; return; }
+  x.pv=pv; if(r>1) x.rp=r; else delete x.rp; if(cw) x.cw=cw; else delete x.cw;
+  const k=Math.max(0,(toKg(pv,u)-(cw||0))/(r||1)); x.kg=Math.round(k*100)/100; if(u==="lb") x.v=Math.round(fromKg(k,"lb")*100)/100; delete x.raw; }
+function applyRatio(x,r){ adjustSet(x,r,x.cw||0); }
+function clearRatio(x){ adjustSet(x,1,x.cw||0); }
+function setAdj(k,r,cw){ (st.cur.rat ||= {}); (st.cur.cw ||= {}); if(r>1) st.cur.rat[k]=r; else delete st.cur.rat[k]; if(cw>0) st.cur.cw[k]=cw; else delete st.cur.cw[k];
+  setsOf(k).forEach(x=>adjustSet(x,r,cw)); save(); }
+function setRatio(k,r){ setAdj(k,r,adjOf(k).cw); }
 function openList(edit){
   if(!st.cur){ openSheet("Esercizi","<p class='muted'>Inizia una sessione per vedere l'elenco.</p>"); return; }
   const list=curList();
   const setRow=(k,x,j,lab)=>{ const ed=edit&&edit.k===k&&edit.j===j;
-    if(ed&&x.sec==null){ const u=unitOf(x), val=x.rp>1?x.pv:valOf(x);
-      return `<div class="lset ed"><span class="sl">${lab}</span><label>${x.rp>1?"Pacco":"Carico"}<input class="inp" inputmode="decimal" id="eV" value="${kgTxt(val)}"></label><select class="inp" id="eU"><option ${u==="kg"?"selected":""}>kg</option><option ${u==="lb"?"selected":""}>lb</option></select><label>Rip.<input class="inp" inputmode="numeric" id="eR" value="${x.reps??""}"></label><label>RIR<input class="inp" inputmode="decimal" id="eI" value="${x.rir??""}"></label><button type="button" class="btn acc sm" data-esave="${k}|${j}">Salva</button><button type="button" class="btn sm" data-ecancel>✕</button></div>`; }
+    if(ed&&x.sec==null){ const u=unitOf(x), val=x.pv!=null?x.pv:valOf(x);
+      return `<div class="lset ed"><span class="sl">${lab}</span><label>${x.pv!=null?"Pacco":"Carico"}<input class="inp" inputmode="decimal" id="eV" value="${kgTxt(val)}"></label><select class="inp" id="eU"><option ${u==="kg"?"selected":""}>kg</option><option ${u==="lb"?"selected":""}>lb</option></select><label>Rip.<input class="inp" inputmode="numeric" id="eR" value="${x.reps??""}"></label><label>RIR<input class="inp" inputmode="decimal" id="eI" value="${x.rir??""}"></label><button type="button" class="btn acc sm" data-esave="${k}|${j}">Salva</button><button type="button" class="btn sm" data-ecancel>✕</button></div>`; }
     return `<div class="lset ${x.extra?"xr":""}"><span class="sl">${lab}</span><span class="sv">${esc(setTxt(x))}</span>${x.sec==null?`<button type="button" class="ib" data-edit="${k}|${j}" aria-label="Modifica">✏️</button>`:""}<button type="button" class="ib" data-del="${k}|${j}" aria-label="Cancella">🗑</button></div>`; };
   openSheet(st.cur.session+" · esercizi", list.map((x,k)=>{ const d=workSets(k).length, full=d>=x[1], ss=setsOf(k), rr=(st.cur.rat||{})[k]||1, tm=isTimeIt(x);
     let n=0;
     return `<div class="liw"><button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${tm?holdTxt(x):`${x[2]}–${x[3]}`}${x[0]!==origId(k)?" · 🔁":""}</span></button>
-      <div class="lsets">${ss.map((y,j)=>setRow(k,y,j,y.extra?"extra":String(++n))).join("")}<div class="lacts"><button type="button" class="vchip" data-swk="${k}">🔁 Cambia esercizio${ss.length?" (tiene le serie)":""}</button>${!tm&&(rr>1||!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<button type="button" class="vchip rat ${rr>1?"on":""}" data-rat="${k}">⚙ Carrucola ${rr>1?rr+":1 · carico ÷"+rr:"1:1"}</button>`:""}</div></div></div>`; }).join("")
-    +`<p class="muted xs">⚙ Carrucola 2:1: se il cavo passa da una carrucola mobile, il carico reale è metà del numero sul pacco. Vale per le serie di questo esercizio in questa sessione, anche quelle già registrate.</p><button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
+      <div class="lsets">${ss.map((y,j)=>setRow(k,y,j,y.extra?"extra":String(++n))).join("")}<div class="lacts"><button type="button" class="vchip" data-swk="${k}">🔁 Cambia esercizio${ss.length?" (tiene le serie)":""}</button>${!tm&&(rr>1||!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<button type="button" class="vchip rat ${rr>1?"on":""}" data-rat="${k}">⚙ Carrucola ${rr>1?rr+":1 · carico ÷"+rr:"1:1"}</button><button type="button" class="vchip rat ${adjOf(k).cw?"on":""}" data-cw="${k}">⬇ Attacco ${adjOf(k).cw?"−"+kgTxt(adjOf(k).cw)+" kg":"0"}</button>`:""}</div><div class="cwbox" id="cwBox${k}"></div></div></div>`; }).join("")
+    +`<p class="muted xs">⚙ Carrucola 2:1: se il cavo passa da una carrucola mobile, il carico reale è metà del numero sul pacco. ⬇ Attacco: quanti kg di pacco servono per tenere ferma la barra appesa; nei cavi tirati verso il basso la barra aiuta e va sottratta. Valgono per le serie di questo esercizio in questa sessione, anche quelle già registrate.</p><button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
   const B=$("#sheetBody"), refresh=()=>{ save(); drawExbar(); drawTop(); drawChips(); };
   B.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ closeSheet(); goEx(+b.dataset.k); });
   B.querySelectorAll("[data-swk]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.swk; closeSheet(); if(st.cur.exIdx!==k) goEx(k); openSwap(); });
+  B.querySelectorAll("[data-cw]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.cw, box=$("#cwBox"+k);
+    box.innerHTML=`<div class="lset ed"><label>kg di pacco per tenere ferma la barra<input class="inp" inputmode="decimal" id="cwV" value="${adjOf(k).cw||""}" placeholder="es. 10"></label><button type="button" class="btn acc sm" id="cwOk">Salva</button><button type="button" class="btn sm" id="cwNo">✕</button></div>`;
+    $("#cwV").focus(); $("#cwNo").onclick=()=>{ box.innerHTML=""; };
+    $("#cwOk").onclick=()=>{ const v=Math.max(0,fdNum($("#cwV").value)||0), a=adjOf(k); setAdj(k,a.r,v); refresh();
+      sys(`⬇ ${EX[curList()[k][0]].n}: attacco ${v?kgTxt(v)+" kg di pacco (sottratti)":"azzerato"}.`); openList(); }; });
   B.querySelectorAll("[data-rat]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.rat, r=((st.cur.rat||{})[k]||1)>1?1:2; setRatio(k,r); refresh();
     sys(`⚙ ${EX[curList()[k][0]].n}: carrucola ${r}:1${r>1?" — il carico reale è metà del numero sul pacco":""}.`); openList(); });
   B.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.edit.split("|").map(Number); openList({k,j}); });
@@ -1521,9 +1533,9 @@ function openList(edit){
   B.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.esave.split("|").map(Number), x=setsOf(k)[j]; if(!x) return;
     const v=fdNum($("#eV").value), u=$("#eU").value, r=parseInt($("#eR").value), ri=fdNum($("#eI").value);
     if(v==null||isNaN(r)){ $("#eV").focus(); return; }
-    const rp=x.rp>1?x.rp:0; delete x.rp; delete x.pv; delete x.raw;
+    const rp=x.rp>1?x.rp:0, cw0=x.cw||0; delete x.rp; delete x.pv; delete x.cw; delete x.raw;
     x.kg=toKg(v,u); if(u==="lb"){ x.u="lb"; x.v=v; } else { delete x.u; delete x.v; }
-    if(rp) applyRatio(x,rp);
+    if(rp||cw0) adjustSet(x,rp||1,cw0);
     x.reps=r; x.rir=ri; if(ri!=null&&ri%1) x.rt=`${Math.floor(ri)}–${Math.ceil(ri)}`; else delete x.rt;
     refresh(); sys(`✏️ Serie modificata — ${EX[curList()[k][0]].n}: ${setTxt(x)}.`); openList(); });
   B.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(!b.dataset.armed){ b.dataset.armed=1; b.textContent="Elimina?"; b.classList.add("arm"); return; }
@@ -1542,8 +1554,8 @@ function openArchive(openId){
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
     return `<details class="hs" ${h.id===openId?"open":""}><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}</span></summary>
-      <div class="det">${h.ex.map((e,ei)=>{ const cab=EX[e.ex]&&EX[e.ex].kind!=="time"&&e.sets.some(s=>s.kg!=null)&&(e.sets.some(s=>s.rp>1)||!["db","bb","bw","smith","plate"].includes(EX[e.ex].eq||"machine")), on=e.sets.some(s=>s.rp>1);
-        return `<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}${cab?`<br><button type="button" class="vchip rat ${on?"on":""}" data-arat="${h.id}|${ei}">⚙ Carrucola ${on?"2:1 · carico ÷2":"1:1"}</button>`:""}</div>`; }).join("")}
+      <div class="det">${h.ex.map((e,ei)=>{ const cab=EX[e.ex]&&EX[e.ex].kind!=="time"&&e.sets.some(s=>s.kg!=null)&&(e.sets.some(s=>s.pv!=null)||!["db","bb","bw","smith","plate"].includes(EX[e.ex].eq||"machine")), on=e.sets.some(s=>s.rp>1), cw=(e.sets.find(s=>s.cw)||{}).cw||0;
+        return `<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}${cab?`<br><button type="button" class="vchip rat ${on?"on":""}" data-arat="${h.id}|${ei}">⚙ Carrucola ${on?"2:1 · carico ÷2":"1:1"}</button> <button type="button" class="vchip rat ${cw?"on":""}" data-acw="${h.id}|${ei}">⬇ Attacco ${cw?"−"+kgTxt(cw)+" kg":"0"}</button><span id="acwBox${h.id}_${ei}"></span>`:""}</div>`; }).join("")}
       <div class="row">${h.chat&&h.chat.length?`<button class="btn" data-chat="${h.id}">💬 Vedi chat</button>`:""}<button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
@@ -1554,6 +1566,9 @@ function openArchive(openId){
   $("#sheetBody").querySelectorAll("[data-arat]").forEach(b=>b.onclick=()=>{ const [hid,ei]=b.dataset.arat.split("|"), h=st.history.find(x=>String(x.id)===hid); if(!h) return; const e=h.ex[+ei]; if(!e) return;
     const on=e.sets.some(s=>s.rp>1); e.sets.forEach(s=>{ if(s.kg==null||s.sec!=null) return; on?clearRatio(s):applyRatio(s,2); });
     recomputeSugg(e.ex); save(); syncNow(true); openArchive(h.id); });
+  $("#sheetBody").querySelectorAll("[data-acw]").forEach(b=>b.onclick=()=>{ const [hid,ei]=b.dataset.acw.split("|"), h=st.history.find(x=>String(x.id)===hid); if(!h) return; const e=h.ex[+ei]; if(!e) return;
+    const box=$(`#acwBox${hid}_${ei}`); box.innerHTML=`<span class="lset ed"><label>kg di pacco per tenere ferma la barra<input class="inp" inputmode="decimal" id="acwV" value="${(e.sets.find(s=>s.cw)||{}).cw||""}" placeholder="es. 10"></label><button type="button" class="btn acc sm" id="acwOk">Salva</button></span>`;
+    $("#acwOk").onclick=()=>{ const v=Math.max(0,fdNum($("#acwV").value)||0); e.sets.forEach(s=>{ if(s.kg==null||s.sec!=null) return; adjustSet(s,s.rp||1,v); }); recomputeSugg(e.ex); save(); syncNow(true); openArchive(h.id); }; });
   $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>slideConfirm(e.currentTarget,"Scorri per eliminare →",()=>{ deleteSession(b.dataset.del); openArchive(); },true));
   $("#exFile").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([exportJSON()],{type:"application/json"})); a.download=`gym-coach-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
   $("#exCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(exportText()||"Nessuna sessione."); $("#exMsg").textContent="Copiato negli appunti."; }catch(e){ $("#exMsg").textContent="Copia non riuscita su questo browser."; } };
