@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "108";
+const APP_VERSION = "109";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1015,6 +1015,7 @@ function drawMusic(msg){
   $("#mLoop").checked=!!m.loop;
   $("#mMore").textContent = $("#mPanel").hidden ? "⌄" : "⌃";
   if(typeof drawMusic2==="function") drawMusic2();
+  if(typeof drawFavBtns==="function") drawFavBtns();
   $("#mRecent").innerHTML = m.recent.map((r,k)=>`<button class="vchip ${r.raw===m.raw?"on":""}" data-r="${k}">${r.list?"☰ ":"♪ "}${esc(r.title.length>28?r.title.slice(0,27)+"…":r.title)}</button>`).join("");
   $("#mRecent").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ loadInto(m.recent[+b.dataset.r].raw); $("#mPanel").hidden=true; drawMusic(); });
 }
@@ -1045,7 +1046,7 @@ seekZones($("#mTile"),()=>ymReady&&ym?ym:null,()=>toggleMusic());
 $("#mMore").onclick=()=>{ $("#mPanel").hidden=!$("#mPanel").hidden; drawMusic(); if(!$("#mPanel").hidden) loadDuetto(); };
 /* libreria di Duetto: gli stessi autori YouTube, con i video più recenti (aggiornati da Duetto ogni 8 ore) */
 const DUETTO_URL="https://valeriowork360.github.io/duetto/videos.json";
-let duetto=null, dlTab="new";
+let duetto=null, dlTab="fav";
 function dlCache(){ try{ return JSON.parse(localStorage.getItem("gc_duetto")||"null"); }catch(e){ return null; } }
 async function loadDuetto(){
   if(!duetto) duetto=dlCache(); drawDuetto();
@@ -1058,18 +1059,19 @@ async function loadDuetto(){
 const durTxt=s=>!s?"":s>=3600?`${Math.floor(s/3600)} h ${Math.round(s%3600/60)} min`:`${Math.round(s/60)} min`;
 function drawDuetto(){
   if(!duetto) return;
-  const ch=duetto.channels||[], pl=(duetto.playlists||[]).filter(p=>p.videos&&p.videos.length);
+  const ch=duetto.channels||[], favPl=(duetto.playlists||[]).find(p=>/preferiti/i.test(p.title)), pl=(duetto.playlists||[]).filter(p=>p.videos&&p.videos.length&&p!==favPl);
   $("#dlUpd").textContent=duetto.updated?`· agg. ${new Date(duetto.updated).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`:"";
-  const tabs=[["new","🆕 Più recenti"],["ex","🏋 Esercizi"],...pl.map((p,k)=>["p"+k,"☰ "+p.title]),...ch.map((c,k)=>["c"+k,c.name])];
+  const tabs=[["fav","⭐ Preferiti"],["new","🆕 Più recenti"],["ex","🏋 Esercizi"],...pl.map((p,k)=>["p"+k,"☰ "+p.title]),...ch.map((c,k)=>["c"+k,c.name])];
   $("#dlTabs").innerHTML=tabs.map(([k,l])=>`<button class="vchip ${k===dlTab?"on":""}" data-dl="${k}">${esc(l.length>26?l.slice(0,25)+"…":l)}</button>`).join("");
   $("#dlTabs").querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>{ dlTab=b.dataset.dl; drawDuetto(); });
   let vids=[];
   if(dlTab==="new") vids=ch.flatMap(c=>c.videos.map(v=>({...v,ch:c.name}))).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,30);
   else if(dlTab==="ex") vids=exVideoList();
+  else if(dlTab==="fav"){ const seen=new Set(); vids=[...(st.ui.musicFav||[]),...((favPl&&favPl.videos)||[])].filter(v=>!seen.has(v.id)&&seen.add(v.id)).map(v=>({...v,ch:"⭐ preferito"})); }
   else if(dlTab[0]==="p") vids=(pl[+dlTab.slice(1)]||{videos:[]}).videos.map(v=>({...v,ch:pl[+dlTab.slice(1)].title}));
   else { const c=ch[+dlTab.slice(1)]; vids=c?c.videos.map(v=>({...v,ch:c.name})):[]; }
   const sm=mSlotObj();
-  $("#dlList").innerHTML=vids.map(v=>`<button class="dl-it ${sm.src&&sm.src.id===v.id?"on":""}" data-v="${v.id}" data-t="${esc(v.title)}"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt=""><span><b>${esc(v.title)}</b><i>${esc(v.ch)}${v.dur?" · "+durTxt(v.dur):""}${v.date?" · "+dateTxt(Date.parse(v.date)):""}</i></span></button>`).join("")||`<p class="muted">Nessun video.</p>`;
+  $("#dlList").innerHTML=vids.map(v=>`<button class="dl-it ${sm.src&&sm.src.id===v.id?"on":""}" data-v="${v.id}" data-t="${esc(v.title)}"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt=""><span><b>${esc(v.title)}</b><i>${esc(v.ch)}${v.dur?" · "+durTxt(v.dur):""}${v.date?" · "+dateTxt(Date.parse(v.date)):""}</i></span></button>`).join("")||`<p class="muted">${dlTab==="fav"?"Nessun preferito: tocca ☆ accanto al titolo del video in riproduzione.":"Nessun video."}</p>`;
   $("#dlList").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ if(loadInto("https://www.youtube.com/watch?v="+b.dataset.v)){ mSlotObj().title=b.dataset.t; save(); $("#mPanel").hidden=true; drawMusic(); drawMusic2(); } });
 }
 /* ---------------- secondo riquadro: due video insieme (come Duetto), ognuno col suo volume ---------------- */
@@ -1150,6 +1152,12 @@ function applyMSplit(){ const f=st.ui.msplit??0.5; $("#mCol").style.setProperty(
   hd.addEventListener("dblclick",()=>{ st.ui.msplit=0.5; save(); applyMSplit(); });
   applyMSplit();
 })();
+/* ☆ preferiti: aggiunge o toglie il video in riproduzione nel riquadro 1 o 2 */
+function favToggle(slot){ const m=slot===2?st.ui.music2:st.ui.music; if(!m.src||!m.src.id) return; const L=(st.ui.musicFav ||= []);
+  const i=L.findIndex(v=>v.id===m.src.id); if(i>=0) L.splice(i,1); else L.unshift({id:m.src.id,title:m.title||"Video "+m.src.id}); save(); drawFavBtns(); if(dlTab==="fav") drawDuetto(); }
+function isFav(id){ return (st.ui.musicFav||[]).some(v=>v.id===id) || !!(duetto&&(duetto.playlists||[]).some(p=>/preferiti/i.test(p.title)&&p.videos.some(v=>v.id===id))); }
+function drawFavBtns(){ [[1,"#fav1",st.ui.music],[2,"#fav2",st.ui.music2]].forEach(([k,q,m])=>{ const b=$(q); if(!b) return; b.hidden=!(m&&m.src&&m.src.id); if(!b.hidden){ const on=isFav(m.src.id); b.textContent=on?"⭐":"☆"; b.title=on?"Togli dai preferiti":"Aggiungi ai preferiti"; } }); }
+$("#fav1").onclick=()=>favToggle(1); $("#fav2").onclick=()=>favToggle(2);
 $("#m2Off").onclick=closeMusic2;
 $("#mPlay2").onclick=toggleMusic2;
 seekZones($("#mTile2"),()=>ym2Ready&&ym2?ym2:null,()=>toggleMusic2());

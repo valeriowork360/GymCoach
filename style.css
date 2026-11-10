@@ -638,3 +638,4 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .msplit i{display:block;width:56px;height:5px;border-radius:3px;background:#5a6070}
 .msplit.on i,.msplit:active i{background:var(--acc);width:80px}
 .player.collapsed .msplit{display:none}
+.favb{background:none;border:none;font-size:18px;padding:0 6px 0 0;cursor:pointer;color:#e3c62b;vertical-align:-2px}

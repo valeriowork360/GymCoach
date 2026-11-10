@@ -101,7 +101,7 @@ def load_channel(ref):
     return {"name": name.replace(" - Videos", ""), "id": cid, "videos": vids}
 
 
-def load_fixed_videos(urls):
+def load_fixed_videos(urls, title=None):
     """Singoli video da tenere sempre fissi, raccolti in un gruppo unico (titoli via oEmbed, senza blocchi)."""
     import re, urllib.parse
     vids = []
@@ -120,7 +120,7 @@ def load_fixed_videos(urls):
             print(f"  titolo non disponibile per {vid}: {ex}")
         vids.append({"id": vid, "title": title or "Video " + vid, "dur": 0})
     print(f"Video fissi: {len(vids)}")
-    return {"title": CONFIG.get("nome_video_fissi", "Esercizi fissi"), "id": None, "videos": vids} if vids else None
+    return {"title": title or CONFIG.get("nome_video_fissi", "Esercizi fissi"), "id": None, "videos": vids} if vids else None
 
 
 def channel_refs():
@@ -151,6 +151,10 @@ def main():
             return 0
 
     playlists = []
+    if CONFIG.get("preferiti"):
+        fav = load_fixed_videos(CONFIG["preferiti"], "⭐ Preferiti")
+        if fav:
+            playlists.append(fav)
     if CONFIG.get("video_fissi"):
         fixed = load_fixed_videos(CONFIG["video_fissi"])
         if fixed:
