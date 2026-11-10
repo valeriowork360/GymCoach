@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-10T10:08:57+00:00",
+ "updated": "2026-11-10T17:58:30+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -753,6 +753,12 @@
    "id": "UCFKE7WVJfvaHW5q283SxchA",
    "videos": [
     {
+     "id": "2dn-mcgyC8s",
+     "title": "7 Minute Morning Meditation | Stillness to Start Your Day.",
+     "dur": 433,
+     "date": "2026-11-10T15:00:05+00:00"
+    },
+    {
      "id": "E9AwOaDbclg",
      "title": "Halloween Yoga | A Red Riding Hood Adventure",
      "dur": 805,
@@ -817,12 +823,6 @@
      "title": "Wake Up  | Gentle 10 Minute Morning Yoga",
      "dur": 634,
      "date": "2026-05-19T14:00:06+00:00"
-    },
-    {
-     "id": "nrqH_qyBMLk",
-     "title": "Gentle Yoga For Tight Hips",
-     "dur": 739,
-     "date": "2026-05-05T14:00:06+00:00"
     }
    ]
   },
@@ -1299,6 +1299,12 @@
    "id": "UCrebGs3b-Z7JLKQM2YOpUKA",
    "videos": [
     {
+     "id": "YK2-fpu6goE",
+     "title": "Anthropic rilascia Fable 5.2 e Mythos 5.2 (non solo cybersecurity)",
+     "dur": 637,
+     "date": "2026-11-10T12:42:18+00:00"
+    },
+    {
      "id": "GEoGP3LTQzo",
      "title": "Risparmia token (e soldi) e ottieni risposte migliori in Claude Code [Tutorial]",
      "dur": 741,
@@ -1363,12 +1369,6 @@
      "title": "Perché sembra che stia aumentando l'odio per l'IA?",
      "dur": 1178,
      "date": "2026-10-19T06:00:10+00:00"
-    },
-    {
-     "id": "3AAk3YC6vXE",
-     "title": "Tante aziende usano l'AI, poche vedono risultati [Paolo Fontana]",
-     "dur": 3556,
-     "date": "2026-10-16T06:00:10+00:00"
     }
    ]
   },
@@ -2079,6 +2079,12 @@
    "id": "UC4yFUEcq0SGs3_BHxF9q5Ww",
    "videos": [
     {
+     "id": "MLCKx6VaSUg",
+     "title": "Is ElevenLabs V4 Worth The Hype? (Full Review)",
+     "dur": 546,
+     "date": "2026-11-10T15:43:36+00:00"
+    },
+    {
      "id": "hBYTsbASXr0",
      "title": "Topview T1 just NUKED Seedance 2.5...",
      "dur": 672,
@@ -2143,12 +2149,6 @@
      "title": "I Tested Nano Banana 2.1 vs GPT 2.5 so You Don't Have To...",
      "dur": 531,
      "date": "2026-10-08T15:10:22+00:00"
-    },
-    {
-     "id": "WQJW4zoe9Ng",
-     "title": "Nano Banana 2.1 vs 2.0 - The Upgrade is HUGE",
-     "dur": 528,
-     "date": "2026-10-07T00:04:11+00:00"
     }
    ]
   },
@@ -2781,6 +2781,12 @@
    "id": "UCPjNBjflYl0-HQtUvOx0Ibw",
    "videos": [
     {
+     "id": "G3i2k6DdI0o",
+     "title": "Claude Fable 5.2: How I’d Make Money With It",
+     "dur": 1176,
+     "date": "2026-11-10T16:50:27+00:00"
+    },
+    {
      "id": "uJuxenfe-NU",
      "title": "AI Agents are too good at marketing now",
      "dur": 3120,
@@ -2845,12 +2851,6 @@
      "title": "13 Businesses for the Age of AI",
      "dur": 1517,
      "date": "2026-10-06T14:30:39+00:00"
-    },
-    {
-     "id": "1a5HxU52vCQ",
-     "title": "Masterclass: How FDEs make $1M/yr deploying AI agents",
-     "dur": 3239,
-     "date": "2026-10-01T20:30:04+00:00"
     }
    ]
   },
@@ -3015,6 +3015,12 @@
    "id": "UCdCpMFAeBo7nf-tmiVvQrJg",
    "videos": [
     {
+     "id": "4USpQN7RKNA",
+     "title": "Ho testato Fable 5.2 contro Opus 5.5 su 6 casi d'uso reali",
+     "dur": 1106,
+     "date": "2026-11-10T17:23:11+00:00"
+    },
+    {
      "id": "Q2g10hBylDg",
      "title": "La Nuova Era degli Agenti AI si chiama Harness",
      "dur": 1117,
@@ -3079,12 +3085,6 @@
      "title": "Claude Mods: Il più grande Aggiornamento di Claude Code dalle Skill",
      "dur": 964,
      "date": "2026-10-04T16:27:55+00:00"
-    },
-    {
-     "id": "x3oEHThfWOQ",
-     "title": "JEV - La nuova era dell’AI 400x più economico di Claude e Chatgpt",
-     "dur": 1240,
-     "date": "2026-10-02T16:30:14+00:00"
     }
    ]
   },
@@ -3483,6 +3483,12 @@
    "id": "UCbMlkb79E12CwveGAtdFj-A",
    "videos": [
     {
+     "id": "xr_CXrd6Wpk",
+     "title": "Claude Fable e Mythos 5.2: è la nuova AI più potente?",
+     "dur": 1291,
+     "date": "2026-11-10T17:44:04+00:00"
+    },
+    {
      "id": "-M_D7RBvkZ4",
      "title": "Non implementare un'LLM Wiki prima di aver visto questo video",
      "dur": 1460,
@@ -3547,12 +3553,6 @@
      "title": "Prima di comprare un pc per l’AI in locale, guarda qui",
      "dur": 1734,
      "date": "2026-10-05T16:55:45+00:00"
-    },
-    {
-     "id": "nBLD-ALKHrU",
-     "title": "OpenAI copia Grok con i dots? GPT-6.1 sfida Opus 5.5",
-     "dur": 1526,
-     "date": "2026-09-30T15:16:15+00:00"
     }
    ]
   },
