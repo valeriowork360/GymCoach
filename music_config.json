@@ -1,8 +1,8 @@
 {
- "_istruzioni": "Canali e playlist della libreria musicale di Gym Coach (copia indipendente da Duetto). Aggiornata ogni 7 ore da .github/workflows/aggiorna-musica.yml.",
+ "_istruzioni": "Canali e playlist della libreria musicale di Gym Coach (copia indipendente da Duetto). Aggiornata ogni 4 ore da .github/workflows/aggiorna-musica.yml.",
  "video_per_canale": 12,
  "escludi_video_sotto_minuti": 2,
- "ore_tra_aggiornamenti": 7,
+ "ore_tra_aggiornamenti": 4,
  "nome_video_fissi": "Esercizi fissi",
  "video_fissi": [
   "https://www.youtube.com/watch?v=i3UHJnZvPbA",
@@ -13,6 +13,7 @@
   "https://www.youtube.com/watch?v=CU9jn-VN4QU"
  ],
  "playlist_fisse": [
+  "https://www.youtube.com/playlist?list=PLNG--5Jlp_O4",
   "https://www.youtube.com/playlist?list=PLsLgIdEjWNVtlCAsbBoU3mvfGXkNYWI75",
   "https://www.youtube.com/playlist?list=PLU8uVkF9zP5Quu9zM4_JKPVYnPSvZc3R3",
   "https://www.youtube.com/playlist?list=PL2ov72VWpiOq02-pJWmTbD64t9pvNVfWx"

@@ -1050,7 +1050,7 @@ function dlCache(){ try{ return JSON.parse(localStorage.getItem("gc_duetto")||"n
 async function loadDuetto(){
   if(!duetto) duetto=dlCache(); drawDuetto();
   if(duetto && duetto._t && Date.now()-duetto._t<30*60e3) return;
-  // libreria propria di Gym Coach (music.json, aggiornata ogni 7 ore); Duetto solo come riserva
+  // libreria propria di Gym Coach (music.json, aggiornata ogni 4 ore); Duetto solo come riserva
   try{ let r=await fetch("music.json?t="+Date.now(),{cache:"no-store"}).catch(()=>null); if(!r||!r.ok) r=await fetch(DUETTO_URL+"?t="+Date.now(),{cache:"no-store"}); if(!r.ok) throw 0; const j=await r.json(); j._t=Date.now(); duetto=j;
     try{ localStorage.setItem("gc_duetto",JSON.stringify(j)); }catch(e){} drawDuetto(); }
   catch(e){ if(!duetto) $("#dlList").innerHTML=`<p class="muted">Libreria non raggiungibile ora (serve internet).</p>`; }

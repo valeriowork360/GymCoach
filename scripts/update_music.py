@@ -2,7 +2,7 @@
 """Aggiorna music.json (libreria musicale di Gym Coach) con i video della playlist fissa e gli ultimi video dei canali.
 
 Legge config.json (e, se c'è, subscriptions.csv esportato da Google Takeout).
-Gira su GitHub Actions ogni 7 ore (controllo orario, salta se l'ultimo aggiornamento è più recente). Non serve nessuna chiave API.
+Gira su GitHub Actions ogni 4 ore (controllo orario, salta se l'ultimo aggiornamento è più recente). Non serve nessuna chiave API.
 """
 import csv, json, sys, time, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -141,7 +141,7 @@ def channel_refs():
 def main():
     out_path = ROOT / "music.json"
     old = json.loads(out_path.read_text(encoding="utf-8")) if out_path.exists() else {}
-    hours = float(CONFIG.get("ore_tra_aggiornamenti", 7))
+    hours = float(CONFIG.get("ore_tra_aggiornamenti", 4))
     if old.get("updated") and "--force" not in sys.argv:
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(old["updated"])).total_seconds() / 3600
         if age < hours - 0.25:

@@ -2,7 +2,7 @@ name: Aggiorna musica
 
 on:
   schedule:
-    - cron: "23 * * * *"     # controllo ogni ora; lo script aggiorna solo se sono passate 7 ore
+    - cron: "23 * * * *"     # controllo ogni ora; lo script aggiorna solo se sono passate 4 ore
   workflow_dispatch:          # "Run workflow" per aggiornare subito
   push:
     paths:
