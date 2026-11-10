@@ -101,7 +101,7 @@ def load_channel(ref):
     return {"name": name.replace(" - Videos", ""), "id": cid, "videos": vids}
 
 
-def load_fixed_videos(urls, title=None):
+def load_fixed_videos(urls, group_title=None):
     """Singoli video da tenere sempre fissi, raccolti in un gruppo unico (titoli via oEmbed, senza blocchi)."""
     import re, urllib.parse
     vids = []
@@ -120,7 +120,7 @@ def load_fixed_videos(urls, title=None):
             print(f"  titolo non disponibile per {vid}: {ex}")
         vids.append({"id": vid, "title": title or "Video " + vid, "dur": 0})
     print(f"Video fissi: {len(vids)}")
-    return {"title": title or CONFIG.get("nome_video_fissi", "Esercizi fissi"), "id": None, "videos": vids} if vids else None
+    return {"title": group_title or CONFIG.get("nome_video_fissi", "Esercizi fissi"), "id": None, "videos": vids} if vids else None
 
 
 def channel_refs():
