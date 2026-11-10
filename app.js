@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "105";
+const APP_VERSION = "106";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1512,18 +1512,23 @@ function exportJSON(){ return JSON.stringify({app:"gym-coach",version:1,exported
 function exportText(){
   return st.history.map(h=>`${h.session} — ${new Date(h.start).toLocaleDateString("it-IT")}\n`+h.ex.map(e=>`  ${EX[e.ex]?EX[e.ex].n:e.ex}: ${e.sets.map(setLine).join(", ")}`).join("\n")).join("\n\n");
 }
-function openArchive(){
+function openArchive(openId){
   const hs=[...st.history].reverse();
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
-    return `<details class="hs"><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}</span></summary>
-      <div class="det">${h.ex.map(e=>`<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}</div>`).join("")}
+    return `<details class="hs" ${h.id===openId?"open":""}><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}</span></summary>
+      <div class="det">${h.ex.map((e,ei)=>{ const cab=EX[e.ex]&&EX[e.ex].kind!=="time"&&e.sets.some(s=>s.kg!=null)&&(e.sets.some(s=>s.rp>1)||!["db","bb","bw","smith","plate"].includes(EX[e.ex].eq||"machine")), on=e.sets.some(s=>s.rp>1);
+        return `<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}${cab?`<br><button type="button" class="vchip rat ${on?"on":""}" data-arat="${h.id}|${ei}">⚙ Carrucola ${on?"2:1 · carico ÷2":"1:1"}</button>`:""}</div>`; }).join("")}
       <div class="row">${h.chat&&h.chat.length?`<button class="btn" data-chat="${h.id}">💬 Vedi chat</button>`:""}<button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;
   }).join(""):`<p class="muted">Ancora nessuna sessione archiviata.</p>`;
   openSheet("Archivio",`${items}
     <div class="card"><h3>Backup</h3><p class="muted" style="margin:0 0 10px">${st.settings.ghToken?`Backup automatico su GitHub attivo (${esc(st.settings.ghRepo)}): serie, master per esercizio e chat di ogni sessione. ${esc(syncStatus())}`:"I dati sono salvati solo su questo telefono: attiva il backup automatico in ⚙ oppure esporta ogni tanto un file."}</p>
     <div class="row"><button class="btn" id="exFile">⬇ Esporta file</button><button class="btn" id="exCopy">📋 Copia testo</button><label class="btn" style="display:inline-block">⬆ Importa file<input type="file" id="imFile" accept="application/json,.json" hidden></label></div><p class="muted" id="exMsg"></p></div>`);
   $("#sheetBody").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
+  // carrucola anche sulle sessioni già salvate: il carico reale diventa metà del numero sul pacco
+  $("#sheetBody").querySelectorAll("[data-arat]").forEach(b=>b.onclick=()=>{ const [hid,ei]=b.dataset.arat.split("|"), h=st.history.find(x=>String(x.id)===hid); if(!h) return; const e=h.ex[+ei]; if(!e) return;
+    const on=e.sets.some(s=>s.rp>1); e.sets.forEach(s=>{ if(s.kg==null||s.sec!=null) return; on?clearRatio(s):applyRatio(s,2); });
+    recomputeSugg(e.ex); save(); syncNow(true); openArchive(h.id); });
   $("#sheetBody").querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>slideConfirm(e.currentTarget,"Scorri per eliminare →",()=>{ deleteSession(b.dataset.del); openArchive(); },true));
   $("#exFile").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([exportJSON()],{type:"application/json"})); a.download=`gym-coach-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
   $("#exCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(exportText()||"Nessuna sessione."); $("#exMsg").textContent="Copiato negli appunti."; }catch(e){ $("#exMsg").textContent="Copia non riuscita su questo browser."; } };
