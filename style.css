@@ -620,3 +620,13 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .lset.ed .inp{width:64px;padding:5px;font-size:14px}
 .lset.ed select.inp{width:58px}
 .vchip.rat{justify-self:start;font-size:12px;margin-top:2px}
+/* v107 orizzontale: barra in basso sottile (pesi → ripetizioni → RIR) */
+@media (orientation:landscape) and (max-height:560px){
+  .cbar{min-height:0}
+  .cbar .chips{padding:3px 4px 3px 8px}
+  .cbar .chip{padding:5px 11px;font-size:13.5px;min-height:0}
+  .cbar .kbtn{height:34px;width:40px;font-size:15px}
+  .composer{padding:3px 8px calc(4px + env(safe-area-inset-bottom))}
+  .composer .icon-btn{height:32px;width:34px}
+  .composer input{padding:5px 9px;font-size:15px}
+}

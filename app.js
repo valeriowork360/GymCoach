@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "106";
+const APP_VERSION = "107";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1173,9 +1173,12 @@ function drawExbar(){
   $("#exbar").innerHTML=`<div class="nm"><span class="xn">${st.cur.exIdx+1}/${list.length} — ${esc(e.n)}</span>${tgt}<span class="rx">${sub}</span></div><div class="xr">${load}<div class="dots">${dots}</div></div>`;
   drawTop();
 }
-let pickW=false;
+let pickW=false, landOff=null;
+const isLand=()=>matchMedia("(orientation: landscape)").matches;
+const landKey=()=>st.cur?`${st.cur.exIdx}|${setsOf(st.cur.exIdx).length}`:"";
 function drawChips(){
   const pend0=st.cur&&st.cur.pending;
+  if(isLand() && st.cur && !pickW && !isTimeIt(item()) && !(pend0&&pend0.need) && landOff!==landKey()) setPickW(true);
   if(pickW && st.cur && !isTimeIt(item()) && !(pend0&&pend0.need)){
     const ei=extraIdx()??st.cur.exIdx, id=curList()[ei][0], {u,c,arr}=withEx(ei,()=>quickWeights(id,"__vals")), ch=$("#chips");
     ch.innerHTML=`<button class="chip unitsw" data-wu="${u==="lb"?"kg":"lb"}" title="Passa a ${u==="lb"?"chili":"libbre"}">${u} ⇄</button>`+arr.map(v=>`<button class="chip ${v===c?"acc":""}" data-w="${v}">${kgTxt(v)}</button>`).join("");
@@ -1224,7 +1227,9 @@ function drawChat(){ $("#chat").innerHTML=""; (st.cur.chat||[]).forEach(drawMsg)
 
 /* altezza reale dello schermo visibile (barre del browser, tastiera, rotazione): la barra dei comandi resta sempre in vista */
 function fitApp(){
-  const vv=window.visualViewport, h=Math.round(vv?vv.height:innerHeight);
+  const vv=window.visualViewport;
+  if(vv && vv.scale>1.02){ checkCbar(); return; }   // zoom: tengo l'altezza della pagina, così la barra non copre il video
+  const h=Math.round(vv?vv.height:innerHeight);
   document.documentElement.style.setProperty("--appH",h+"px");
   if(window.scrollY||document.documentElement.scrollTop) window.scrollTo(0,0);
   checkCbar();
@@ -1663,7 +1668,8 @@ $("#msg").addEventListener("blur",()=>setTimeout(()=>document.body.classList.rem
 function setComposer(open){ st.ui.composer=!!open; save(); $("#composer").hidden=!open; $("#btnKbd").classList.toggle("on",!!open); $("#btnKbd").textContent=open?"✕":"⌨"; }
 $("#btnKbd").onclick=()=>setComposer(!st.ui.composer);
 function setPickW(on){ pickW=!!on; const b=$("#btnW"); b.classList.toggle("on",pickW); b.textContent=pickW?"✕":"🏋"; b.setAttribute("aria-label",pickW?"Chiudi i pesi e torna ai comandi":"Registra una serie: carico, ripetizioni, RIR"); }
-$("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } setPickW(!pickW); drawChips(); };
+$("#btnW").onclick=()=>{ if(!st.cur) return; if(st.cur.pending&&st.cur.pending.need){ st.cur.pending=null; save(); } if(pickW) landOff=landKey(); else landOff=null; setPickW(!pickW); drawChips(); };
+matchMedia("(orientation: landscape)").addEventListener("change",()=>{ landOff=null; if(!isLand()&&pickW) setPickW(false); if(st.cur) drawChips(); });
 setComposer(!!st.ui.composer);
 /* banda verticale tra musica e video: sceglie la larghezza del riquadro musica */
 function applyMW(){ const col=$("#mCol"); if(col) col.style.maxWidth=st.ui.mw&&!st.ui.videoHidden?"none":"";   // la colonna non deve limitare la larghezza scelta
