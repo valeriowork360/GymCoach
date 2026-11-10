@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "111";
+const APP_VERSION = "112";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1504,7 +1504,10 @@ function adjustSet(x,r,cw){ if(x.kg==null||x.sec!=null) return; const u=unitOf(x
 function applyRatio(x,r){ adjustSet(x,r,x.cw||0); }
 function clearRatio(x){ adjustSet(x,1,x.cw||0); }
 function setAdj(k,r,cw){ (st.cur.rat ||= {}); (st.cur.cw ||= {}); if(r>1) st.cur.rat[k]=r; else delete st.cur.rat[k]; if(cw>0) st.cur.cw[k]=cw; else delete st.cur.cw[k];
-  setsOf(k).forEach(x=>adjustSet(x,r,cw)); save(); }
+  setsOf(k).forEach(x=>adjustSet(x,r,cw));
+  const it=curList()[k], id=it[0];
+  if(st.cur.prevSugg && id in st.cur.prevSugg){ const nt=nextTime(it,setsOf(k),(perfsOf(id)[0]||{}).sets); if(nt) st.sugg[id]={kg:nt.kg,...(nt.u==="lb"?{u:"lb",v:nt.v}:{}),txt:nt.txt,date:Date.now()}; }
+  save(); }
 function setRatio(k,r){ setAdj(k,r,adjOf(k).cw); }
 function openList(edit){
   if(!st.cur){ openSheet("Esercizi","<p class='muted'>Inizia una sessione per vedere l'elenco.</p>"); return; }
@@ -2235,7 +2238,7 @@ function buildMaster(){
   for(const id of Object.keys(EX)){
     const storico=[];
     for(const h of sessions){ const e=h.ex.find(x=>x.ex===id&&x.sets.length);
-      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,...(s.u==="lb"?{lb:s.v}:{}),rip:s.reps,rir:s.rir,...(s.raw?{carico:s.raw}:{}),...(s.rt?{rir_testo:s.rt}:{}),...(s.rr?{rip_testo:s.rr}:{}),...(s.m?{macchina:s.m}:{}),...(s.note?{nota:s.note}:{}),...(s.tipo?{tipo:s.tipo}:{}),...(s.extra?{extra:true}:{})})}); }
+      if(e) storico.push({data:new Date(h.start).toISOString().slice(0,10),sessione:h.session,...(h.inCorso?{in_corso:true}:{}),...(e.al_posto_di?{al_posto_di:EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di}:{}),serie:e.sets.map(s=>s.sec!=null?{sec:s.sec,...(s.extra?{extra:true}:{})}:{kg:s.kg,...(s.u==="lb"?{lb:s.v}:{}),rip:s.reps,rir:s.rir,...(s.raw?{carico:s.raw}:{}),...(s.rt?{rir_testo:s.rt}:{}),...(s.rr?{rip_testo:s.rr}:{}),...(s.pv!=null?{pacco:s.pv,...(s.rp>1?{carrucola:`${s.rp}:1`}:{}),...(s.cw?{attacco_kg:s.cw}:{})}:{}),...(s.m?{macchina:s.m}:{}),...(s.note?{nota:s.note}:{}),...(s.tipo?{tipo:s.tipo}:{}),...(s.extra?{extra:true}:{})})}); }
     const sch=Object.keys(SESSIONS).filter(k=>SESSIONS[k].some(x=>x[0]===id)).map(k=>{const x=SESSIONS[k].find(y=>y[0]===id);return isTimeIt(x)?{sessione:k,giri:x[1],durata:holdTxt(x),pausa_s:x[4]}:{sessione:k,serie:x[1],range:`${x[2]}-${x[3]}`,recupero_s:x[4]};});
     let best=null; storico.forEach(r=>r.serie.forEach(s=>{ if(s.kg && s.rip && !s.extra){ const e=e1rm(s.kg,s.rip,s.rir||0); if(!best||e>best.e1rm) best={e1rm:Math.round(e*10)/10,kg:s.kg,rip:s.rip,rir:s.rir,data:r.data,...(s.carico?{carico:s.carico}:{}),...(s.macchina?{macchina:s.macchina}:{})}; } }));
     esercizi[id]={nome:EX[id].n,attrezzo:EX[id].kind==="time"?"a tempo (mobilità/stretching)":`${EQ_LABEL[EX[id].eq]||"macchina"} · carico ${modeOf(id)}`,nelle_schede:sch,prossimo_carico:st.sugg[id]?.kg??null,prossimo_carico_testo:suggTxt(id),miglior_serie_stimata:best,...((st.exNotes||{})[id]?{note_storico:st.exNotes[id]}:{}),storico};
