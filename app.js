@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "109";
+const APP_VERSION = "110";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -1145,7 +1145,7 @@ setInterval(()=>{ if(!document.hidden) drawSeek2(); },1000);
 function applyMSplit(){ const f=st.ui.msplit??0.5; $("#mCol").style.setProperty("--ms",f); }
 (function(){
   const hd=$("#msplit"); let y0=0,f0=0.5,h=0,drag=false;
-  hd.addEventListener("pointerdown",e=>{ drag=true; y0=e.clientY; f0=st.ui.msplit??0.5; h=$("#mCol").getBoundingClientRect().height-12; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
+  hd.addEventListener("pointerdown",e=>{ drag=true; y0=e.clientY; f0=st.ui.msplit??0.5; h=$("#mCol").getBoundingClientRect().height-16; hd.setPointerCapture(e.pointerId); hd.classList.add("on"); document.body.classList.add("resizing"); e.preventDefault(); });
   hd.addEventListener("pointermove",e=>{ if(!drag||h<=0) return; st.ui.msplit=Math.max(0.1,Math.min(0.9,f0+(e.clientY-y0)/h)); applyMSplit(); });
   const end=()=>{ if(!drag) return; drag=false; hd.classList.remove("on"); document.body.classList.remove("resizing"); save(); };
   hd.addEventListener("pointerup",end); hd.addEventListener("pointercancel",end);
@@ -1509,10 +1509,11 @@ function openList(edit){
   openSheet(st.cur.session+" · esercizi", list.map((x,k)=>{ const d=workSets(k).length, full=d>=x[1], ss=setsOf(k), rr=(st.cur.rat||{})[k]||1, tm=isTimeIt(x);
     let n=0;
     return `<div class="liw"><button class="li ${k===st.cur.exIdx?"cur":""} ${full?"done":""}" data-k="${k}"><span class="i">${full?"✓":k+1}</span><span class="nm">${esc(EX[x[0]].n)}</span><span class="rx">${d}/${x[1]} · ${tm?holdTxt(x):`${x[2]}–${x[3]}`}${x[0]!==origId(k)?" · 🔁":""}</span></button>
-      ${ss.length||(!tm&&!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<div class="lsets">${ss.map((y,j)=>setRow(k,y,j,y.extra?"extra":String(++n))).join("")}${!tm&&(rr>1||!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<button type="button" class="vchip rat ${rr>1?"on":""}" data-rat="${k}">⚙ Carrucola ${rr>1?rr+":1 · carico ÷"+rr:"1:1"}</button>`:""}</div>`:""}</div>`; }).join("")
+      <div class="lsets">${ss.map((y,j)=>setRow(k,y,j,y.extra?"extra":String(++n))).join("")}<div class="lacts"><button type="button" class="vchip" data-swk="${k}">🔁 Cambia esercizio${ss.length?" (tiene le serie)":""}</button>${!tm&&(rr>1||!["db","bb","bw","smith","plate"].includes(EX[x[0]].eq||"machine"))?`<button type="button" class="vchip rat ${rr>1?"on":""}" data-rat="${k}">⚙ Carrucola ${rr>1?rr+":1 · carico ÷"+rr:"1:1"}</button>`:""}</div></div></div>`; }).join("")
     +`<p class="muted xs">⚙ Carrucola 2:1: se il cavo passa da una carrucola mobile, il carico reale è metà del numero sul pacco. Vale per le serie di questo esercizio in questa sessione, anche quelle già registrate.</p><button class="btn danger wide" id="endFromList">🏁 Fine sessione</button>`);
   const B=$("#sheetBody"), refresh=()=>{ save(); drawExbar(); drawTop(); drawChips(); };
   B.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ closeSheet(); goEx(+b.dataset.k); });
+  B.querySelectorAll("[data-swk]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.swk; closeSheet(); if(st.cur.exIdx!==k) goEx(k); openSwap(); });
   B.querySelectorAll("[data-rat]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.rat, r=((st.cur.rat||{})[k]||1)>1?1:2; setRatio(k,r); refresh();
     sys(`⚙ ${EX[curList()[k][0]].n}: carrucola ${r}:1${r>1?" — il carico reale è metà del numero sul pacco":""}.`); openList(); });
   B.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.edit.split("|").map(Number); openList({k,j}); });

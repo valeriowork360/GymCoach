@@ -639,3 +639,12 @@ body.tophid.chatfull .dock>.timer[hidden]+.exbar{padding-left:56px;padding-right
 .msplit.on i,.msplit:active i{background:var(--acc);width:80px}
 .player.collapsed .msplit{display:none}
 .favb{background:none;border:none;font-size:18px;padding:0 6px 0 0;cursor:pointer;color:#e3c62b;vertical-align:-2px}
+/* v110 una sola barra verticale per tutta la colonna; barra orizzontale ben visibile tra i due riquadri */
+.m-col{position:relative}
+.m-col>.mresize{top:0;height:100%;right:-12px}
+.m-col>.mresize i{height:72px}
+.msplit{position:relative;z-index:5;height:16px;margin:0}
+.msplit i{width:84px;height:6px;background:#8a90a0;box-shadow:0 0 0 2px rgba(0,0,0,.6)}
+.m-col.duo #mTile{height:calc((var(--fh) - 28px) * var(--ms,.5))}
+.m-col.duo #mTile2{height:calc((var(--fh) - 28px) * (1 - var(--ms,.5)))}
+.lacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
