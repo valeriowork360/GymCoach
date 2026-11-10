@@ -15,8 +15,10 @@ CONFIG = json.loads((ROOT / "music_config.json").read_text(encoding="utf-8"))
 MAX = int(CONFIG.get("video_per_canale", 6))
 SKIP_SHORTER = int(CONFIG.get("escludi_video_sotto_minuti", 2)) * 60
 
+# approximate_date: date approssimative ("3 giorni fa") anche nell'elenco veloce, utili se i feed RSS non rispondono
 YDL = yt_dlp.YoutubeDL({"extract_flat": "in_playlist", "quiet": True, "no_warnings": True,
-                        "skip_download": True, "ignoreerrors": True})
+                        "skip_download": True, "ignoreerrors": True,
+                        "extractor_args": {"youtubetab": {"approximate_date": ["true"]}}})
 
 
 def clean(e):
