@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11T15:25:09+00:00",
+ "updated": "2026-11-11T22:48:00+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1143,6 +1143,18 @@
    "id": "UCNg4RDHGls-HpbV10kWPlsw",
    "videos": [
     {
+     "id": "IqXzxZ7tzBI",
+     "title": "Ambizione e carriera oggi sono due cose molto diverse.",
+     "dur": 0,
+     "date": "2026-11-10T22:30:00+00:00"
+    },
+    {
+     "id": "jmozJhcLu_8",
+     "title": "Ci vuole tempo per diventare credibili. E ci vuole tempo per promuovere qualunque cosa: un progetto,",
+     "dur": 0,
+     "date": "2026-11-10T22:00:19+00:00"
+    },
+    {
      "id": "9vRbnnIHA_Q",
      "title": "Come capire se la tua idea vende prima di costruirla",
      "dur": 1607,
@@ -1201,18 +1213,6 @@
      "title": "Tutto quello che penso degli Agenti AI",
      "dur": 1855,
      "date": "2026-09-22T18:15:35+00:00"
-    },
-    {
-     "id": "cUNlNfQPwpA",
-     "title": "L'AI ci ucciderà tutti?",
-     "dur": 1398,
-     "date": "2026-09-15T10:22:43+00:00"
-    },
-    {
-     "id": "mfjmPj8WnDE",
-     "title": "Il lato Oscuro dei Social",
-     "dur": 1550,
-     "date": "2026-09-06T08:53:44+00:00"
     }
    ]
   },
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "j2W_Bedt2iw",
+     "title": "My Plan to Print $10k+/mo with GTA 6 + Claude (low effort)",
+     "dur": 875,
+     "date": "2026-11-11T18:46:21+00:00"
+    },
+    {
      "id": "aRiGQPd2YUc",
      "title": "I Tested Fable 5.2 vs GPT-6 Astra. I Was Shocked.",
      "dur": 639,
@@ -1780,7 +1786,7 @@
     },
     {
      "id": "KeOKEYEIutQ",
-     "title": "6 ways to print $$$ with grok bot + claude",
+     "title": "6 ways to print $$$ with grok bot",
      "dur": 2232,
      "date": "2026-11-06T15:16:07+00:00"
     },
@@ -1831,12 +1837,6 @@
      "title": "Make Claude 10x Smarter For Free (Karpathy's Hack + 4 More)",
      "dur": 1071,
      "date": "2026-09-22T16:01:19+00:00"
-    },
-    {
-     "id": "85HUscg_3sM",
-     "title": "Claude + Instagram = $15,000/month",
-     "dur": 1609,
-     "date": "2026-09-21T15:05:18+00:00"
     }
    ]
   },
@@ -2079,6 +2079,12 @@
    "id": "UC4yFUEcq0SGs3_BHxF9q5Ww",
    "videos": [
     {
+     "id": "aX5eTKQNSB8",
+     "title": "Give me 9 minutes. I'll make you an AI Video Pro.",
+     "dur": 551,
+     "date": "2026-11-11T19:44:09+00:00"
+    },
+    {
      "id": "MLCKx6VaSUg",
      "title": "Is ElevenLabs V4 Worth The Hype? (Full Review)",
      "dur": 546,
@@ -2143,12 +2149,6 @@
      "title": "I Tested Magnific One So You Don't Have To...",
      "dur": 526,
      "date": "2026-10-10T12:48:20+00:00"
-    },
-    {
-     "id": "ktGEV8esXKE",
-     "title": "I Tested Nano Banana 2.1 vs GPT 2.5 so You Don't Have To...",
-     "dur": 531,
-     "date": "2026-10-08T15:10:22+00:00"
     }
    ]
   },
@@ -2781,6 +2781,12 @@
    "id": "UCPjNBjflYl0-HQtUvOx0Ibw",
    "videos": [
     {
+     "id": "1cWZ7Ekff6E",
+     "title": "Use Grok Bot Better Than 99% of People (Full Course)",
+     "dur": 2912,
+     "date": "2026-11-11T18:00:16+00:00"
+    },
+    {
      "id": "G3i2k6DdI0o",
      "title": "Claude Fable 5.2: How I’d Make Money With It",
      "dur": 1176,
@@ -2845,12 +2851,6 @@
      "title": "8 GitHub Repos To Go Viral and Make Money",
      "dur": 1469,
      "date": "2026-10-08T18:30:11+00:00"
-    },
-    {
-     "id": "bQPU6UJ4iCw",
-     "title": "13 Businesses for the Age of AI",
-     "dur": 1517,
-     "date": "2026-10-06T14:30:39+00:00"
     }
    ]
   },
@@ -2858,6 +2858,12 @@
    "name": "Mauro Caimi - Trading On",
    "id": "UCkkP8HpQG0LuMzGUMJzLEMw",
    "videos": [
+    {
+     "id": "44-jIqt8-CQ",
+     "title": "Bitcoin: falso breakout come nel 2015?",
+     "dur": 0,
+     "date": "2026-11-10T17:50:13+00:00"
+    },
     {
      "id": "HV4-ZlDkD_Y",
      "title": "Bitcoin ripete il 2015? Il rischio resta fino a gennaio",
@@ -2923,12 +2929,6 @@
      "title": "Bitcoin reagisce all'inflazione USA: la Fed alza ancora i tassi?",
      "dur": 1003,
      "date": "2026-10-14T16:00:37+00:00"
-    },
-    {
-     "id": "ypU1xUq2fXM",
-     "title": "Bitcoin quanto può scendere ancora? L'analisi ciclica risponde",
-     "dur": 1142,
-     "date": "2026-10-12T16:00:06+00:00"
     }
    ]
   },
@@ -3021,6 +3021,12 @@
      "date": "2026-11-10T17:23:11+00:00"
     },
     {
+     "id": "rQExiTvB5Gk",
+     "title": "Fable 5.2 e Mythos 5.2 sono la stessa AI: una la puoi usare, l'altra no.",
+     "dur": 0,
+     "date": "2026-11-10T17:01:49+00:00"
+    },
+    {
      "id": "Q2g10hBylDg",
      "title": "La Nuova Era degli Agenti AI si chiama Harness",
      "dur": 1117,
@@ -3079,12 +3085,6 @@
      "title": "Come creare Grafiche Animate PAZZESCHE con Claude Opus 5.5",
      "dur": 569,
      "date": "2026-10-07T12:03:59+00:00"
-    },
-    {
-     "id": "caXAokWKMfw",
-     "title": "Claude Mods: Il più grande Aggiornamento di Claude Code dalle Skill",
-     "dur": 964,
-     "date": "2026-10-04T16:27:55+00:00"
     }
    ]
   },
@@ -3483,10 +3483,22 @@
    "id": "UCbMlkb79E12CwveGAtdFj-A",
    "videos": [
     {
+     "id": "Aeiys191to8",
+     "title": "Nuovo Fable 5.2 di Anthropic Ecco tutto quello che devi sapere!",
+     "dur": 0,
+     "date": "2026-11-10T19:58:54+00:00"
+    },
+    {
      "id": "xr_CXrd6Wpk",
      "title": "Ma cosa ha combinato Anthropic?! (Mythos/Fable 5.2)",
      "dur": 1291,
      "date": "2026-11-10T17:44:04+00:00"
+    },
+    {
+     "id": "hPp0zqEmroY",
+     "title": "Andrej Karpathy ha ricreato youtube in sole 2 ore con Claude opus 5.5.",
+     "dur": 0,
+     "date": "2026-11-10T15:00:45+00:00"
     },
     {
      "id": "-M_D7RBvkZ4",
@@ -3541,18 +3553,6 @@
      "title": "Se l’AI può copiare la tua app, cosa stai vendendo?",
      "dur": 1076,
      "date": "2026-10-13T16:47:26+00:00"
-    },
-    {
-     "id": "uMZ3UKd1vZc",
-     "title": "Nvidia ci regala il miglior Decision Model Locale (te lo spiego e lo testo)",
-     "dur": 1476,
-     "date": "2026-10-11T08:00:11+00:00"
-    },
-    {
-     "id": "fUvebU-Cgts",
-     "title": "Prima di comprare un pc per l’AI in locale, guarda qui",
-     "dur": 1734,
-     "date": "2026-10-05T16:55:45+00:00"
     }
    ]
   },
