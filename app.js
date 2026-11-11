@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "113";
+const APP_VERSION = "114";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -885,9 +885,9 @@ function startGridPlayers(){
 function makeGridPlayer(g,k){
   const card=document.querySelector(`#vgrid .vcard[data-k="${k}"]`); seekZones(card,()=>g.ready[k]?g.players[k]:null);
   g.players[k]=new YT.Player("ytG"+k,{width:"100%",height:"100%",videoId:g.ids[k],
-    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0},
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0,cc_load_policy:st.ui.cc?1:0},
     events:{ onReady:e=>{ g.ready[k]=true; applyVolV(); try{ e.target.playVideo(); }catch(_){} },
-             onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ e.target.seekTo(0); e.target.playVideo(); } } }});
+             onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING) ccApply(e.target); if(e.data===YT.PlayerState.ENDED){ e.target.seekTo(0); e.target.playVideo(); } } }});
 }
 function setGridActive(k,scroll){
   if(!grid) return; grid.active=k;
@@ -934,10 +934,10 @@ function showExerciseVideo(id){
   $("#frame").innerHTML='<div id="ytV"></div>';
   seekZones($("#frame"),()=>yvReady?yv:null);
   yv=new YT.Player("ytV",{width:"100%",height:"100%",videoId:id,
-    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0},
+    playerVars:{autoplay:1,mute:1,playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,iv_load_policy:3,fs:0,cc_load_policy:st.ui.cc?1:0},
     events:{
       onReady:e=>{ yvReady=true; yvId=id; if(yvWant&&yvWant!==id){ yv.loadVideoById(yvWant); yvId=yvWant; } applyVolV(); try{ e.target.playVideo(); }catch(err){} },
-      onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
+      onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING) ccApply(yv); if(e.data===YT.PlayerState.ENDED){ yv.seekTo(0); yv.playVideo(); } }
     }});
 }
 /* doppio tocco a sinistra/destra = indietro/avanti di 10 s (come nell'app YouTube); un tocco = play/pausa */
@@ -964,9 +964,12 @@ function seekZones(parent,getP,onSingle){
 }
 function destroyExerciseVideo(){ if(!yv) return; try{ yv.destroy(); }catch(e){} yv=null; yvReady=false; yvId=null; $("#frame").innerHTML=""; }
 
+/* sottotitoli: i comandi di YouTube nei riquadri non sono toccabili, quindi li accendo/spengo da qui (spenti di base) */
+function ccApply(p){ if(!p) return; try{ if(st.ui.cc){ p.loadModule("captions"); } else { p.unloadModule("captions"); p.unloadModule("cc"); } }catch(e){} }
+function ccAll(){ [yv,ym,ym2,...((grid&&grid.players)||[])].forEach(p=>{ if(p&&p.getPlayerState) ccApply(p); }); }
 function ensureMusic(){
   const m=st.ui.music; if(!apiOk()||ym||!m.src) return;
-  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
+  const pv={playsinline:1,rel:0,modestbranding:1,cc_load_policy:st.ui.cc?1:0}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
   const resume = m.pos>3 && (m.src.list ? true : m.posId===m.src.id) ? Math.floor(m.pos) : 0;   // riparte da dove era
   if(resume) pv.start=resume;
   $("#mPh").hidden=true;
@@ -976,7 +979,7 @@ function ensureMusic(){
       onStateChange:e=>{ const S=YT.PlayerState;
         if(e.data===S.ENDED && m.loop){ if(m.src&&m.src.list) ym.playVideoAt(0); else { ym.seekTo(0); ym.playVideo(); } return; }
         ymPlaying=(e.data===S.PLAYING||e.data===S.BUFFERING);
-        if(e.data===S.PLAYING){ ymWant=false; noteTitle(); keepAwake(); }
+        if(e.data===S.PLAYING){ ymWant=false; noteTitle(); keepAwake(); ccApply(ym); }
         if(e.data===S.PAUSED) saveMusicPos(true);
         drawMusic(); },
       onError:e=>{ ymPlaying=false; ymWant=false; drawMusic(e.data===101||e.data===150?"Questo brano non si può riprodurre fuori da YouTube":"Link non disponibile"); }
@@ -1012,7 +1015,7 @@ function drawMusic(msg){
   $("#muteV").textContent=st.ui.volV>0?"🔊":"🔇"; $("#muteV").classList.toggle("on",st.ui.volV>0);
   $("#muteM").textContent=m.vol>0?"🎵":"🔕"; $("#muteM").classList.toggle("on",m.vol>0 && ymPlaying);
   $("#volM").value=m.vol; $("#oM").textContent=m.vol;
-  $("#mLoop").checked=!!m.loop;
+  $("#mLoop").checked=!!m.loop; $("#mCC").checked=!!st.ui.cc;
   $("#mMore").textContent = $("#mPanel").hidden ? "⌄" : "⌃";
   if(typeof drawMusic2==="function") drawMusic2();
   if(typeof drawFavBtns==="function") drawFavBtns();
@@ -1088,7 +1091,7 @@ function exVideoList(){
 }
 function ensureMusic2(){
   const m=st.ui.music2; if(!apiOk()||ym2||!m.src) return;
-  const pv={playsinline:1,rel:0,modestbranding:1}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
+  const pv={playsinline:1,rel:0,modestbranding:1,cc_load_policy:st.ui.cc?1:0}; if(m.src.list){ pv.listType="playlist"; pv.list=m.src.list; if(m.plIdx>0) pv.index=m.plIdx; }
   const resume = m.pos>3 && (m.src.list ? true : m.posId===m.src.id) ? Math.floor(m.pos) : 0; if(resume) pv.start=resume;
   ym2=new YT.Player("ytM2",{width:"100%",height:"100%",videoId:m.src.list?undefined:m.src.id,playerVars:pv,
     events:{
@@ -1096,7 +1099,7 @@ function ensureMusic2(){
       onStateChange:e=>{ const S=YT.PlayerState;
         if(e.data===S.ENDED && m.loop){ if(m.src&&m.src.list) ym2.playVideoAt(0); else { ym2.seekTo(0); ym2.playVideo(); } return; }
         ym2Playing=(e.data===S.PLAYING||e.data===S.BUFFERING);
-        if(e.data===S.PLAYING){ ym2Want=false; let t=""; try{ t=(ym2.getVideoData()||{}).title||""; }catch(_){} if(t){ m.title=t; const r=st.ui.music.recent; st.ui.music.recent=[{raw:m.raw,title:t,list:!!m.src.list},...r.filter(x=>x.raw!==m.raw)].slice(0,8); save(); } keepAwake(); }
+        if(e.data===S.PLAYING){ ym2Want=false; ccApply(ym2); let t=""; try{ t=(ym2.getVideoData()||{}).title||""; }catch(_){} if(t){ m.title=t; const r=st.ui.music.recent; st.ui.music.recent=[{raw:m.raw,title:t,list:!!m.src.list},...r.filter(x=>x.raw!==m.raw)].slice(0,8); save(); } keepAwake(); }
         if(e.data===S.PAUSED) saveMusicPos2(true);
         drawMusic2(); },
       onError:e=>{ ym2Playing=false; ym2Want=false; drawMusic2(e.data===101||e.data===150?"Questo video non si può riprodurre fuori da YouTube":"Link non disponibile"); }
@@ -1168,6 +1171,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 window.addEventListener("pagehide",()=>saveMusicPos2(true));
 $("#mForm").onsubmit=e=>{ e.preventDefault(); if(loadInto($("#mIn").value)){ $("#mIn").value=""; $("#mIn").blur(); $("#mPanel").hidden=true; drawMusic(); } };
 $("#mLoop").onchange=e=>{ st.ui.music.loop=e.target.checked; save(); drawMusic(); };
+$("#mCC").onchange=e=>{ st.ui.cc=e.target.checked; save(); ccAll(); };
 function setVolV(v){ st.ui.volV=v; if(v>0) st.ui.lastVolV=v; save(); applyVolV(); if(grid) setGridActive(grid.active,false); drawMusic(); }
 function setVolM(v){ st.ui.music.vol=v; if(v>0) st.ui.lastVolM=v; if(ymReady) ym.setVolume(v); save(); drawMusic(); }
 $("#volV").oninput=e=>setVolV(+e.target.value);
