@@ -6,7 +6,12 @@ on:
     inputs:
       urls:
         description: "Link dei video, separati da spazi"
-        required: true
+        required: false
+        default: ""
+      cerca:
+        description: "Ricerche YouTube separate da ; (facoltativo)"
+        required: false
+        default: ""
 
 jobs:
   info:
@@ -22,4 +27,13 @@ jobs:
             for c in tv_embedded ios android web_safari mweb; do
               out=$(yt-dlp --skip-download --no-warnings --extractor-args "youtube:player_client=$c" --print "INFO|%(id)s|%(duration)s|%(channel)s|%(title)s|%(width)sx%(height)s" "$u" 2>/dev/null) && { echo "$out"; break; } || echo "INFO|client $c non riuscito"
             done
+          done
+      - name: Cerca
+        if: ${{ inputs.cerca != '' }}
+        env:
+          Q: ${{ inputs.cerca }}
+        run: |
+          IFS=';'; for q in $Q; do
+            echo "SEARCH|$q"
+            yt-dlp --flat-playlist --no-warnings --print "HIT|%(id)s|%(duration)s|%(channel)s|%(view_count)s|%(title)s" "ytsearch12:$q" 2>&1 | head -14
           done
