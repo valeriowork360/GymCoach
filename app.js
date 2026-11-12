@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "114";
+const APP_VERSION = "115";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -140,6 +140,8 @@ const isTimeIt = it => !!(it && EX[it[0]].kind==="time");
 const rirTxt = r => r==null ? "?" : r%1 ? `${Math.floor(r)}–${Math.ceil(r)}` : String(r);
 /* serie che contano nei grafici: allenanti + extra vere (non riscaldamento, avvicinamento o prove) */
 const countsInStats = s => s.sec==null && (!s.extra || !s.tipo || s.tipo==="extra");
+const isClockSess = s => typeof CLOCK_SESSIONS!=="undefined" && CLOCK_SESSIONS.includes(s);
+const clockTxt = ms => { const t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor(t/60)%60, x=t%60; return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(x).padStart(2,"0"); };
 const isExtraSess = s => typeof EXTRA_SESSIONS!=="undefined" && EXTRA_SESSIONS.includes(s);
 const holdTxt = it => `${it[2]} s${EX[it[0]].sides?" per lato":""}`;
 
@@ -823,8 +825,10 @@ function drawTop(){
   if(!st.cur){ $("#topSess").textContent="Gym Coach"; $("#topSub").textContent="Registro allenamenti"; return; }
   const list=curList(), done=list.reduce((a,x,k)=>a+Math.min(x[1],workSets(k).length),0), tot=list.reduce((a,x)=>a+x[1],0);
   $("#topSess").textContent=st.cur.session;
+  if(isClockSess(st.cur.session)){ $("#topSub").textContent=`⏱ ${clockTxt(Date.now()-st.cur.start)} · video ${st.cur.exIdx+1}/${list.length} · iniziata ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`; return; }
   $("#topSub").textContent=`Esercizio ${st.cur.exIdx+1}/${list.length} · ${done}/${tot} ${isExtraSess(st.cur.session)?"giri":"serie"} · iniziata ${new Date(st.cur.start).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`;
 }
+setInterval(()=>{ if(!document.hidden && st.cur && isClockSess(st.cur.session)) drawTop(); },1000);
 function drawVideo(){
   const e=exOf(item());
   if(!e.v.length){
@@ -1430,7 +1434,7 @@ function drawHome(){
   const nextSess = nx==="REST" ? CYCLE[(ni+1)%CYCLE.length] : nx;
   const last=st.history[st.history.length-1];
   const cyc=CYCLE.map((c,k)=>`<span class="${k===ni?"next":k<=st.cyclePos?"done":""}">${c}</span>`).join("");
-  const cnt=s=>isExtraSess(s)?`${SESSIONS[s].length} esercizi · ~${Math.round(SESSIONS[s].reduce((a,x)=>a+x[1]*(x[2]*(EX[x[0]].sides?2:1)+x[4]),0)/60)} min`:`${SESSIONS[s].length} esercizi · ${SESSIONS[s].reduce((a,x)=>a+x[1],0)} serie`;
+  const cnt=s=>isClockSess(s)?`${SESSIONS[s].length} video · ⏱ cronometro`:isExtraSess(s)?`${SESSIONS[s].length} esercizi · ~${Math.round(SESSIONS[s].reduce((a,x)=>a+x[1]*(x[2]*(EX[x[0]].sides?2:1)+x[4]),0)/60)} min`:`${SESSIONS[s].length} esercizi · ${SESSIONS[s].reduce((a,x)=>a+x[1],0)} serie`;
   $("#home").innerHTML=`
     <h1>Gym Coach</h1>
     <p class="lead">${last?`Ultima sessione: <b>${last.session}</b> il ${new Date(last.start).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"})}.`:"Nessuna sessione registrata finora."}</p>
@@ -1472,12 +1476,13 @@ function finishSession(){
   const list=curList();
   const ex=list.map((x,k)=>({ex:x[0],...(x[0]!==origId(k)?{al_posto_di:origId(k)}:{}),sets:(st.cur.log[k]||[]).map(cleanSet)})).filter(e=>e.sets.length);
   const total=ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), planned=list.reduce((a,x)=>a+x[1],0);
-  if(!ex.length){
+  const clock=isClockSess(st.cur.session);
+  if(!ex.length && !clock){
     openSheet("Fine sessione",`<p>Non hai registrato nessuna serie, quindi non c'è niente da salvare.</p><p class="muted">Scarta la sessione: non finisce nell'archivio e cancello anche la sua chat dal backup su GitHub.</p><div class="row"><button class="btn danger" id="discard">🗑 Scarta sessione</button><button class="btn" id="keep">Continua</button></div>`);
     $("#discard").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
     $("#keep").onclick=closeSheet; return;
   }
-  openSheet("Fine sessione",`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p><p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
+  openSheet("Fine sessione",`${clock?`<p>Tempo dall'apertura: <b>⏱ ${clockTxt(Date.now()-st.cur.start)}</b>${ex.length?` · ${total} video segnati come fatti`:""}.</p>`:`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p>`}<p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
     <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
   $("#keep").onclick=closeSheet;
   $("#discardAll").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
@@ -1560,7 +1565,7 @@ function openArchive(openId){
   const hs=[...st.history].reverse();
   const items=hs.length?hs.map(h=>{
     const n=h.ex.reduce((a,e)=>a+e.sets.filter(s=>!s.extra).length,0), dur=Math.round((h.end-h.start)/60000);
-    return `<details class="hs" ${h.id===openId?"open":""}><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}</span></summary>
+    return `<details class="hs" ${h.id===openId?"open":""}><summary><span><b>${h.session}</b> <span class="muted">${new Date(h.start).toLocaleDateString("it-IT",{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</span></span><span class="muted">${isClockSess(h.session)?`⏱ ${clockTxt(h.end-h.start)}`:`${n} ${isExtraSess(h.session)?"giri":"serie"} · ${h.imported?"importata":dur+" min"}`}</span></summary>
       <div class="det">${h.ex.map((e,ei)=>{ const cab=EX[e.ex]&&EX[e.ex].kind!=="time"&&e.sets.some(s=>s.kg!=null)&&(e.sets.some(s=>s.pv!=null)||!["db","bb","bw","smith","plate"].includes(EX[e.ex].eq||"machine")), on=e.sets.some(s=>s.rp>1), cw=(e.sets.find(s=>s.cw)||{}).cw||0;
         return `<div><b>${esc(EX[e.ex]?EX[e.ex].n:e.ex)}</b>${e.al_posto_di?` <span>(al posto di ${esc(EX[e.al_posto_di]?EX[e.al_posto_di].n:e.al_posto_di)})</span>`:""}${e.sets.map(s=>`<br><span class="${s.extra?"xs":""}">${esc(setLine(s))}</span>`).join("")}${cab?`<br><button type="button" class="vchip rat ${on?"on":""}" data-arat="${h.id}|${ei}">⚙ Carrucola ${on?"2:1 · carico ÷2":"1:1"}</button> <button type="button" class="vchip rat ${cw?"on":""}" data-acw="${h.id}|${ei}">⬇ Attacco ${cw?"−"+kgTxt(cw)+" kg":"0"}</button><span id="acwBox${h.id}_${ei}"></span>`:""}</div>`; }).join("")}
       <div class="row">${h.chat&&h.chat.length?`<button class="btn" data-chat="${h.id}">💬 Vedi chat</button>`:""}<button class="btn danger" data-del="${h.id}">Elimina sessione</button></div></div></details>`;

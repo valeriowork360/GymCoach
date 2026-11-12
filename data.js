@@ -143,6 +143,16 @@ Object.assign(EX,{
   st_total:{kind:"time",sec:600,n:"Stretching total body — 10 min",s:"Stretching · segui il video",cue:"Routine completa per tutto il corpo: segui il video dall'inizio alla fine senza forzare.",v:[["COO2S7lPBzA","Tone and Tighten · 10 min"]]},
   st_bed_lower:{kind:"time",sec:600,n:"Stretching gambe a letto — 10 min",s:"Stretching · segui il video",cue:"Routine per la parte bassa da fare sdraiato: segui il video senza parlare, allungamenti lenti e respirazione profonda, mai fino al dolore.",v:[["fyfEtviR90s","EDR Fitness · 10 min parte bassa a letto"]]},
   st_full30:{kind:"time",sec:1800,n:"Stretching total body — 30 min",s:"Stretching · segui il video",cue:"Sessione lunga per tutto il corpo: segui il video dall'inizio alla fine, tieni ogni posizione rilassato e respira lentamente.",v:[["vbQqEaX8e_w","EDR Fitness · 30 min total body"]]},
+
+  /* salto della corda: video da seguire, la sessione conta il tempo dall'apertura alla chiusura */
+  jr_learn:{kind:"time",sec:480,n:"Tecnica base — come saltare",s:"Corda · tutorial",cue:"Gomiti vicini ai fianchi, gira la corda coi polsi e non con le braccia, salti bassi (2–3 cm) sull'avampiede, ginocchia morbide.",v:[["_UTR1VWg8WY","Always Ghadi · tutorial passo passo"],["Gt9hlRMXDXc","JMD Jumprope · short tecnica"],["kDOGb9C5kp0","Jump Rope Dudes · guida per iniziare"],["knhqqXCtoEU","Lauren Jumps · basic bounce"]]},
+  jr_warm:{kind:"time",sec:600,n:"Riscaldamento con la corda — 10 min",s:"Corda · segui il video",cue:"Caviglie, polpacci, spalle e polsi prima di saltare: ritmo leggero, respirazione regolare.",v:[["lM8wKBmlkjw","Jump Rope Dudes · 10 min warm-up"],["BjofJPZsoSc","Jump Rope Dudes · warm-up 6 min"],["tjYL0g2THZA","sarahjumprope · 9 min warm-up"]]},
+  jr_beg5:{kind:"time",sec:360,n:"Corda principiante — 5 min",s:"Corda · segui il video",cue:"Segui gli intervalli del video, salti bassi e rilassati; se inciampi riparti subito senza fermare il timer.",v:[["MxH3i8YIhBg","Jump Rope Dudes · 5 min"],["qNGJDb3pdc0","Sunny Health & Fitness · 5 min"]]},
+  jr_beg10:{kind:"time",sec:720,n:"Corda principiante — 10 min",s:"Corda · segui il video",cue:"Lavoro e pausa come nel video; spalle basse, sguardo avanti, atterra sull'avampiede.",v:[["1BZM2Vre5oc","Jump Rope Dudes · 10 min beginner"],["wVyYGSfjv6U","Phoenix Nation · 10 min beginner"],["GJ-kWpMuIRI","Sunny Health & Fitness · 10 min"]]},
+  jr_beg15:{kind:"time",sec:960,n:"Corda principiante — 15 min",s:"Corda · segui il video",cue:"Mantieni un ritmo che riesci a sostenere fino alla fine; nelle pause cammina sul posto.",v:[["ICusNoO6za4","Jump Rope Dudes · 15 min beginner"]]},
+  jr_beg20:{kind:"time",sec:1320,n:"Corda — 20 min",s:"Corda · segui il video",cue:"Sessione lunga: dosa l'intensità, salti bassi; la versione low impact è più leggera per polpacci e tendini.",v:[["zXaLPglJJwU","Jump Rope Dudes · 20 min beginner"],["SwzAhyQrBOs","Jump Rope Dudes · 20 min low impact"],["drwHK8Xt-8w","Phoenix Nation · 20 min"]]},
+  jr_hiit15:{kind:"time",sec:1080,n:"Corda HIIT — 15 min",s:"Corda · segui il video",cue:"Intervalli intensi: spingi nei blocchi di lavoro, recupera davvero nelle pause; fermati se perdi la tecnica.",v:[["a0Hrvh4RS3o","Jump Rope Dudes · 15 min"],["tNaoARG9E8w","MadFit · 15 min HIIT"],["pT5l2LPP3ac","Jump Rope Dudes · 15 min cardio"]]},
+  jr_boxer:{kind:"time",sec:420,n:"Boxer skip e footwork",s:"Corda · tutorial",cue:"Sposta il peso da un piede all'altro a ogni giro, piedi sotto le anche, ritmo morbido e costante.",v:[["1-KvIEU03yc","Jump Rope Dudes · boxer skip in 5 passi"],["0kiKsQKsXcs","Always Ghadi · boxer footwork"],["Q2MIet5QlqY","Lauren Jumps · footwork base"]]},
   st_pec:{kind:"time",sec:30,sides:true,n:"Allungamento pettorali alla porta",s:"Stretching parte alta · per lato",cue:"Avambraccio sullo stipite, gomito all'altezza della spalla, ruota il busto lontano.",v:[]},
   st_lat:{kind:"time",sec:30,sides:true,n:"Allungamento dorsali",s:"Stretching parte alta · per lato",cue:"Spingi i fianchi indietro e allunga il fianco, respira nell'allungamento.",v:[]},
   st_rdelt:{kind:"time",sec:30,sides:true,n:"Spalla posteriore (cross-body)",s:"Stretching parte alta · per lato",cue:"Porta il braccio davanti al petto tenendo la scapola bassa, senza ruotare il busto.",v:[]},
@@ -160,9 +170,11 @@ Object.assign(EX,{
 // [esercizio, giri, secondi per giro (per lato), -, pausa in secondi]
 Object.assign(SESSIONS,{
   "MOBILITÀ":[["mob_lowwarm",1,300,null,0],["mob_post",2,60,null,15],["mob_back",2,60,null,15],["mob_hip",2,75,null,15],["mob_psoas",2,45,null,15],["mob_piri",2,45,null,15],["mob_bullet",2,60,null,15],["mob_quad",2,60,null,20],["mob_bridge",2,60,null,20],["mob_flow20",1,1200,null,0],["mob_morning10",1,600,null,0]],
-  "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0],["st_bed_lower",1,600,null,0],["st_full30",1,1800,null,0]]
+  "STRETCHING":[["st_follow",1,300,null,0],["st_legs",1,60,null,0],["st_total",1,600,null,0],["st_bed_lower",1,600,null,0],["st_full30",1,1800,null,0]],
+  "JUMP ROPE":[["jr_learn",1,480,null,0],["jr_warm",1,600,null,0],["jr_beg5",1,360,null,0],["jr_beg10",1,720,null,0],["jr_beg15",1,960,null,0],["jr_beg20",1,1320,null,0],["jr_hiit15",1,1080,null,0],["jr_boxer",1,420,null,0]]
 });
-const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING"];   // fuori dal ciclo PPL
+const EXTRA_SESSIONS = ["MOBILITÀ","STRETCHING","JUMP ROPE"];
+const CLOCK_SESSIONS = ["JUMP ROPE"];   // conta il tempo dall'apertura alla chiusura   // fuori dal ciclo PPL
 
 /* gruppo muscolare principale (per la dashboard del volume) */
 const MUSCLE = {db_flat:"Petto",db_incl:"Petto",cable_fly:"Petto",bb_bench:"Petto",db_ohp:"Spalle",lat_raise:"Spalle",rev_pec:"Spalle",
