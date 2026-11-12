@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12T12:55:40+00:00",
+ "updated": "2026-11-12T20:56:28+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1143,18 +1143,6 @@
    "id": "UCNg4RDHGls-HpbV10kWPlsw",
    "videos": [
     {
-     "id": "IqXzxZ7tzBI",
-     "title": "Ambizione e carriera oggi sono due cose molto diverse.",
-     "dur": 0,
-     "date": "2026-11-10T22:30:00+00:00"
-    },
-    {
-     "id": "jmozJhcLu_8",
-     "title": "Ci vuole tempo per diventare credibili. E ci vuole tempo per promuovere qualunque cosa: un progetto,",
-     "dur": 0,
-     "date": "2026-11-10T22:00:19+00:00"
-    },
-    {
      "id": "9vRbnnIHA_Q",
      "title": "Come capire se la tua idea vende prima di costruirla",
      "dur": 1607,
@@ -1213,6 +1201,18 @@
      "title": "Tutto quello che penso degli Agenti AI",
      "dur": 1855,
      "date": "2026-09-22T18:15:35+00:00"
+    },
+    {
+     "id": "cUNlNfQPwpA",
+     "title": "L'AI ci ucciderà tutti?",
+     "dur": 1398,
+     "date": "2026-09-15T10:22:43+00:00"
+    },
+    {
+     "id": "mfjmPj8WnDE",
+     "title": "Il lato Oscuro dei Social",
+     "dur": 1550,
+     "date": "2026-09-06T08:53:44+00:00"
     }
    ]
   },
@@ -1534,7 +1534,7 @@
    "videos": [
     {
      "id": "rIPaeXF1QnY",
-     "title": "We Are Overdue… (but there's a catch)",
+     "title": "This Time Is Not Different",
      "dur": 1696,
      "date": "2026-11-12T01:32:20+00:00"
     },
@@ -1845,6 +1845,12 @@
    "id": "UCVVX-7tHff75fRAEEEnZiAQ",
    "videos": [
     {
+     "id": "e2Wnnu07sIw",
+     "title": "I Tested The Viral Claude Day Trader Repo (11 Free Skills)",
+     "dur": 819,
+     "date": "2026-11-12T16:43:55+00:00"
+    },
+    {
      "id": "yuckuVqd01k",
      "title": "8 free AI trading repos that make f*ck you money",
      "dur": 861,
@@ -1909,12 +1915,6 @@
      "title": "I Replaced My $6k/mo Financial Advisor With This Claude System",
      "dur": 1091,
      "date": "2026-09-14T21:06:00+00:00"
-    },
-    {
-     "id": "6P-RTHjGEZQ",
-     "title": "GPT-6 Astra + TradingView = F*cking Insane (Top 7 Prompts)",
-     "dur": 1360,
-     "date": "2026-09-11T13:08:13+00:00"
     }
    ]
   },
@@ -2001,6 +2001,12 @@
    "id": "UC9X2f4pVXSNzsJ2c6ZQVqBQ",
    "videos": [
     {
+     "id": "Evdnybw0s8I",
+     "title": "IPO ANTHROPIC: tutto quello che devi sapere PRIMA del debutto",
+     "dur": 1661,
+     "date": "2026-11-12T17:30:39+00:00"
+    },
+    {
      "id": "Fkb5TmkIwkw",
      "title": "BITCOIN STA MORENDO?",
      "dur": 1723,
@@ -2065,12 +2071,6 @@
      "title": "BITCOIN, CRYPTO: INIZIANO OGGI I 2 MESI MIGLIORI DELL’ANNO! (TIENITI FORTE...)",
      "dur": 1449,
      "date": "2026-10-01T15:45:52+00:00"
-    },
-    {
-     "id": "CtEFUP6MH88",
-     "title": "HO CHIESTO MENO TASSE SULLE CRYPTO ALLA CAMERA DEI DEPUTATI",
-     "dur": 231,
-     "date": "2026-09-24T14:30:38+00:00"
     }
    ]
   },
@@ -2313,6 +2313,12 @@
    "id": "UCtEj8sqnI-ClWqY_a-CtEoA",
    "videos": [
     {
+     "id": "ITCr4ecdzBQ",
+     "title": "1 milione di persone MALATE per GIOCARE a GTA6",
+     "dur": 1773,
+     "date": "2026-11-12T17:49:58+00:00"
+    },
+    {
      "id": "d_2lvrt78hE",
      "title": "MA CHE È SUCCESSO a THE LINE? La mega città nel DESERTO da 8.000.000.000.000$?",
      "dur": 1195,
@@ -2377,12 +2383,6 @@
      "title": "“Ho appena partorito”. Ma quella bambina NON È SUA - L’assassina Taylor Parker",
      "dur": 1586,
      "date": "2026-09-19T16:00:33+00:00"
-    },
-    {
-     "id": "239SYO1o8HQ",
-     "title": "IL PIÙ GRANDE IMPOSTORE della storia del CALCIO - 22 anni di stipendio, ZERO partite",
-     "dur": 1246,
-     "date": "2026-09-16T16:54:02+00:00"
     }
    ]
   },
@@ -2625,6 +2625,12 @@
    "id": "UCnMn36GT_H0X-w5_ckLtlgQ",
    "videos": [
     {
+     "id": "ou1JECedovg",
+     "title": "AMD Investors‼️Shocking Development",
+     "dur": 0,
+     "date": "2026-11-12T01:39:36+00:00"
+    },
+    {
      "id": "Q-WF5RdHpgw",
      "title": "The #1 Stock to Buy Right Now‼️",
      "dur": 2312,
@@ -2689,12 +2695,6 @@
      "title": "7 Stocks to Buy BEFORE October 31, 2026‼️",
      "dur": 2003,
      "date": "2026-10-06T01:20:54+00:00"
-    },
-    {
-     "id": "LGUewAMj5H8",
-     "title": "My Top Secret Stock Portfolio Revealed‼️(NEVER shown before)",
-     "dur": 2359,
-     "date": "2026-10-01T00:20:44+00:00"
     }
    ]
   },
@@ -2702,6 +2702,12 @@
    "name": "Scalping The Bull",
    "id": "UCQeiJguwnPJnmqplzQb_vmQ",
    "videos": [
+    {
+     "id": "oJUt8w2vWVM",
+     "title": "🚨Bitcoin Malissimo con Strategy escluso da Msci!!! Analisi Tecnica Flash Bybit EU EUSOT 👑⚠️",
+     "dur": 739,
+     "date": "2026-11-12T18:52:46+00:00"
+    },
     {
      "id": "J2EFa2IF--w",
      "title": "🚨Senza Trump Ai e Bitcoin crolleranno???????????? 😱⚠️🚨☠️🐻",
@@ -2767,12 +2773,6 @@
      "title": "🚨Ai in difficoltà ma Attenzione a Apple e questo livello su Bitcoin 🚨! Stategy VENDE ancora BITCOIN!",
      "dur": 1710,
      "date": "2026-07-10T09:06:10+00:00"
-    },
-    {
-     "id": "ShrYoBlBD0o",
-     "title": "Disastro Strategy 😱☠️🚨| Dovrà vendere altri Bitcoin?? Attenzione al Livello sul Nasdaq 🚨",
-     "dur": 1496,
-     "date": "2026-06-27T07:47:39+00:00"
     }
    ]
   },
@@ -2859,12 +2859,6 @@
    "id": "UCkkP8HpQG0LuMzGUMJzLEMw",
    "videos": [
     {
-     "id": "44-jIqt8-CQ",
-     "title": "Bitcoin: falso breakout come nel 2015?",
-     "dur": 0,
-     "date": "2026-11-10T17:50:13+00:00"
-    },
-    {
      "id": "HV4-ZlDkD_Y",
      "title": "Bitcoin ripete il 2015? Il rischio resta fino a gennaio",
      "dur": 1054,
@@ -2929,6 +2923,12 @@
      "title": "Bitcoin reagisce all'inflazione USA: la Fed alza ancora i tassi?",
      "dur": 1003,
      "date": "2026-10-14T16:00:37+00:00"
+    },
+    {
+     "id": "ypU1xUq2fXM",
+     "title": "Bitcoin quanto può scendere ancora? L'analisi ciclica risponde",
+     "dur": 1142,
+     "date": "2026-10-12T16:00:06+00:00"
     }
    ]
   },
@@ -2936,6 +2936,12 @@
    "name": "GabrySolution",
    "id": "UC8oBIE88TrCD1b-gnVqXzgw",
    "videos": [
+    {
+     "id": "6WjE14OhyTY",
+     "title": "Dammi 13 Minuti e ti Insegno Gemini da Zero",
+     "dur": 796,
+     "date": "2026-11-12T16:30:17+00:00"
+    },
     {
      "id": "rtsu_XbSlRw",
      "title": "Che DIAVOLO Sta Succedendo Dentro OpenAI?",
@@ -3001,12 +3007,6 @@
      "title": "Fallo UNA VOLTA. Ogni AI lavorerà meglio per te",
      "dur": 894,
      "date": "2026-10-14T17:00:24+00:00"
-    },
-    {
-     "id": "PkuwvHAxUP4",
-     "title": "I Siti Fatti con l'AI Sono Tutti UGUALI... Finché Non Impari Questo",
-     "dur": 620,
-     "date": "2026-10-12T15:30:28+00:00"
     }
    ]
   },
@@ -3019,12 +3019,6 @@
      "title": "Ho testato Fable 5.2 contro Opus 5.5 su 6 casi d'uso reali",
      "dur": 1106,
      "date": "2026-11-10T17:23:11+00:00"
-    },
-    {
-     "id": "rQExiTvB5Gk",
-     "title": "Fable 5.2 e Mythos 5.2 sono la stessa AI: una la puoi usare, l'altra no.",
-     "dur": 0,
-     "date": "2026-11-10T17:01:49+00:00"
     },
     {
      "id": "Q2g10hBylDg",
@@ -3085,6 +3079,12 @@
      "title": "Come creare Grafiche Animate PAZZESCHE con Claude Opus 5.5",
      "dur": 569,
      "date": "2026-10-07T12:03:59+00:00"
+    },
+    {
+     "id": "caXAokWKMfw",
+     "title": "Claude Mods: Il più grande Aggiornamento di Claude Code dalle Skill",
+     "dur": 964,
+     "date": "2026-10-04T16:27:55+00:00"
     }
    ]
   },
@@ -3327,6 +3327,12 @@
    "id": "UC1e1Xt2nsUy9lqP_R7ES5yA",
    "videos": [
     {
+     "id": "5OkxW545QOY",
+     "title": "Abbiamo Costruito un Company Brain per 300 PERSONE (Ecco Come)",
+     "dur": 924,
+     "date": "2026-11-12T15:07:33+00:00"
+    },
+    {
      "id": "hgxpjXu7kCs",
      "title": "Come Creare un Agente Vocale AI con Claude Code (GUIDA COMPLETA)",
      "dur": 1757,
@@ -3391,12 +3397,6 @@
      "title": "Incolla Questo su Claude Code e Non Finirai MAI Più i Token",
      "dur": 2161,
      "date": "2026-09-03T14:11:07+00:00"
-    },
-    {
-     "id": "T7PPX5M6Puo",
-     "title": "Claude Code + Codex: Il Setup di cui NESSUNO Parla",
-     "dur": 1852,
-     "date": "2026-08-29T11:01:52+00:00"
     }
    ]
   },
@@ -3483,22 +3483,10 @@
    "id": "UCbMlkb79E12CwveGAtdFj-A",
    "videos": [
     {
-     "id": "Aeiys191to8",
-     "title": "Nuovo Fable 5.2 di Anthropic Ecco tutto quello che devi sapere!",
-     "dur": 0,
-     "date": "2026-11-10T19:58:54+00:00"
-    },
-    {
      "id": "xr_CXrd6Wpk",
      "title": "Ma cosa ha combinato Anthropic?! (Mythos/Fable 5.2)",
      "dur": 1291,
      "date": "2026-11-10T17:44:04+00:00"
-    },
-    {
-     "id": "hPp0zqEmroY",
-     "title": "Andrej Karpathy ha ricreato youtube in sole 2 ore con Claude opus 5.5.",
-     "dur": 0,
-     "date": "2026-11-10T15:00:45+00:00"
     },
     {
      "id": "-M_D7RBvkZ4",
@@ -3553,6 +3541,18 @@
      "title": "Se l’AI può copiare la tua app, cosa stai vendendo?",
      "dur": 1076,
      "date": "2026-10-13T16:47:26+00:00"
+    },
+    {
+     "id": "uMZ3UKd1vZc",
+     "title": "Nvidia ci regala il miglior Decision Model Locale (te lo spiego e lo testo)",
+     "dur": 1476,
+     "date": "2026-10-11T08:00:11+00:00"
+    },
+    {
+     "id": "fUvebU-Cgts",
+     "title": "Prima di comprare un pc per l’AI in locale, guarda qui",
+     "dur": 1734,
+     "date": "2026-10-05T16:55:45+00:00"
     }
    ]
   },
