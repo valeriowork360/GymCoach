@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T11:13:07+00:00",
+ "updated": "2026-11-15T17:52:04+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1143,6 +1143,12 @@
    "id": "UCNg4RDHGls-HpbV10kWPlsw",
    "videos": [
     {
+     "id": "XwwcP3XiTJA",
+     "title": "Il Vero Motivo Per Cui Nessuno Ti Paga",
+     "dur": 2767,
+     "date": "2026-11-15T12:10:10+00:00"
+    },
+    {
      "id": "1mmg--lvmoQ",
      "title": "Parliamo Dello Scandalo Di Nvidia",
      "dur": 677,
@@ -1207,12 +1213,6 @@
      "title": "Tutto quello che penso degli Agenti AI",
      "dur": 1855,
      "date": "2026-09-22T18:15:35+00:00"
-    },
-    {
-     "id": "cUNlNfQPwpA",
-     "title": "L'AI ci ucciderà tutti?",
-     "dur": 1398,
-     "date": "2026-09-15T10:22:43+00:00"
     }
    ]
   },
@@ -2001,6 +2001,12 @@
    "id": "UC9X2f4pVXSNzsJ2c6ZQVqBQ",
    "videos": [
     {
+     "id": "068s4vfsLe8",
+     "title": "PERCHÈ BITCOIN E CRYPTO CONTINUANO A CROLLARE? (DOBBIAMO PARLARE...)",
+     "dur": 1476,
+     "date": "2026-11-15T14:33:24+00:00"
+    },
+    {
      "id": "Evdnybw0s8I",
      "title": "IPO ANTHROPIC: tutto quello che devi sapere PRIMA del debutto",
      "dur": 1661,
@@ -2065,12 +2071,6 @@
      "title": "BITCOIN, CRYPTO: LA TRAPPOLA SI STA REALIZZANDO? (ASCOLTA BENE…)",
      "dur": 883,
      "date": "2026-10-07T11:11:17+00:00"
-    },
-    {
-     "id": "RW-WwDd-Rp0",
-     "title": "BITCOIN, CRYPTO: INIZIANO OGGI I 2 MESI MIGLIORI DELL’ANNO! (TIENITI FORTE...)",
-     "dur": 1449,
-     "date": "2026-10-01T15:45:52+00:00"
     }
    ]
   },
@@ -2937,6 +2937,12 @@
    "id": "UC8oBIE88TrCD1b-gnVqXzgw",
    "videos": [
     {
+     "id": "4b74V5TOW5E",
+     "title": "Claude Fable 5.2 e Gemini 4 Carbon Sono Usciti in 24 ORE (Ecco Quale Usare +20 Novità AI)",
+     "dur": 1353,
+     "date": "2026-11-15T16:30:30+00:00"
+    },
+    {
      "id": "6WjE14OhyTY",
      "title": "Dammi 13 Minuti e ti Insegno Gemini da Zero",
      "dur": 796,
@@ -3001,12 +3007,6 @@
      "title": "GPT-6 Astra + ChatGPT Work Cambia TUTTO (Tu Parli, Lui Lavora)",
      "dur": 772,
      "date": "2026-10-16T15:30:31+00:00"
-    },
-    {
-     "id": "8AVq92o2S7w",
-     "title": "Fallo UNA VOLTA. Ogni AI lavorerà meglio per te",
-     "dur": 894,
-     "date": "2026-10-14T17:00:24+00:00"
     }
    ]
   },
