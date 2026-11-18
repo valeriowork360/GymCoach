@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "115";
+const APP_VERSION = "116";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -13,7 +13,7 @@ function defState(){
     history:[],           // sessioni archiviate
     sugg:{},              // carico consigliato per la prossima volta, per esercizio
     ui:{videoHidden:false},
-    settings:{provider:"gemini",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:1.25,plate:1.25,cable:2.5,machine:2.5,bw:2.5},incLb:{db:5,bb:2.5,plate:2.5,cable:5,machine:10,bw:5},defUnit:"kg",think:"low",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
+    settings:{provider:"gemini",groqKey:"",groqModel:"openai/gpt-oss-120b",orKey:"",orModel:"moonshotai/kimi-k2.6:free",apiKey:"",model:"gemini-3.8-flash",inc:{db:2,bb:1.25,plate:1.25,cable:2.5,machine:2.5,bw:2.5},incLb:{db:5,bb:2.5,plate:2.5,cable:5,machine:10,bw:5},defUnit:"kg",think:"low",ghToken:"",ghRepo:"valeriowork360/GymCoach-dati"},
     sync:{pending:false,last:0,err:""}
   };
 }
@@ -743,7 +743,30 @@ async function callOpenRouter(sys,prompt,onDelta,img){
     return out?{out,by:j.model||models[0]}:{err:"OpenRouter: risposta vuota"};
   }catch(e){ return navigator.onLine===false?{err:"nessuna connessione",offline:true}:{err:`errore di rete con OpenRouter (${e.message||e.name})`}; }
 }
-function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey); }
+/* Groq: gratuito e molto veloce, chiamabile dal browser; niente foto (le immagini restano a Gemini/OpenRouter) */
+async function callGroq(sys,prompt,onDelta,img){
+  const key=st.settings.groqKey; if(!key) return {err:"manca la chiave Groq"};
+  if(img) return {err:"Groq non legge le foto"};
+  const models=[...new Set([st.settings.groqModel||"openai/gpt-oss-120b","openai/gpt-oss-120b","openai/gpt-oss-20b"])];
+  let err="";
+  for(const m of models){
+    try{
+      const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+        body:JSON.stringify({model:m,messages:[{role:"system",content:sys},{role:"user",content:prompt}],...(/gpt-oss/.test(m)?{reasoning_effort:"low"}:{})})});
+      if(r.status===401) return {err:"chiave Groq non valida"};
+      if(r.status===429){ err="limite gratuito di Groq raggiunto, riprova tra poco"; continue; }
+      if(!r.ok){ const j=await r.json().catch(()=>({})); err="Groq: "+((j.error&&j.error.message)||r.status); continue; }
+      const j=await r.json(); const out=(j.choices||[])[0]?.message?.content||"";
+      if(out) return {out,by:"Groq · "+(j.model||m)}; err="Groq: risposta vuota";
+    }catch(e){ return navigator.onLine===false?{err:"nessuna connessione",offline:true}:{err:`errore di rete con Groq (${e.message||e.name})`}; }
+  }
+  return {err};
+}
+const AI_KEY={gemini:"apiKey",openrouter:"orKey",groq:"groqKey"};
+function aiOrder(img){ const F={gemini:callGemini,openrouter:callOpenRouter,groq:callGroq}, pref=st.settings.provider||"gemini";
+  return [pref,...["gemini","openrouter","groq"].filter(k=>k!==pref)].filter(k=>F[k]&&st.settings[AI_KEY[k]]&&!(img&&k==="groq")).map(k=>F[k]); }
+function aiReady(){ return !!(st.settings.apiKey||st.settings.orKey||st.settings.groqKey); }
 let wentHidden=false, retryImg=null;
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="hidden") wentHidden=true;
@@ -751,7 +774,7 @@ document.addEventListener("visibilitychange",()=>{
 });
 async function askAI(text,img,viaAll){
   if(!aiReady()){
-    bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini o OpenRouter/Kimi) in ⚙ Impostazioni.`);
+    bot(`Non ho capito il messaggio come serie. Per registrarla scrivi per esempio <i>24 kg 9 rip RIR 2</i>.<br>Per farmi domande libere aggiungi una chiave gratuita (Gemini, OpenRouter o Groq) in ⚙ Impostazioni.`);
     return;
   }
   const recent=st.cur.chat.slice(-9,-1).filter(m=>m.who!=="sys").map(m=>(m.who==="user"?"Utente: ":"Coach: ")+m.text.replace(/<[^>]+>/g," ").replace(/\s+/g," ").slice(0,300)).join("\n");
@@ -760,10 +783,9 @@ async function askAI(text,img,viaAll){
   const typing=drawMsg({who:"bot",text:"…",cls:"typing"});
   wentHidden=document.visibilityState==="hidden";
   const sysTxt=aiContext();
-  const order=st.settings.provider==="openrouter"?[callOpenRouter,callGemini]:[callGemini,callOpenRouter];
+  const order=aiOrder(img);
   let res=null; const errs=[];
   for(const f of order){
-    if(f===callGemini&&!st.settings.apiKey || f===callOpenRouter&&!st.settings.orKey) continue;
     res=await f(sysTxt,prompt,txt=>{ if(!/^\s*#/.test(txt)){ typing.classList.remove("typing"); typing.innerHTML=md(txt); $("#chat").scrollTop=1e9; } },img); if(res.out) break; errs.push(res.err); if(res.offline) break;
   }
   typing.remove();
@@ -1607,8 +1629,8 @@ function openSettings(){
   const s=st.settings;
   openSheet("Impostazioni",`
     <label class="f" for="sProv">Coach AI per le domande libere</label>
-    <select class="inp" id="sProv"><option value="gemini" ${s.provider!=="openrouter"?"selected":""}>Gemini (Google) — consigliato</option><option value="openrouter" ${s.provider==="openrouter"?"selected":""}>Kimi o altri modelli (OpenRouter)</option></select>
-    <p class="muted">Se il primo non risponde, l'app prova da sola l'altro (se hai inserito anche quella chiave).</p>
+    <select class="inp" id="sProv"><option value="gemini" ${s.provider!=="openrouter"?"selected":""}>Gemini (Google) — consigliato</option><option value="openrouter" ${s.provider==="openrouter"?"selected":""}>Kimi o altri modelli (OpenRouter)</option><option value="groq" ${s.provider==="groq"?"selected":""}>Groq — gratuito e velocissimo</option></select>
+    <p class="muted">Se il primo non risponde, l'app prova da sola gli altri (quelli di cui hai inserito la chiave).</p>
     <label class="f" for="sThink">Risposte del coach Gemini</label>
     <select class="inp" id="sThink"><option value="minimal" ${s.think==="minimal"?"selected":""}>Lampo (ragionamento minimo, le più rapide)</option><option value="low" ${!["minimal","medium"].includes(s.think)?"selected":""}>Veloci (consigliato in palestra)</option><option value="medium" ${s.think==="medium"?"selected":""}>Più ragionate (più lente)</option></select>
     <label class="f" for="sAll">Come leggo i tuoi messaggi</label>
@@ -1626,6 +1648,12 @@ function openSettings(){
     <label class="f" for="sOrModel">Modello OpenRouter</label>
     <input class="inp" id="sOrModel" value="${esc(s.orModel)}">
     <div class="row" style="margin-top:8px"><button class="btn" id="sOrTest">Prova OpenRouter</button><span class="muted" id="sOrMsg"></span></div>
+    <label class="f" for="sGroqKey">Chiave Groq (facoltativa, gratuita)</label>
+    <input class="inp" id="sGroqKey" type="password" value="${esc(s.groqKey||"")}" placeholder="gsk_…" autocomplete="off">
+    <p class="muted">Creala su <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Risponde in 1–2 s; non legge le foto (per quelle uso Gemini o OpenRouter). Resta salvata solo su questo telefono.</p>
+    <label class="f" for="sGroqModel">Modello Groq</label>
+    <input class="inp" id="sGroqModel" value="${esc(s.groqModel||"openai/gpt-oss-120b")}">
+    <div class="row" style="margin-top:8px"><button class="btn" id="sGroqTest">Prova Groq</button><span class="muted" id="sGroqMsg"></span></div>
     <label class="f" for="sUnit">Unità predefinita (se non la scrivi e non c'è storico)</label>
     <select class="inp" id="sUnit"><option value="kg" ${s.defUnit!=="lb"?"selected":""}>Chili (kg)</option><option value="lb" ${s.defUnit==="lb"?"selected":""}>Libbre (lb)</option></select>
     <label class="f">Incremento minimo di carico — il salto più piccolo disponibile in palestra</label>
@@ -1649,7 +1677,7 @@ function openSettings(){
       <div class="card"><h3>Azzera l'app su questo telefono</h3><p class="muted" style="margin:0 0 10px">Cancella archivio, impostazioni, chiavi e token da questo telefono. Il backup su GitHub non viene toccato. Per confermare scrivi <b>CANCELLA</b>.</p>
       <div class="m-form"><input class="inp" id="sWipeTxt" placeholder="CANCELLA" autocomplete="off" autocapitalize="characters"><button class="btn danger" id="sWipe" disabled>Azzera</button></div></div>
     </details>`);
-  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.think=$("#sThink").value; s.allAI=$("#sAll").value==="1"; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free";
+  const collect=()=>{ s.ghToken=$("#sGhTok").value.trim(); s.ghRepo=$("#sGhRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,""); s.apiKey=$("#sKey").value.replace(/[\s"'`]/g,""); s.model=$("#sModel").value.trim()||"gemini-3.8-flash"; s.provider=$("#sProv").value; s.think=$("#sThink").value; s.allAI=$("#sAll").value==="1"; s.orKey=$("#sOrKey").value.replace(/[\s"'`]/g,""); s.orModel=$("#sOrModel").value.trim()||"moonshotai/kimi-k2.6:free"; s.groqKey=$("#sGroqKey").value.replace(/[\s"'`]/g,""); s.groqModel=$("#sGroqModel").value.trim()||"openai/gpt-oss-120b";
     document.querySelectorAll("[data-inc]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.inc[i.dataset.inc]=v; });
     document.querySelectorAll("[data-inclb]").forEach(i=>{ const v=parseFloat(i.value.replace(",",".")); if(v>0) s.incLb[i.dataset.inclb]=v; });
     s.defUnit=$("#sUnit").value;
@@ -1675,6 +1703,7 @@ function openSettings(){
     $("#sTestMsg").textContent=msg;
   };
   $("#sUpdate").onclick=()=>{ collect(); $("#sUpdate").textContent="Aggiorno…"; doUpdate(); };
+  $("#sGroqTest").onclick=async()=>{ collect(); $("#sGroqMsg").textContent="Provo…"; const r=await callGroq("Rispondi solo con: ok","test"); $("#sGroqMsg").textContent=r.out?`✓ Funziona (${r.by})`:r.err; };
   $("#sOrTest").onclick=async()=>{ collect(); $("#sOrMsg").textContent="Provo…"; const r=await callOpenRouter("Rispondi in JSON {\"ok\":true}","test"); $("#sOrMsg").textContent=r.out?`✓ Funziona (${r.by})`:r.err; };
   $("#sWipeTxt").oninput=e=>{ $("#sWipe").disabled = e.target.value.trim().toUpperCase()!=="CANCELLA"; };
   $("#sWipe").onclick=()=>{ if($("#sWipeTxt").value.trim().toUpperCase()!=="CANCELLA") return; localStorage.removeItem(LS); st=defState(); closeSheet(); render(); };
@@ -1695,7 +1724,7 @@ async function shrinkImage(file,max=1024){
 }
 $("#btnPhoto").onclick=()=>{
   if(!st.cur) return;
-  if(!aiReady()){ bot("Per riconoscere i macchinari dalle foto serve la chiave Gemini (gratuita) in ⚙ Impostazioni."); return; }
+  if(!(st.settings.apiKey||st.settings.orKey)){ bot("Per riconoscere i macchinari dalle foto serve la chiave Gemini (gratuita) o OpenRouter in ⚙ Impostazioni: Groq non legge le foto."); return; }
   unlockAudio(); $("#photoIn").value=""; $("#photoIn").click();
 };
 $("#photoIn").onchange=async e=>{
@@ -2505,8 +2534,8 @@ async function fdAI(mode,text){
   const sys = mode==="paste"
     ? `Ricevi il riepilogo giornaliero di un diario alimentare copiato da un'app. NON stimare e NON correggere: copia esattamente i valori presenti (kcal, proteine p, carboidrati c, grassi g in grammi) per ogni alimento, ogni pasto e il totale. Se un valore manca metti null. Mantieni i nomi degli alimenti e le quantità come scritti. Rispondi SOLO con JSON valido nel formato ${json}`
     : `Stima i valori nutrizionali (valore centrale realistico) dei pasti descritti dall'utente, alimento per alimento: kcal, proteine p, carboidrati c, grassi g in grammi. Se la quantità non è indicata usa una porzione tipica e scrivila in "quantita" con "~". Rispondi SOLO con JSON valido nel formato ${json}`;
-  const order=st.settings.provider==="openrouter"?[callOpenRouter,callGemini]:[callGemini,callOpenRouter]; const errs=[];
-  for(const f of order){ if(f===callGemini&&!st.settings.apiKey||f===callOpenRouter&&!st.settings.orKey) continue;
+  const order=aiOrder(); const errs=[];
+  for(const f of order){
     const r=await f(sys,text); if(r.out){ try{ const j=JSON.parse(r.out.replace(/^[\s\S]*?(\{)/,"$1").replace(/\}[^}]*$/,"}")); return j; }catch(e){ errs.push("risposta non leggibile"); continue; } } errs.push(r.err); if(r.offline) break; }
   return {err:errs.join("; ")||"nessuna chiave AI configurata"};
 }
@@ -2577,7 +2606,7 @@ function openDiary(date){
       D.meals=fdNormalize(meals).map(m=>({...m,src:"diario"})); D.tot=tot&&fdNum(tot.kcal)!=null?{kcal:fdNum(tot.kcal),p:fdNum(tot.p),c:fdNum(tot.c),g:fdNum(tot.g)}:null; D.complete=true; D.replace=true; D.text="";
       D.target=r.target&&r.target.k?r.target:null; D.nota=r.nota||""; D.via=via;
     } else {
-      if(!aiReady()){ msg.textContent="Per la stima serve una chiave Gemini o OpenRouter in ⚙. Puoi usare ✍ Manuale."; return; }
+      if(!aiReady()){ msg.textContent="Per la stima serve una chiave Gemini, OpenRouter o Groq in ⚙. Puoi usare ✍ Manuale."; return; }
       msg.textContent="Stimo i valori…"; const j=await fdAI("ai",txt);
       if(j.err){ msg.textContent="Non riesco a stimare ora ("+j.err+"). Riprova più tardi o usa ✍ Manuale."; return; }
       D.meals=[...D.meals,...fdNormalize(j.pasti||[]).map(m=>({...m,src:"stimato"}))]; D.tot=null; D.complete=day?day.giorno_completo!=="no":false; D.replace=false; D.text="";
@@ -2939,7 +2968,7 @@ async function fcScan(D,line){
 /* foto dell'etichetta letta dall'AI (Gemini Flash-Lite, poi gli altri modelli): una volta per prodotto */
 async function fcPhoto(D,file){
   const line=D.fcFor?fcLines(D).find(x=>x.raw===D.fcFor):null;
-  if(!aiReady()){ fcForm(D,{nome:line?line.rest:"",alias:line?line.rest:"",msg:"Per leggere la foto serve una chiave Gemini o OpenRouter in ⚙. Intanto puoi copiare i valori dall'etichetta qui."}); return; }
+  if(!(st.settings.apiKey||st.settings.orKey)){ fcForm(D,{nome:line?line.rest:"",alias:line?line.rest:"",msg:"Per leggere la foto serve una chiave Gemini o OpenRouter in ⚙ (Groq non legge le foto). Intanto puoi copiare i valori dall'etichetta qui."}); return; }
   const F=$("#fcForm"); if(F) F.innerHTML=`<p class="muted">Leggo l'etichetta…</p>`;
   const img=await new Promise(res=>{ const im=new Image(); im.onload=()=>{ const k=Math.min(1,1280/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=im.width*k; c.height=im.height*k; c.getContext("2d").drawImage(im,0,0,c.width,c.height); res({mime:"image/jpeg",data:c.toDataURL("image/jpeg",0.85).split(",")[1]}); URL.revokeObjectURL(im.src); }; im.src=URL.createObjectURL(file); });
   const sys='Leggi la tabella nutrizionale nella foto di un\'etichetta. Rispondi SOLO con JSON: {"nome":"marca e prodotto se visibili","per":"100 g" o "100 ml","kcal":n,"p":n,"c":n,"g":n,"porzione_g":n o null,"porzione_testo":"come scritta" o null}. Usa la colonna per 100 g/100 ml; se c\'è solo quella per porzione, ricava i valori per 100 g dalla porzione. Non inventare: null se non leggibile.';
