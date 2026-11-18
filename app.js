@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "117";
+const APP_VERSION = "118";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -2373,8 +2373,25 @@ async function restoreFromGitHub(){
 window.addEventListener("online",()=>{ if(st.sync.pending) syncNow(true); });
 if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
 
-/* v117: «Seated row» era stato creato come esercizio nuovo per rinominare il Cybex row: lo riunisco all'originale */
-if(!st.mig117){ if(st.custom.cx_seated_row && EX.cs_row){ const n=mergeExInto("cx_seated_row","cs_row","Seated row"); recomputeSugg("cs_row"); st.migMsg=`«Seated row» riunito allo storico di sempre (${n} seduta spostata).`; } st.mig117=true; save(); if(st.migMsg) setTimeout(()=>{ try{ syncNow(); }catch(e){} },3000); }
+/* v118: Seated row (= Pulley row) e Cybex row sono esercizi diversi.
+   Annullo l'unione del v117 e sposto nel Seated row le sedute importate dagli Excel come "Seated Row" / "Pulley Row". */
+if(!st.mig118 && EX.cs_row){
+  if(!st.custom.cx_seated_row){ st.custom.cx_seated_row={n:"Seated row",s:"Esercizio personalizzato",eq:"machine",cue:"Esecuzione controllata, range di movimento completo.",v:[]}; EX.cx_seated_row=st.custom.cx_seated_row; }
+  const cx=st.custom.cx_seated_row; if(!cx.mg){ cx.mg="Schiena"; cx.s="Schiena"; MUSCLE.cx_seated_row="Schiena"; }
+  const SEAT=/^(seated row|pulley row)/i;
+  st.history.forEach(h=>{
+    if(h.start===1794303408681 && st.mig117) h.ex.forEach(e=>{ if(e.ex==="cs_row"){ e.ex="cx_seated_row"; e.al_posto_di="cs_row"; } });
+    const add=[];
+    h.ex.forEach(e=>{ if(e.ex!=="cs_row") return; const mv=e.sets.filter(x=>SEAT.test(x.m||"")); if(!mv.length) return;
+      if(mv.length===e.sets.length){ e.ex="cx_seated_row"; e.al_posto_di="cs_row"; }
+      else { e.sets=e.sets.filter(x=>!SEAT.test(x.m||"")); add.push({ex:"cx_seated_row",al_posto_di:"cs_row",sets:mv}); } });
+    h.ex.push(...add);
+  });
+  if(st.exNames.cs_row==="Seated row"){ delete st.exNames.cs_row; applyExName("cs_row"); }
+  recomputeSugg("cs_row"); recomputeSugg("cx_seated_row"); delete st.migMsg;
+  st.mig117=true; st.mig118=true; save(); setTimeout(()=>{ try{ syncNow(); }catch(e){} },3000);
+}
+st.mig117=true;
 
 render();
 /* ---------------- pagina scorrevole: video in alto, chat che si allarga scorrendo ----------------
