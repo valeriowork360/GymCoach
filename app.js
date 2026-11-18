@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "116";
+const APP_VERSION = "117";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -64,6 +64,24 @@ const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 /* esercizi personalizzati (creati con "Cambia esercizio") */
 st.custom ||= {};
 Object.entries(st.custom).forEach(([id,e])=>{ if(!EX[id]) EX[id]=e; if(e.mg && !MUSCLE[id]) MUSCLE[id]=e.mg; });
+/* nomi rinominati dall'utente: stesso esercizio (stesso storico e carichi), solo il nome cambia */
+st.exNames ||= {};
+function applyExName(id){ const e=EX[id]; if(!e) return; if(e.n0==null) e.n0=e.n; e.n=st.exNames[id]||e.n0; }
+Object.keys(st.exNames).forEach(applyExName);
+function renameEx(id,name){ name=(name||"").trim(); if(!EX[id]) return; if(!name || name===(EX[id].n0??EX[id].n)) delete st.exNames[id]; else st.exNames[id]=name.charAt(0).toUpperCase()+name.slice(1); applyExName(id); save(); }
+/* unisce un esercizio "doppione" (creato col vecchio Cambia esercizio per rinominare) nell'originale: storico, carichi, note e video */
+function mergeExInto(from,to,name){
+  if(!EX[to]) return false; let n=0;
+  st.history.forEach(h=>h.ex.forEach(e=>{ if(e.ex===from){ e.ex=to; if(e.al_posto_di===to) delete e.al_posto_di; n++; } }));
+  if(st.cur){ const subs=st.cur.subs||{}; Object.keys(subs).forEach(k=>{ if(subs[k]===from){ if(SESSIONS[st.cur.session] && SESSIONS[st.cur.session][k] && SESSIONS[st.cur.session][k][0]===to) delete subs[k]; else subs[k]=to; } }); }
+  if(st.program) Object.values(st.program.sessions||{}).forEach(v=>v.forEach(x=>{ if(x[0]===from) x[0]=to; }));
+  Object.values(SESSIONS).forEach(v=>v.forEach(x=>{ if(x[0]===from) x[0]=to; }));
+  if(st.exNotes&&st.exNotes[from]){ st.exNotes[to] ||= st.exNotes[from]; delete st.exNotes[from]; }
+  if(st.myVid[from]){ st.myVid[to]=[...(st.myVid[to]||[]),...st.myVid[from].filter(([v])=>!(st.myVid[to]||[]).some(([m])=>m===v))]; delete st.myVid[from]; applyMyVid(to); }
+  delete st.sugg[from]; delete st.custom[from]; delete EX[from];
+  if(name) { st.exNames[to]=name; applyExName(to); }
+  return n;
+}
 /* programma di allenamento personalizzabile: si parte da quello di base e ognuno lo modifica (salvato nel browser) */
 const BASE_PROGRAM = { sessions:Object.fromEntries(Object.entries(SESSIONS).filter(([k])=>!EXTRA_SESSIONS.includes(k)).map(([k,v])=>[k,v.map(x=>[...x])])), cycle:[...CYCLE] };
 function applyProgram(p){
@@ -1846,11 +1864,14 @@ function openSwap(prefill=""){
     <p class="muted" style="margin-top:0">Al posto di <b>${esc(EX[orig].n)}</b>${cur!==orig?` (ora: ${esc(EX[cur].n)})`:""}. Serie, ripetizioni e recupero restano quelli della scheda; lo storico e i carichi seguono il nuovo esercizio.</p>
     ${cur!==orig?`<button class="btn wide" id="swBack" style="margin:0 0 12px">↩ Torna a ${esc(EX[orig].n)}</button>`:""}
     ${altHtml(orig,cur)}
+    <form id="rnForm" class="m-form" style="margin-bottom:6px"><input class="inp" id="rnName" placeholder="Rinomina ${esc(EX[cur].n)}" value=""><button class="btn">✏️ Rinomina</button></form>
+    <p class="muted" style="margin:0 0 12px">Rinomina = stesso esercizio con un altro nome: storico e carichi restano. Per un esercizio diverso usa le opzioni sotto.</p>
     <form id="swForm" class="m-form" style="margin-bottom:12px"><input class="inp" id="swName" placeholder="Nuovo esercizio (es. Chest press macchina)" value="${esc(prefill)}"><button class="btn acc">Usa</button></form>
     ${Object.entries(groups).map(([g,arr])=>`<h3 class="sec" style="margin:14px 2px 6px">${esc(g)}</h3>`+arr.map(([id,e,where])=>`<button class="li" data-sw="${id}"><span class="nm">${esc(e.n)}</span><span class="rx">${esc(where.join(" · "))}</span></button>`).join("")).join("")}`);
   $("#sheetBody").querySelectorAll("[data-sw]").forEach(b=>b.onclick=()=>{ closeSheet(); swapTo(b.dataset.sw); });
   $("#sheetBody").querySelectorAll("[data-alt]").forEach(b=>b.onclick=()=>{ closeSheet(); const a=b.dataset.alt; swapTo(EX[a]?a:findOrCreateEx(a,false,orig)); });
   const back=$("#swBack"); if(back) back.onclick=()=>{ closeSheet(); swapTo(orig); };
+  $("#rnForm").onsubmit=e=>{ e.preventDefault(); const n=$("#rnName").value.trim(); if(!n) return; const was=EX[cur].n; renameEx(cur,n); closeSheet(); sys(`Rinominato: ${was} → ${EX[cur].n} (stesso storico)`); drawVideo(); drawExbar(); drawTop(); };
   $("#swForm").onsubmit=e=>{ e.preventDefault(); const n=$("#swName").value.trim(); if(!n) return; closeSheet(); swapTo(findOrCreateEx(n,timed)); };
 }
 function altHtml(orig,cur){
@@ -2351,6 +2372,9 @@ async function restoreFromGitHub(){
 }
 window.addEventListener("online",()=>{ if(st.sync.pending) syncNow(true); });
 if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
+
+/* v117: «Seated row» era stato creato come esercizio nuovo per rinominare il Cybex row: lo riunisco all'originale */
+if(!st.mig117){ if(st.custom.cx_seated_row && EX.cs_row){ const n=mergeExInto("cx_seated_row","cs_row","Seated row"); recomputeSugg("cs_row"); st.migMsg=`«Seated row» riunito allo storico di sempre (${n} seduta spostata).`; } st.mig117=true; save(); if(st.migMsg) setTimeout(()=>{ try{ syncNow(); }catch(e){} },3000); }
 
 render();
 /* ---------------- pagina scorrevole: video in alto, chat che si allarga scorrendo ----------------
