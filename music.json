@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-18T22:07:09+00:00",
+ "updated": "2026-11-19T03:40:35+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -2625,6 +2625,12 @@
    "id": "UCnMn36GT_H0X-w5_ckLtlgQ",
    "videos": [
     {
+     "id": "zKQzbjBwGVM",
+     "title": "I Just Sold",
+     "dur": 2384,
+     "date": "2026-11-18T23:49:17+00:00"
+    },
+    {
      "id": "n1dXGMGkorY",
      "title": "The Unthinkable will happen to your stocks‼️",
      "dur": 2738,
@@ -2689,12 +2695,6 @@
      "title": "Your Portfolio is about to GO INSANE‼️",
      "dur": 2681,
      "date": "2026-10-12T23:36:28+00:00"
-    },
-    {
-     "id": "JmPBceO_UH4",
-     "title": "Emergency with 1 of my stocks‼️‼️",
-     "dur": 2273,
-     "date": "2026-10-07T23:28:03+00:00"
     }
    ]
   },
@@ -2781,6 +2781,12 @@
    "id": "UCPjNBjflYl0-HQtUvOx0Ibw",
    "videos": [
     {
+     "id": "vKobP6DkC1E",
+     "title": "Build a 1 Person Media Machine With Grok Bot",
+     "dur": 3054,
+     "date": "2026-11-18T22:10:02+00:00"
+    },
+    {
      "id": "1cWZ7Ekff6E",
      "title": "Use Grok Bot Better Than 99% of People (Full Course)",
      "dur": 2912,
@@ -2845,12 +2851,6 @@
      "title": "Make cool things with AI that people buy (Gemini 4 Argon)",
      "dur": 1850,
      "date": "2026-10-15T20:40:35+00:00"
-    },
-    {
-     "id": "rkK8ZyzYyEA",
-     "title": "8 GitHub Repos To Go Viral and Make Money",
-     "dur": 1469,
-     "date": "2026-10-08T18:30:11+00:00"
     }
    ]
   },
@@ -3718,7 +3718,7 @@
    "videos": [
     {
      "id": "GaqZeusb7Nw",
-     "title": "The Market Is Running Out of Time… Something Has to Change",
+     "title": "Money Is Rushing for the Exits… But Something Is Changing",
      "dur": 825,
      "date": "2026-11-18T21:59:11+00:00"
     },
