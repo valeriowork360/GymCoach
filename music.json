@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T03:40:35+00:00",
+ "updated": "2026-11-19T13:29:20+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -597,6 +597,12 @@
    "id": "UCjnHdA1-dtgx4xVA9QjIz7g",
    "videos": [
     {
+     "id": "HaJ9g4_2x6k",
+     "title": "Give Me 5 Minutes - I’ll Unlock Your Hip Rotation (Follow Along)",
+     "dur": 346,
+     "date": "2026-11-19T07:30:26+00:00"
+    },
+    {
      "id": "t6mqHs_cUiY",
      "title": "30 Min. Deep Squat Mobility Workout (Intermediate)",
      "dur": 1992,
@@ -661,12 +667,6 @@
      "title": "15 Min. of Slow Mobility for Stiff Bodies (No Talking)",
      "dur": 999,
      "date": "2026-10-12T05:30:11+00:00"
-    },
-    {
-     "id": "HONl-zpieGI",
-     "title": "Move Better All Day in 5 Minutes (Morning Mobility)",
-     "dur": 413,
-     "date": "2026-10-08T05:30:41+00:00"
     }
    ]
   },
@@ -1299,6 +1299,12 @@
    "id": "UCrebGs3b-Z7JLKQM2YOpUKA",
    "videos": [
     {
+     "id": "3WabYI-be64",
+     "title": "Che ci fai con Claude Code?",
+     "dur": 0,
+     "date": "2026-11-19T13:03:01+00:00"
+    },
+    {
      "id": "_e8tlVrG_cw",
      "title": "AI gratis sul tuo computer grazie a questa app [tutorial colibrì]",
      "dur": 850,
@@ -1363,12 +1369,6 @@
      "title": "Smetti di affidarti alla fortuna quando usi l'AI [Lucia Cenetiempo]",
      "dur": 3465,
      "date": "2026-10-30T06:00:37+00:00"
-    },
-    {
-     "id": "OIZOvgmG3Eg",
-     "title": "Ma non dovevamo lavorare meno? [Talk AIWEEK 2026]",
-     "dur": 1473,
-     "date": "2026-10-28T07:00:35+00:00"
     }
    ]
   },
@@ -2158,7 +2158,7 @@
    "videos": [
     {
      "id": "mdMSaMmaGqw",
-     "title": "Il VERO MOTIVO per cui le compagnie PETROLIFERE stanno GUADAGNANDO così TANTO?",
+     "title": "Il FOLLE PARADOSSO dei PROFITTI RECORD delle compagnie PETROLIFERE?",
      "dur": 1348,
      "date": "2026-11-16T17:33:35+00:00"
     },
@@ -3405,6 +3405,12 @@
    "id": "UCY3TW6Oj67m6su5oiE80LwA",
    "videos": [
     {
+     "id": "2zVZ8l7JLEs",
+     "title": "Con cosa pagheranno gli Agent?",
+     "dur": 862,
+     "date": "2026-11-19T12:00:39+00:00"
+    },
+    {
      "id": "bOAYS1lB9tU",
      "title": "BITCOIN cosa succede? 📉🥵 CryptoMonday NEWS w46/'26",
      "dur": 1665,
@@ -3469,12 +3475,6 @@
      "title": "NO PANIC! IA vs crittografia, allarme Ledger: cosa succede? 🔙 CryptoMonday NEWS w41/'26",
      "dur": 3440,
      "date": "2026-10-12T11:04:34+00:00"
-    },
-    {
-     "id": "8XwJbLwCO_A",
-     "title": "Doppia Delusione Crypto",
-     "dur": 1006,
-     "date": "2026-09-17T08:29:41+00:00"
     }
    ]
   },
