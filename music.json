@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T03:29:39+00:00",
+ "updated": "2026-11-20T13:09:59+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1065,6 +1065,12 @@
    "id": "UCRCWJCFoZUvkkWzIqzfBy6g",
    "videos": [
     {
+     "id": "ClzYNETzf9s",
+     "title": "Il mistero della spedizione scomparsa tra i ghiacci dell’Artico",
+     "dur": 2758,
+     "date": "2026-11-20T11:23:16+00:00"
+    },
+    {
      "id": "OiX07XFkDgo",
      "title": "Il vero piano di Elon Musk per controllare il mondo",
      "dur": 1884,
@@ -1129,12 +1135,6 @@
      "title": "Che fine hanno fatto i vichinghi della Groenlandia?",
      "dur": 2984,
      "date": "2026-10-08T10:21:19+00:00"
-    },
-    {
-     "id": "ZPIOoiXGex4",
-     "title": "Perché i libri antichi erano pieni di cose assurde?",
-     "dur": 1752,
-     "date": "2026-10-04T10:38:49+00:00"
     }
    ]
   },
@@ -1299,10 +1299,10 @@
    "id": "UCrebGs3b-Z7JLKQM2YOpUKA",
    "videos": [
     {
-     "id": "3WabYI-be64",
-     "title": "Che ci fai con Claude Code?",
-     "dur": 0,
-     "date": "2026-11-19T13:03:01+00:00"
+     "id": "Wajam73Xyek",
+     "title": "Codice di condotta AI: cos'è e a cosa serve alle imprese [Arturo Dell'Isola]",
+     "dur": 3087,
+     "date": "2026-11-20T07:00:32+00:00"
     },
     {
      "id": "_e8tlVrG_cw",
@@ -2158,7 +2158,7 @@
    "videos": [
     {
      "id": "rPp0Y362ylI",
-     "title": "RYANAIR lancia l’ALLARME: FORTE AUMENTO dei PREZZI nel 2027?",
+     "title": "La FINE dei VOLI ECONOMICI è VICINA?",
      "dur": 1333,
      "date": "2026-11-19T17:08:34+00:00"
     },
