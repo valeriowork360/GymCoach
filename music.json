@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T21:18:22+00:00",
+ "updated": "2026-11-21T02:29:22+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -2781,6 +2781,12 @@
    "id": "UCPjNBjflYl0-HQtUvOx0Ibw",
    "videos": [
     {
+     "id": "tCY7zMknCJQ",
+     "title": "Gemini 4 Neon: the most underrated model of the year",
+     "dur": 966,
+     "date": "2026-11-20T23:45:43+00:00"
+    },
+    {
      "id": "vKobP6DkC1E",
      "title": "Build a 1 Person Media Machine With Grok Bot",
      "dur": 3054,
@@ -2845,12 +2851,6 @@
      "title": "Meta Muse Will Create 1,000 Millionaires",
      "dur": 1475,
      "date": "2026-10-19T17:50:26+00:00"
-    },
-    {
-     "id": "jEOUUAPC1sc",
-     "title": "Make cool things with AI that people buy (Gemini 4 Argon)",
-     "dur": 1850,
-     "date": "2026-10-15T20:40:35+00:00"
     }
    ]
   },
@@ -3717,6 +3717,12 @@
    "id": "UCz2wzs4KacqHth7R_N5grgA",
    "videos": [
     {
+     "id": "4ECLohg8aio",
+     "title": "The Market Is in a Bloodbath… But Something Is Changing",
+     "dur": 863,
+     "date": "2026-11-20T23:50:24+00:00"
+    },
+    {
      "id": "GaqZeusb7Nw",
      "title": "Money Is Rushing for the Exits… But Something Is Changing",
      "dur": 825,
@@ -3781,12 +3787,6 @@
      "title": "Bitcoin & Stocks: The First Signs of a Major Market Bottom?",
      "dur": 739,
      "date": "2026-11-02T04:19:24+00:00"
-    },
-    {
-     "id": "avnJKLxX4FY",
-     "title": "Bitcoin Crashes After $6B Hack… But Something Is Changing",
-     "dur": 632,
-     "date": "2026-10-30T04:31:33+00:00"
     }
    ]
   }
