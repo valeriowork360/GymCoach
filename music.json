@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T11:24:37+00:00",
+ "updated": "2026-11-21T18:07:44+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1221,6 +1221,12 @@
    "id": "UCPGrgwfbkjTIgPoOh2q1BAg",
    "videos": [
     {
+     "id": "n-LwSQq3xYE",
+     "title": "Everyone is sleeping on Gemini 4 Neon",
+     "dur": 3000,
+     "date": "2026-11-21T14:11:15+00:00"
+    },
+    {
      "id": "K81vU-gykmQ",
      "title": "RSI is here?! GPT 6.2 is “high” on recursive self-improvement",
      "dur": 1630,
@@ -1285,12 +1291,6 @@
      "title": "Stop paying for AI, run everything locally (here’s how)",
      "dur": 5740,
      "date": "2026-10-20T22:09:34+00:00"
-    },
-    {
-     "id": "YaK6cnET2IE",
-     "title": "OpenCode hack is INSANE.",
-     "dur": 1895,
-     "date": "2026-10-18T04:09:31+00:00"
     }
    ]
   },
@@ -2079,6 +2079,12 @@
    "id": "UC4yFUEcq0SGs3_BHxF9q5Ww",
    "videos": [
     {
+     "id": "d8mXqoZRLs0",
+     "title": "I Tried HeyGen's New Avatar 6 + Voice so You Don't Have to...",
+     "dur": 553,
+     "date": "2026-11-21T13:39:41+00:00"
+    },
+    {
      "id": "w9h1TRbkFIU",
      "title": "I Tried Higgsfield's Short Drama Studio so You Don't Have to...",
      "dur": 684,
@@ -2143,12 +2149,6 @@
      "title": "I Found the BEST AI Animation Model - Kling 4.0 vs Seedance 2.5",
      "dur": 685,
      "date": "2026-10-23T14:38:45+00:00"
-    },
-    {
-     "id": "Y9S9EsQoVJc",
-     "title": "Kling 4.0 is an Absolute Disaster",
-     "dur": 730,
-     "date": "2026-10-21T17:08:11+00:00"
     }
    ]
   },
@@ -2158,7 +2158,7 @@
    "videos": [
     {
      "id": "rPp0Y362ylI",
-     "title": "La FINE dei VOLI ECONOMICI è VICINA?",
+     "title": "RYANAIR sta preparando un AUMENTO dei PREZZI SENZA PRECEDENTI?",
      "dur": 1333,
      "date": "2026-11-19T17:08:34+00:00"
     },
@@ -2391,6 +2391,12 @@
    "id": "UCw6ekhAtFahKr7gImCIoYwg",
    "videos": [
     {
+     "id": "3Hf4o-lEttU",
+     "title": "QUESTO DRONE NON SI RICARICA MAI 🤯 - DJI Dock 4",
+     "dur": 911,
+     "date": "2026-11-21T16:00:33+00:00"
+    },
+    {
      "id": "r3FjmXXm04c",
      "title": "OGGI VOYAGER 1 È A UN GIORNO LUCE DALLA TERRA",
      "dur": 1544,
@@ -2455,12 +2461,6 @@
      "title": "FENIX 9 PRO È UNA M***A! 😖 - La recensione...",
      "dur": 2439,
      "date": "2026-10-07T15:41:10+00:00"
-    },
-    {
-     "id": "Pn4mCfjTj5g",
-     "title": "L'ITALIANO che ha INVENTATO IL RADAR",
-     "dur": 1044,
-     "date": "2026-10-02T15:40:17+00:00"
     }
    ]
   },
