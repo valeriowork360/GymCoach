@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T15:29:29+00:00",
+ "updated": "2026-11-22T21:55:11+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1144,7 +1144,7 @@
    "videos": [
     {
      "id": "lB95WDUm2B0",
-     "title": "Licenziarsi Per Fare L’Imprenditore? Ecco Come",
+     "title": "Prima Di Licenziarti Guarda Questo Video",
      "dur": 3071,
      "date": "2026-11-22T12:30:27+00:00"
     },
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "CfEq9xiMPJQ",
+     "title": "I Tested Gemini Neon 4 vs Claude. What You Need To Know.",
+     "dur": 1178,
+     "date": "2026-11-22T21:43:16+00:00"
+    },
+    {
      "id": "RonPIktmLoQ",
      "title": "I Don’t Trust Claude Anymore. Use This Instead.",
      "dur": 620,
@@ -1831,12 +1837,6 @@
      "title": "How 5 AI Agents Run My Company While I Sleep",
      "dur": 816,
      "date": "2026-10-15T18:14:19+00:00"
-    },
-    {
-     "id": "q35Yy_JY5Bw",
-     "title": "7 Jev Repos That 10x Claude Code (Free)",
-     "dur": 934,
-     "date": "2026-09-25T17:44:34+00:00"
     }
    ]
   },
@@ -1923,6 +1923,12 @@
    "id": "UCEL7E93I1iBhjIoqRpGqUng",
    "videos": [
     {
+     "id": "yA_YCOqvM_8",
+     "title": "Complete Guide to Crypto AI Trading with Just $1,000 [Beginner Friendly]",
+     "dur": 2096,
+     "date": "2026-11-22T20:28:51+00:00"
+    },
+    {
      "id": "oy0N20yedzk",
      "title": "Is The Largest Crypto Crash In History Beginning?",
      "dur": 397,
@@ -1987,12 +1993,6 @@
      "title": "NEVER LOSE with these memecoin FILTERS [HIGH WIN Strategy]",
      "dur": 1139,
      "date": "2026-10-01T21:43:49+00:00"
-    },
-    {
-     "id": "qPxe4z6P7DA",
-     "title": "How Traders Get FARMED Daily With Memecoins",
-     "dur": 939,
-     "date": "2026-09-26T19:04:37+00:00"
     }
    ]
   },
@@ -2937,6 +2937,12 @@
    "id": "UC8oBIE88TrCD1b-gnVqXzgw",
    "videos": [
     {
+     "id": "qPBhWyy8u7o",
+     "title": "Come il #1 al Mondo Usa DAVVERO I'AI (Senza Codice)",
+     "dur": 548,
+     "date": "2026-11-22T16:30:09+00:00"
+    },
+    {
      "id": "K6iOSqstwdg",
      "title": "20 Superpoteri di Gemini che il 99% NON conosce (quasi tutti GRATIS)",
      "dur": 1309,
@@ -3001,12 +3007,6 @@
      "title": "8 Cose PAZZESCHE che Puoi Creare con ChatGPT Sites (Anche un'App Vera)",
      "dur": 888,
      "date": "2026-10-26T16:30:08+00:00"
-    },
-    {
-     "id": "nGaE-8wAkq4",
-     "title": "Come Clonare Qualsiasi App con l'IA in Modo Così Preciso che Sembra ILLEGALE (Senza Codice)",
-     "dur": 756,
-     "date": "2026-10-23T15:30:31+00:00"
     }
    ]
   },
@@ -3483,6 +3483,12 @@
    "id": "UCbMlkb79E12CwveGAtdFj-A",
    "videos": [
     {
+     "id": "9DmYD_5v7VA",
+     "title": "Inkling 2 Mini sfida Qwen 3.8 27B: che differenza fa il loop?",
+     "dur": 1782,
+     "date": "2026-11-22T21:14:18+00:00"
+    },
+    {
      "id": "Q_oKzF9KLxQ",
      "title": "Nuovo GPT-6.2 batte veramente Fable 5.2?",
      "dur": 1274,
@@ -3547,12 +3553,6 @@
      "title": "Ho Testato la Repo VIRALE di GitHub per Fare Reverse Engineering di Tutto",
      "dur": 636,
      "date": "2026-10-17T07:20:14+00:00"
-    },
-    {
-     "id": "eQH_p83gTKc",
-     "title": "Dopo 1 ANNO Google Lancia Gemini 4 Argon: Ne È Valsa la Pena?",
-     "dur": 1267,
-     "date": "2026-10-14T13:08:49+00:00"
     }
    ]
   },
