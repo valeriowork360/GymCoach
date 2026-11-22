@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "118";
+const APP_VERSION = "119";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -83,10 +83,11 @@ function mergeExInto(from,to,name){
   return n;
 }
 /* programma di allenamento personalizzabile: si parte da quello di base e ognuno lo modifica (salvato nel browser) */
-const BASE_PROGRAM = { sessions:Object.fromEntries(Object.entries(SESSIONS).filter(([k])=>!EXTRA_SESSIONS.includes(k)).map(([k,v])=>[k,v.map(x=>[...x])])), cycle:[...CYCLE] };
+const isOptSess = s => typeof OPT_SESSIONS!=="undefined" && OPT_SESSIONS.includes(s);
+const BASE_PROGRAM = { sessions:Object.fromEntries(Object.entries(SESSIONS).filter(([k])=>!EXTRA_SESSIONS.includes(k)&&!isOptSess(k)).map(([k,v])=>[k,v.map(x=>[...x])])), cycle:[...CYCLE] };
 function applyProgram(p){
   const prog=p||BASE_PROGRAM;
-  Object.keys(SESSIONS).forEach(k=>{ if(!EXTRA_SESSIONS.includes(k)) delete SESSIONS[k]; });
+  Object.keys(SESSIONS).forEach(k=>{ if(!EXTRA_SESSIONS.includes(k)&&!isOptSess(k)) delete SESSIONS[k]; });
   Object.entries(prog.sessions).forEach(([k,v])=>{ SESSIONS[k]=v.filter(x=>EX[x[0]]).map(x=>[...x]); });
   CYCLE.length=0; prog.cycle.filter(c=>c==="REST"||SESSIONS[c]).forEach(c=>CYCLE.push(c));
   if(!CYCLE.length) BASE_PROGRAM.cycle.forEach(c=>CYCLE.push(c));
@@ -1418,7 +1419,7 @@ function drawProgram(keepScroll){
   $("#pcAddB").onclick=()=>{ pw.cycle.push($("#pcAdd").value); drawProgram(true); };
   B.querySelectorAll("[data-rn]").forEach(i=>i.onchange=()=>{ const old=i.dataset.rn, nu=i.value.trim().toUpperCase().slice(0,24);
     if(!nu||nu===old) return drawProgram(true);
-    if(nu==="REST"||pw.sessions[nu]||EXTRA_SESSIONS.includes(nu)){ $("#pMsg").textContent=`Il nome «${nu}» è già usato.`; i.value=old; return; }
+    if(nu==="REST"||pw.sessions[nu]||EXTRA_SESSIONS.includes(nu)||isOptSess(nu)){ $("#pMsg").textContent=`Il nome «${nu}» è già usato.`; i.value=old; return; }
     pw.sessions=Object.fromEntries(Object.entries(pw.sessions).map(([k,v])=>[k===old?nu:k,v])); pw.cycle=pw.cycle.map(c=>c===old?nu:c); drawProgram(true); });
   B.querySelectorAll("[data-sdel]").forEach(b=>b.onclick=()=>{ const n=b.dataset.sdel;
     if(!b.dataset.armed){ b.dataset.armed=1; b.textContent="Tocca ancora per eliminare"; return; }
@@ -1481,8 +1482,10 @@ function drawHome(){
     <div class="cyc">${cyc}</div>
     ${nx==="REST"?`<div class="card" style="margin:0 0 12px"><h3>Prossimo passaggio: riposo</h3><p class="muted" style="margin:0 0 10px">Se hai già riposato, segnalo e passa a ${nextSess}.</p><button class="btn" id="restDone">Riposo fatto ✓</button></div>`:""}
     <button class="big" data-s="${nextSess}">▶ Inizia ${nextSess}<small>${cnt(nextSess)}${nx==="REST"?" · dopo il riposo":""}</small></button>
-    <div class="grid">${Object.keys(SESSIONS).filter(s=>s!==nextSess&&!isExtraSess(s)).map(s=>`<button class="sbtn" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
+    <div class="grid">${Object.keys(SESSIONS).filter(s=>s!==nextSess&&!isExtraSess(s)&&!isOptSess(s)).map(s=>`<button class="sbtn" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
     <button class="btn wide ghost" id="homeProg" style="margin-top:8px">✏️ ${st.program?"Il tuo programma":"Personalizza il programma"}</button>
+    <h3 class="sec">Hai saltato un giorno? <span class="muted">· Full Body del piano precedente, fuori dal ciclo</span></h3>
+    <div class="grid">${(typeof OPT_SESSIONS!=="undefined"?OPT_SESSIONS:[]).filter(s=>SESSIONS[s]).map(s=>`<button class="sbtn alt" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
     <h3 class="sec">Recupero attivo <span class="muted">· fuori dal ciclo</span></h3>
     <div class="grid">${(typeof EXTRA_SESSIONS!=="undefined"?EXTRA_SESSIONS:[]).map(s=>`<button class="sbtn alt" data-s="${s}"><b>${s}</b><span>${cnt(s)}</span></button>`).join("")}</div>
     <div class="card"><h3>Come funziona</h3><p class="muted" style="margin:0">Durante ogni esercizio vedi i suoi video. A fine serie scrivi o detta, per esempio <i>24 kg 9 rip RIR 2</i>: registro la serie, ti dico se il carico è giusto, alto o basso, e parte il recupero. Puoi anche fare domande sull'esercizio${st.settings.apiKey?"":" (serve la chiave Gemini gratuita in ⚙)"}.</p></div>`;
@@ -1522,7 +1525,7 @@ function finishSession(){
     $("#discard").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
     $("#keep").onclick=closeSheet; return;
   }
-  openSheet("Fine sessione",`${clock?`<p>Tempo dall'apertura: <b>⏱ ${clockTxt(Date.now()-st.cur.start)}</b>${ex.length?` · ${total} video segnati come fatti`:""}.</p>`:`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p>`}<p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
+  openSheet("Fine sessione",`${clock?`<p>Tempo dall'apertura: <b>⏱ ${clockTxt(Date.now()-st.cur.start)}</b>${ex.length?` · ${total} video segnati come fatti`:""}.</p>`:`<p>Hai registrato <b>${total}/${planned}</b> ${isExtraSess(st.cur.session)?"giri":"serie allenanti"} in ${ex.length} esercizi.</p>`}<p class="muted">La sessione verrà salvata nell'archivio${isExtraSess(st.cur.session)||isOptSess(st.cur.session)?" (il ciclo PPL non cambia)":" e il ciclo passerà al passaggio successivo"}.</p><div class="row"><button class="btn acc" id="confirmEnd">Salva e chiudi</button><button class="btn" id="keep">Continua ad allenarmi</button></div>
     <div class="card"><h3>Era solo una prova?</h3><p class="muted" style="margin:0 0 10px">Scarta la sessione: non finisce nell'archivio, i carichi consigliati tornano com'erano e cancello anche la sua chat e i suoi dati dal backup su GitHub.</p><button class="btn danger" id="discardAll">🗑 Scarta sessione</button></div>`);
   $("#keep").onclick=closeSheet;
   $("#discardAll").onclick=e=>slideConfirm(e.target,"Scorri per scartare →",()=>{ discardSession(); closeSheet(); render(); },true);
@@ -2376,8 +2379,8 @@ if(st.sync.pending) setTimeout(()=>syncNow(true),1500);
 /* v118: Seated row (= Pulley row) e Cybex row sono esercizi diversi.
    Annullo l'unione del v117 e sposto nel Seated row le sedute importate dagli Excel come "Seated Row" / "Pulley Row". */
 if(!st.mig118 && EX.cs_row){
-  if(!st.custom.cx_seated_row){ st.custom.cx_seated_row={n:"Seated row",s:"Esercizio personalizzato",eq:"machine",cue:"Esecuzione controllata, range di movimento completo.",v:[]}; EX.cx_seated_row=st.custom.cx_seated_row; }
-  const cx=st.custom.cx_seated_row; if(!cx.mg){ cx.mg="Schiena"; cx.s="Schiena"; MUSCLE.cx_seated_row="Schiena"; }
+  if(!st.custom.cx_seated_row && !EX.cx_seated_row){ st.custom.cx_seated_row={n:"Seated row",s:"Esercizio personalizzato",eq:"machine",cue:"Esecuzione controllata, range di movimento completo.",v:[]}; EX.cx_seated_row=st.custom.cx_seated_row; }
+  const cx=st.custom.cx_seated_row||{}; if(st.custom.cx_seated_row && !cx.mg){ cx.mg="Schiena"; cx.s="Schiena"; MUSCLE.cx_seated_row="Schiena"; }
   const SEAT=/^(seated row|pulley row)/i;
   st.history.forEach(h=>{
     if(h.start===1794303408681 && st.mig117) h.ex.forEach(e=>{ if(e.ex==="cs_row"){ e.ex="cx_seated_row"; e.al_posto_di="cs_row"; } });
