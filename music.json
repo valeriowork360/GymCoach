@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-24T11:07:30+00:00",
+ "updated": "2026-11-24T21:23:35+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -753,6 +753,12 @@
    "id": "UCFKE7WVJfvaHW5q283SxchA",
    "videos": [
     {
+     "id": "LOmgwJhVDEg",
+     "title": "Standing Yoga Stretch | 10-Minute Full Body Reset",
+     "dur": 620,
+     "date": "2026-11-24T15:00:08+00:00"
+    },
+    {
      "id": "2dn-mcgyC8s",
      "title": "7 Minute Morning Meditation | Stillness to Start Your Day.",
      "dur": 433,
@@ -817,12 +823,6 @@
      "title": "Nervous System Reset | 10 minute yoga practice",
      "dur": 575,
      "date": "2026-06-09T14:00:06+00:00"
-    },
-    {
-     "id": "g6DdOHaAmSQ",
-     "title": "Wake Up  | Gentle 10 Minute Morning Yoga",
-     "dur": 634,
-     "date": "2026-05-19T14:00:06+00:00"
     }
    ]
   },
@@ -1300,7 +1300,7 @@
    "videos": [
     {
      "id": "Czvfis5n-3Q",
-     "title": "Ti fideresti di un'intelligenza (superiore) che non comprendi?",
+     "title": "Possiamo fidarci di un'AI che non capiamo appieno?",
      "dur": 892,
      "date": "2026-11-24T07:00:02+00:00"
     },
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "TcJ8ldupcN0",
+     "title": "ChatGPT Wants To Pay You $8,000/Month (here’s how)",
+     "dur": 943,
+     "date": "2026-11-24T18:19:06+00:00"
+    },
+    {
      "id": "8zi6xTeh26w",
      "title": "I Tested Uncensored AI Models (and i’m f*cking shocked)",
      "dur": 1099,
@@ -1831,12 +1837,6 @@
      "title": "This video will make the right person disgustingly rich",
      "dur": 1679,
      "date": "2026-10-27T19:37:21+00:00"
-    },
-    {
-     "id": "J-_FxRAvqg4",
-     "title": "The Most Powerful AI GitHub Repo I've Ever Tried.. (actually insane)",
-     "dur": 943,
-     "date": "2026-10-24T15:53:03+00:00"
     }
    ]
   },
@@ -1846,7 +1846,7 @@
    "videos": [
     {
      "id": "hKstXh-zT7c",
-     "title": "Claude Tested 10,000 Trading Strategies (Only These Won)",
+     "title": "Claude Tested 10,000 Trading Strategies (This Won)",
      "dur": 1128,
      "date": "2026-11-23T19:20:18+00:00"
     },
@@ -2079,6 +2079,12 @@
    "id": "UC4yFUEcq0SGs3_BHxF9q5Ww",
    "videos": [
     {
+     "id": "Z2bznofKVO4",
+     "title": "I Made a Short Drama Using Only Claude - Full Tutorial",
+     "dur": 741,
+     "date": "2026-11-24T18:35:32+00:00"
+    },
+    {
      "id": "DFCX9EcNSag",
      "title": "Seedance 2.5 4k Costs are Worse than I Ever Imagined",
      "dur": 641,
@@ -2143,12 +2149,6 @@
      "title": "Is AI Video Actually Getting WORSE?! Kling 4.0 vs 3.0 Full Test",
      "dur": 637,
      "date": "2026-10-29T12:59:57+00:00"
-    },
-    {
-     "id": "FBV53-egbw0",
-     "title": "I Spent $500 Testing AI Video Models. Here's EVERY Result",
-     "dur": 1250,
-     "date": "2026-10-27T18:20:31+00:00"
     }
    ]
   },
@@ -2313,6 +2313,12 @@
    "id": "UCtEj8sqnI-ClWqY_a-CtEoA",
    "videos": [
     {
+     "id": "yXJV7TKXbPM",
+     "title": "Bruciare 2.000 miliardi per UN’AMANTE SPIA CINESE - Lo scandalo e la storia di NVIDIA",
+     "dur": 1643,
+     "date": "2026-11-24T17:43:52+00:00"
+    },
+    {
      "id": "J7ltqjv8vNQ",
      "title": "IL CASO che HA SCONVOLTO IL MONDO - Lindsay Clancy - COLPEVOLE o INFERMA?",
      "dur": 1545,
@@ -2377,12 +2383,6 @@
      "title": "DALLE MINIGONNE ALLA LAPIDAZIONE – Il disastro AMERICANO in IRAN - Eagle Claw",
      "dur": 1168,
      "date": "2026-09-25T16:00:19+00:00"
-    },
-    {
-     "id": "1r7UqUDyha4",
-     "title": "IL PEGGIOR DISASTRO AEREO della storia moderna - Il Volo 17",
-     "dur": 1176,
-     "date": "2026-09-22T17:00:35+00:00"
     }
    ]
   },
@@ -2390,6 +2390,12 @@
    "name": "overVolt",
    "id": "UCw6ekhAtFahKr7gImCIoYwg",
    "videos": [
+    {
+     "id": "-RWN4kkQjRk",
+     "title": "QUESTA cambia COMPLETAMENTE la stampa a resina 🤯",
+     "dur": 2667,
+     "date": "2026-11-24T16:00:26+00:00"
+    },
     {
      "id": "3Hf4o-lEttU",
      "title": "QUESTO DRONE NON SI RICARICA MAI 🤯 - DJI Dock 4",
@@ -2455,12 +2461,6 @@
      "title": "STAMPA (IN 3D) SU QUALSIASI COSA 🤯 eufyMake E1",
      "dur": 1967,
      "date": "2026-10-09T16:06:44+00:00"
-    },
-    {
-     "id": "-iZTFbZGm9Q",
-     "title": "FENIX 9 PRO È UNA M***A! 😖 - La recensione...",
-     "dur": 2439,
-     "date": "2026-10-07T15:41:10+00:00"
     }
    ]
   },
@@ -2468,6 +2468,12 @@
    "name": "MindTheChart",
    "id": "UChkzwqfPPTPnuSef26idqcg",
    "videos": [
+    {
+     "id": "h1FZdOIAXkw",
+     "title": "😱LA FOLLIA DI QUESTI MERCATI ! IL RIMBALZO🚨",
+     "dur": 528,
+     "date": "2026-11-24T12:20:23+00:00"
+    },
     {
      "id": "Zfw13H0Tbgg",
      "title": "🚨Il Mercato Che Ci Ha Distrutto i Portafogli🚨",
@@ -2533,12 +2539,6 @@
      "title": "😱LA SETTIMANA PIU' IMPORTANTE PER WALL STREET🚨☠️😱",
      "dur": 465,
      "date": "2026-10-26T12:38:51+00:00"
-    },
-    {
-     "id": "B-EmdXXeuWc",
-     "title": "Bitcoin perde 80k segue Wall Street a ribasso! 🚨☠️😱",
-     "dur": 542,
-     "date": "2026-10-24T17:23:51+00:00"
     }
    ]
   },
@@ -2937,6 +2937,12 @@
    "id": "UC8oBIE88TrCD1b-gnVqXzgw",
    "videos": [
     {
+     "id": "D6X6ucMf4jE",
+     "title": "L'AI Ha Appena Risolto Uno dei Più GRANDI Misteri del Mondo?",
+     "dur": 1450,
+     "date": "2026-11-24T16:30:14+00:00"
+    },
+    {
      "id": "qPBhWyy8u7o",
      "title": "Come il #1 al Mondo Usa DAVVERO I'AI (Senza Codice)",
      "dur": 548,
@@ -3001,12 +3007,6 @@
      "title": "Adobe ha un rivale GRATIS. E Claude lo usa per te!",
      "dur": 779,
      "date": "2026-10-28T16:30:31+00:00"
-    },
-    {
-     "id": "LexcQOqz-xw",
-     "title": "8 Cose PAZZESCHE che Puoi Creare con ChatGPT Sites (Anche un'App Vera)",
-     "dur": 888,
-     "date": "2026-10-26T16:30:08+00:00"
     }
    ]
   },
@@ -3327,6 +3327,12 @@
    "id": "UC1e1Xt2nsUy9lqP_R7ES5yA",
    "videos": [
     {
+     "id": "B7CMvvKGqAg",
+     "title": "Claude Si È Rifiutato Di Rispondermi... Così Ho Provato Modelli AI SENZA CENSURE",
+     "dur": 1188,
+     "date": "2026-11-24T15:56:04+00:00"
+    },
+    {
      "id": "5OkxW545QOY",
      "title": "Abbiamo Costruito un Company Brain per 300 PERSONE (Ecco Come)",
      "dur": 924,
@@ -3391,12 +3397,6 @@
      "title": "⁠Claude Fable 5.1 + Higgsfield Hanno Appena RIVOLUZIONATO la Creazione di Contenuti",
      "dur": 1031,
      "date": "2026-09-04T16:32:26+00:00"
-    },
-    {
-     "id": "1Dyld3y-V7Y",
-     "title": "Incolla Questo su Claude Code e Non Finirai MAI Più i Token",
-     "dur": 2161,
-     "date": "2026-09-03T14:11:07+00:00"
     }
    ]
   },
@@ -3483,6 +3483,12 @@
    "id": "UCbMlkb79E12CwveGAtdFj-A",
    "videos": [
     {
+     "id": "UADi4NXqa9g",
+     "title": "GLM 5.4 porta il Loop Transformer a 750 miliardi di parametri!",
+     "dur": 1119,
+     "date": "2026-11-24T15:52:21+00:00"
+    },
+    {
      "id": "9DmYD_5v7VA",
      "title": "Inkling 2 Mini, il looping funziona finalmente!",
      "dur": 1782,
@@ -3547,12 +3553,6 @@
      "title": "Liquid AI 24B: È il Nuovo RE dei Modelli AI Locali?",
      "dur": 1017,
      "date": "2026-10-19T13:56:22+00:00"
-    },
-    {
-     "id": "O8TPU5wqcvE",
-     "title": "Ho Testato la Repo VIRALE di GitHub per Fare Reverse Engineering di Tutto",
-     "dur": 636,
-     "date": "2026-10-17T07:20:14+00:00"
     }
    ]
   },
