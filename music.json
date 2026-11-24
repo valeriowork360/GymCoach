@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T13:11:41+00:00",
+ "updated": "2026-11-24T01:01:48+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "8zi6xTeh26w",
+     "title": "I Tested Uncensored AI Models (and i’m f*cking shocked)",
+     "dur": 1099,
+     "date": "2026-11-23T20:57:39+00:00"
+    },
+    {
      "id": "CfEq9xiMPJQ",
      "title": "I Tested Gemini Neon 4 vs Claude. What You Need To Know.",
      "dur": 1178,
@@ -1831,12 +1837,6 @@
      "title": "The Most Powerful AI GitHub Repo I've Ever Tried.. (actually insane)",
      "dur": 943,
      "date": "2026-10-24T15:53:03+00:00"
-    },
-    {
-     "id": "PL0rKzb-0K0",
-     "title": "How 5 AI Agents Run My Company While I Sleep",
-     "dur": 816,
-     "date": "2026-10-15T18:14:19+00:00"
     }
    ]
   },
@@ -1844,6 +1844,12 @@
    "name": "Miles Deutscher Finance",
    "id": "UCVVX-7tHff75fRAEEEnZiAQ",
    "videos": [
+    {
+     "id": "hKstXh-zT7c",
+     "title": "Claude Tested 10,000 Trading Strategies (Only These Won)",
+     "dur": 1128,
+     "date": "2026-11-23T19:20:18+00:00"
+    },
     {
      "id": "gQVup8_ZTUs",
      "title": "I Turned Claude Into a 24/7 Stock Trader (made $7,762)",
@@ -1909,12 +1915,6 @@
      "title": "Claude + GitHub = The Most OVERPOWERED AI Trader I've Ever Seen",
      "dur": 971,
      "date": "2026-09-21T01:02:25+00:00"
-    },
-    {
-     "id": "me5uegV7vOU",
-     "title": "7 Free GitHub Repos That Turn Claude Into a $500K Quant Trader",
-     "dur": 1571,
-     "date": "2026-09-16T18:27:49+00:00"
     }
    ]
   },
@@ -2625,6 +2625,12 @@
    "id": "UCnMn36GT_H0X-w5_ckLtlgQ",
    "videos": [
     {
+     "id": "gCWCEbs54n0",
+     "title": "Once in 20 year Short Squeeze‼️",
+     "dur": 2943,
+     "date": "2026-11-24T00:22:10+00:00"
+    },
+    {
      "id": "UQrjH9VzL5c",
      "title": "AMD & Market Emergency‼️",
      "dur": 3434,
@@ -2689,12 +2695,6 @@
      "title": "I might SELL this Stock‼️",
      "dur": 2295,
      "date": "2026-10-22T00:34:35+00:00"
-    },
-    {
-     "id": "3P14bHG23cI",
-     "title": "This is the next Millionaire Maker‼️",
-     "dur": 1939,
-     "date": "2026-10-19T23:27:28+00:00"
     }
    ]
   },
@@ -2781,6 +2781,12 @@
    "id": "UCPjNBjflYl0-HQtUvOx0Ibw",
    "videos": [
     {
+     "id": "TXzJ4pGW59o",
+     "title": "Robots are the new apps (and you’re early)",
+     "dur": 2947,
+     "date": "2026-11-23T18:45:05+00:00"
+    },
+    {
      "id": "tCY7zMknCJQ",
      "title": "Gemini 4 Neon: the most underrated model of the year",
      "dur": 966,
@@ -2845,12 +2851,6 @@
      "title": "The 9 Stages of AI Agent Adoption, Explained",
      "dur": 1873,
      "date": "2026-10-21T19:15:33+00:00"
-    },
-    {
-     "id": "tpZOU1ugODQ",
-     "title": "Meta Muse Will Create 1,000 Millionaires",
-     "dur": 1475,
-     "date": "2026-10-19T17:50:26+00:00"
     }
    ]
   },
@@ -2858,6 +2858,12 @@
    "name": "Mauro Caimi - Trading On",
    "id": "UCkkP8HpQG0LuMzGUMJzLEMw",
    "videos": [
+    {
+     "id": "XRvzk-BXQv4",
+     "title": "Bitcoin e Nvidia volano: come nella bolla di internet?",
+     "dur": 1348,
+     "date": "2026-11-23T17:00:20+00:00"
+    },
     {
      "id": "QIXkbSw9DYE",
      "title": "Bitcoin crolla da 7 settimane: l'ultima volta era il 2022",
@@ -2923,12 +2929,6 @@
      "title": "Bitcoin rimbalza o va a 75.000? La risposta del ciclo",
      "dur": 1282,
      "date": "2026-10-26T17:00:12+00:00"
-    },
-    {
-     "id": "Zbjxhpkumgg",
-     "title": "Bitcoin: la figura di analisi ciclica che manda in stop long e short",
-     "dur": 1206,
-     "date": "2026-10-23T16:00:24+00:00"
     }
    ]
   },
@@ -3015,10 +3015,10 @@
    "id": "UCdCpMFAeBo7nf-tmiVvQrJg",
    "videos": [
     {
-     "id": "DFP5YsiFzvg",
-     "title": "La chat di Claude che non si riempie mai: Billion Context ripiega le parti vecchie",
-     "dur": 0,
-     "date": "2026-11-22T11:03:02+00:00"
+     "id": "PwbKJ5GNfAI",
+     "title": "Crea il Tuo Primo Dipendente AI che lavora 24/7 (in 11 minuti)",
+     "dur": 674,
+     "date": "2026-11-23T16:00:31+00:00"
     },
     {
      "id": "mXERmcZRpIo",
@@ -3093,6 +3093,12 @@
    "id": "UCngfIs8G9JHVTeyXPEyb_tQ",
    "videos": [
     {
+     "id": "0vOgvjNiQnw",
+     "title": "Bolla AI o Correzione: non confondere un rimbalzo con la fine della Discesa",
+     "dur": 2518,
+     "date": "2026-11-23T14:26:53+00:00"
+    },
+    {
      "id": "UdpdhWOAhTQ",
      "title": "Il Portafoglio SANGUINA: l'errore che ho fatto (e cosa fare ora)",
      "dur": 2390,
@@ -3157,12 +3163,6 @@
      "title": "Il mio portafoglio oggi è DIFENSIVO: cosa sto Vendendo e Comprando",
      "dur": 2801,
      "date": "2026-10-21T13:36:51+00:00"
-    },
-    {
-     "id": "hpF2gVLsj2U",
-     "title": "Nasdaq o S&P500: chi decide cosa c’è dentro - Lez. 11",
-     "dur": 894,
-     "date": "2026-10-16T11:30:07+00:00"
     }
    ]
   },
@@ -3170,6 +3170,12 @@
    "name": "AfterSide Crypto",
    "id": "UCyeE5RmrX5foJY_wGX-YPqA",
    "videos": [
+    {
+     "id": "u68HpDUEVyI",
+     "title": "🚨 ATTENZIONE VOLA TUTTO!! JENSEN HUANG TORNA.. BITCOIN è pronto",
+     "dur": 623,
+     "date": "2026-11-23T14:25:02+00:00"
+    },
     {
      "id": "1r1H8jZ7e-w",
      "title": "🚨 CRASH BITCOIN E ALTCOIN: ECCO IL MIO PIANO [time sensitive]",
@@ -3235,12 +3241,6 @@
      "title": "ALTCOIN SEASON O TRAPPOLA? Bitcoin a un bivio decisivo",
      "dur": 709,
      "date": "2026-11-02T09:53:43+00:00"
-    },
-    {
-     "id": "u4VtxBCl8tk",
-     "title": "🚨 ALLARME ROSSO: 6.3 MILIARDI DI DOLLARI RUBATI - BITCOIN ALTCOINS cosa aspettarsi",
-     "dur": 672,
-     "date": "2026-10-30T08:09:43+00:00"
     }
    ]
   },
@@ -3248,6 +3248,12 @@
    "name": "Barbascura eXtra",
    "id": "UCHi6Q3Z-5oJUC691WLlSntA",
    "videos": [
+    {
+     "id": "-gT6AMgCgsc",
+     "title": "Sono carini finché non hanno fame",
+     "dur": 2133,
+     "date": "2026-11-23T13:13:35+00:00"
+    },
     {
      "id": "AzUKHG3vrFw",
      "title": "Il prezzo oscuro dell'acciaio",
@@ -3313,12 +3319,6 @@
      "title": "E se fossimo noi gli alieni?",
      "dur": 1628,
      "date": "2026-08-31T12:00:04+00:00"
-    },
-    {
-     "id": "d8TiWzIPgh8",
-     "title": "930.000 anni fa è successo un disastro",
-     "dur": 1500,
-     "date": "2026-08-24T12:00:06+00:00"
     }
    ]
   },
