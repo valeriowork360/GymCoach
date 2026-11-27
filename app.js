@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "119";
+const APP_VERSION = "120";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -451,7 +451,14 @@ async function onSend(text){
   const p=parseSet(text);
   // modalità "tutto a Gemini": l'AI interpreta anche le serie; senza rete si torna al riconoscimento locale
   if(st.settings.allAI && aiReady() && navigator.onLine) return askAI(text,null,true);
-  if(!isQuestion(t) && p.found){ st.cur.pending=null; return logSet(p); }
+  if(!isQuestion(t) && p.found){ st.cur.pending=null;
+    const ex=findExStrict(text), prev=item()[0];
+    if(ex && ex!==prev && !isTimeIt(item())){        // nella serie è scritto un altro esercizio: passo a quello
+      const k=curList().findIndex(x=>x[0]===ex);
+      if(k>=0){ goEx(k); st.cur.pending=null; return logSet(p); }
+      swapTo(ex); st.cur.pending=null; logSet(p); compareSwap(prev,ex); return;
+    }
+    return logSet(p); }
   return askAI(text);
 }
 /* ripiego locale quando l'AI non risponde in modalità "tutto a Gemini" */
@@ -614,6 +621,26 @@ function findExInText(t){
     const sc=words.filter(w=>low.includes(w)).length; if(sc>score){ score=sc; best=id; }
   }
   return score?best:null;
+}
+/* nome di esercizio scritto per intero nel messaggio (es. "60 kg 10 rip rir 1 seated row") */
+function findExStrict(t){
+  const nz=x=>" "+String(x).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
+  const low=nz(t); let best=null,len=0;
+  for(const [id,e] of Object.entries(EX)){ if(e.kind==="time") continue;
+    const vs=[e.n,e.n.replace(/\s*\(.*?\)\s*/g," "),...((e.n.match(/\(([^)]+)\)/)||[])[1]?[e.n.match(/\(([^)]+)\)/)[1]]:[]),...(e.n0&&e.n0!==e.n?[e.n0]:[])];
+    for(const v of vs){ const w=nz(v); if(w.trim().length>=5 && low.includes(w) && w.length>len){ len=w.length; best=id; } } }
+  return best;
+}
+/* commento automatico quando l'esercizio cambia da un messaggio di serie */
+function compareSwap(prev,ex){
+  const a=EX[prev], b=EX[ex], alts=((typeof ALT!=="undefined"&&ALT[prev])||[]).map(x=>x[0]);
+  const inAlt=alts.some(n=>n.toLowerCase()===b.n.toLowerCase()||(b.n0&&n.toLowerCase()===b.n0.toLowerCase()));
+  if(aiReady() && navigator.onLine){
+    askAI(`[messaggio automatico dell'app] Ho appena sostituito ${a.n} (carico ${modeOf(prev)}) con ${b.n} (carico ${modeOf(ex)}) perché l'utente ha scritto la serie indicando quell'esercizio; la serie è già registrata su ${b.n}. Non rispondere con #CAMBIA. In 4-6 righe: confronta i due esercizi (muscoli principali e secondari, posizione/supporto, curva di resistenza e allungamento), di' se ${b.n} rientra tra le migliori alternative per somiglianza a ${a.n} (alternative consigliate nell'app: ${alts.join("; ")||"nessuna"}) e ricorda che i carichi delle due macchine non sono confrontabili tra loro: lo storico e la progressione seguono ciascun esercizio.`);
+    return;
+  }
+  const ma=MUSCLE[prev]||a.mg||"", mb=MUSCLE[ex]||b.mg||"";
+  bot(`<b>${esc(a.n)} → ${esc(b.n)}</b>: ${ma&&ma===mb?`stesso gruppo muscolare (${esc(ma)})`:`gruppi: ${esc(ma||"?")} → ${esc(mb||"?")}`}. ${inAlt?"È tra le alternative consigliate per somiglianza.":"Non è tra le alternative consigliate per questo slot: va bene se lavora lo stesso muscolo."} I carichi delle due macchine non si confrontano: storico e progressione seguono ciascun esercizio.`);
 }
 const isHistoryQ = t => /(ultim[ao] (volta|carico|seduta|sessione|allenamento)|che (carico|peso) (avevo|ho usato|ho fatto)|quant[oie] (kg|chili|rip\w*|ripetizioni) (avevo|ho fatto)|quanto (avevo|ho) (fatto|sollevato|spinto|tirato)|storico (di|del|della|dello)|la volta scorsa|l'altra volta)/i.test(t);
 function showHistoryEx(forId){
