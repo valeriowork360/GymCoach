@@ -2,7 +2,7 @@
    Tutti i dati restano nel browser (localStorage) del telefono. */
 
 const LS = "gymcoach_v1";
-const APP_VERSION = "120";
+const APP_VERSION = "121";
 const $ = s => document.querySelector(s);
 
 /* ---------------- stato ---------------- */
@@ -450,15 +450,16 @@ async function onSend(text){
 
   const p=parseSet(text);
   // modalità "tutto a Gemini": l'AI interpreta anche le serie; senza rete si torna al riconoscimento locale
-  if(st.settings.allAI && aiReady() && navigator.onLine) return askAI(text,null,true);
-  if(!isQuestion(t) && p.found){ st.cur.pending=null;
+  if(!isQuestion(t) && p.found){
     const ex=findExStrict(text), prev=item()[0];
-    if(ex && ex!==prev && !isTimeIt(item())){        // nella serie è scritto un altro esercizio: passo a quello
-      const k=curList().findIndex(x=>x[0]===ex);
+    if(ex && ex!==prev && !isTimeIt(item())){        // nella serie è scritto un altro esercizio: passo a quello (in entrambe le modalità)
+      st.cur.pending=null; const k=curList().findIndex(x=>x[0]===ex);
       if(k>=0){ goEx(k); st.cur.pending=null; return logSet(p); }
       swapTo(ex); st.cur.pending=null; logSet(p); compareSwap(prev,ex); return;
     }
-    return logSet(p); }
+  }
+  if(st.settings.allAI && aiReady() && navigator.onLine) return askAI(text,null,true);
+  if(!isQuestion(t) && p.found){ st.cur.pending=null; return logSet(p); }
   return askAI(text);
 }
 /* ripiego locale quando l'AI non risponde in modalità "tutto a Gemini" */
