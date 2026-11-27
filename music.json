@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-27T02:18:24+00:00",
+ "updated": "2026-11-27T11:00:59+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1299,6 +1299,12 @@
    "id": "UCrebGs3b-Z7JLKQM2YOpUKA",
    "videos": [
     {
+     "id": "1loqIzqiDNk",
+     "title": "La scuola ai tempi dell'intelligenza artificiale [Andrea Muzii]",
+     "dur": 4343,
+     "date": "2026-11-27T07:00:16+00:00"
+    },
+    {
      "id": "XzjdNWIOUSY",
      "title": "In futuro gli agenti AI compreranno al posto delle persone",
      "dur": 730,
@@ -1363,12 +1369,6 @@
      "title": "Anthropic rilascia Fable 5.2 e Mythos 5.2 (non solo cybersecurity)",
      "dur": 637,
      "date": "2026-11-10T12:42:18+00:00"
-    },
-    {
-     "id": "GEoGP3LTQzo",
-     "title": "Risparmia token (e soldi) e ottieni risposte migliori in Claude Code [Tutorial]",
-     "dur": 741,
-     "date": "2026-11-09T07:00:33+00:00"
     }
    ]
   },
@@ -1376,6 +1376,12 @@
    "name": "Andrea Ciraolo",
    "id": "UCANtyg_73WZaOaQ5sCHOoLg",
    "videos": [
+    {
+     "id": "Hfi_rQJ1S9E",
+     "title": "NEGOZIO ONLINE con l'AI: come CREARLO nel tempo di un CAFFÈ ☕",
+     "dur": 2049,
+     "date": "2026-11-27T05:00:31+00:00"
+    },
     {
      "id": "Sfe1puKMntY",
      "title": "CLAUDE DUET ✨ TUTORIAL in ANTEPRIMA sul segretario personale che fa tutto IN CHAT",
@@ -1441,12 +1447,6 @@
      "title": "Come iniziare su YouTube partendo da zero",
      "dur": 3197,
      "date": "2026-09-17T04:00:13+00:00"
-    },
-    {
-     "id": "RWKD8U0HzpQ",
-     "title": "L'AGENTE AI che LAVORA al POSTO TUO ✨ Strategia, organizzazione, sito, contenuti... tutto!",
-     "dur": 2693,
-     "date": "2026-09-16T11:08:56+00:00"
     }
    ]
   },
@@ -3171,6 +3171,12 @@
    "id": "UCyeE5RmrX5foJY_wGX-YPqA",
    "videos": [
     {
+     "id": "PeAJxo-KegI",
+     "title": "🔥 BITCOIN / ALTCOINS.. E' ARRIVATO IL MOMENTO CHE ASPETTAVI",
+     "dur": 726,
+     "date": "2026-11-27T09:23:43+00:00"
+    },
+    {
      "id": "KYzyLr8vplY",
      "title": "🚨 NON HA MAI SBAGLIATO IL BOTTOM.. ATTENZIONE BITCOIN ALTCOINS",
      "dur": 653,
@@ -3235,12 +3241,6 @@
      "title": "🚨 DISASTRO MERCATI... Bitcoin - Altcoins - Stock COSA SUCCEDE",
      "dur": 423,
      "date": "2026-11-05T16:27:41+00:00"
-    },
-    {
-     "id": "NMUH8d26AYk",
-     "title": "🚨 INIZIA UN NUOVO MONDO... BITCOIN ALTCOINS sono PRONTE",
-     "dur": 644,
-     "date": "2026-11-04T07:30:30+00:00"
     }
    ]
   },
@@ -3561,6 +3561,12 @@
    "id": "UCqeIh2DOh4w4iXAGPFtb2Jw",
    "videos": [
     {
+     "id": "VcZR0cbjrKQ",
+     "title": "HO VISTO LA DOMANDA NELLO SGUARDO DI MIA MADRE (intervista 020)",
+     "dur": 0,
+     "date": "2026-11-27T09:37:23+00:00"
+    },
+    {
      "id": "04ox8vJ5pyM",
      "title": "Dario Fabbri: il Nuovo Ordine mondiale in 6 Mappe",
      "dur": 4961,
@@ -3625,12 +3631,6 @@
      "title": "La p*dofilia nella Chiesa, spiegata da una teologa",
      "dur": 4763,
      "date": "2025-12-07T19:45:06+00:00"
-    },
-    {
-     "id": "ZssIIJG4OJM",
-     "title": "Dario Fabbri: Lo squarcio nella fine della Storia",
-     "dur": 4729,
-     "date": "2025-11-23T19:40:21+00:00"
     }
    ]
   },
