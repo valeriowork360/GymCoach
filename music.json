@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-27T20:03:30+00:00",
+ "updated": "2026-11-28T02:48:07+00:00",
  "playlists": [
   {
    "title": "⭐ Preferiti",
@@ -1455,6 +1455,12 @@
    "id": "UCvza9EqE6pp2_4iDE-buscg",
    "videos": [
     {
+     "id": "d_MXgRArU4I",
+     "title": "Australia's Unemployment Crisis Has Finally Started (Is a Recession Inevitable?)",
+     "dur": 710,
+     "date": "2026-11-27T21:00:11+00:00"
+    },
+    {
      "id": "47hjucb2r1M",
      "title": "You Are Paying Australias New Property Tax (here's how you don't)",
      "dur": 723,
@@ -1519,12 +1525,6 @@
      "title": "Australia’s Biggest House Price Fall in History (Worse Than 2008?)",
      "dur": 706,
      "date": "2026-10-15T20:00:03+00:00"
-    },
-    {
-     "id": "j6XQgCLnii4",
-     "title": "Australia's Housing Market Just Took a Very Strange Turn",
-     "dur": 820,
-     "date": "2026-10-13T22:00:24+00:00"
     }
    ]
   },
@@ -1767,6 +1767,12 @@
    "id": "UC-PQKtrPhk3JXyjUleBLgQQ",
    "videos": [
     {
+     "id": "ONLETzW3O3o",
+     "title": "My Plan to Make $10K/Month With GTA 6 + AI",
+     "dur": 1565,
+     "date": "2026-11-27T23:19:05+00:00"
+    },
+    {
      "id": "cl_kxZi5gBk",
      "title": "Claude Just Dropped 9 INSANE New Features (Master all in 19 mins)",
      "dur": 1141,
@@ -1831,12 +1837,6 @@
      "title": "6 ways to print $$$ with grok bot",
      "dur": 2232,
      "date": "2026-11-06T15:16:07+00:00"
-    },
-    {
-     "id": "78Eo_-4P1Zc",
-     "title": "Claude 2.0 Completely Changed How I Use AI",
-     "dur": 804,
-     "date": "2026-10-28T17:10:00+00:00"
     }
    ]
   },
